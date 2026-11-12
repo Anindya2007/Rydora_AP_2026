@@ -77,6 +77,41 @@ enum VerificationAttemptStatus {
 }
 
 // ==========================================
+// ENUMS (PART 2: VEHICLES & DRIVERS)
+// ==========================================
+
+enum VehicleType {
+  SEDAN
+  HATCHBACK
+  SUV
+  MOTORCYCLE
+  VAN
+  OTHER
+}
+
+enum DriverEligibilityStatus {
+  ELIGIBLE
+  INELIGIBLE
+  PENDING_REVIEW
+  SUSPENDED
+}
+
+enum VehicleDocumentType {
+  REGISTRATION_CERTIFICATE
+  INSURANCE
+  POLLUTION_FITNESS
+  COMMERCIAL_PERMIT
+  OTHER
+}
+
+enum DocumentVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+// ==========================================
 // MODELS (PART 1: IDENTITY & COMMUNITIES)
 // ==========================================
 
@@ -106,82 +141,10 @@ model User {
   invitesCreated        CommunityInvite[]       @relation("InviteCreatedBy")
   verificationsReviewed CommunityVerification[] @relation("VerificationReviewedBy")
 
-enum CommunityType {
-  UNIVERSITY
-  OFFICE
-  NEIGHBORHOOD
-  PRIVATE
-}
-
-enum CommunityStatus {
-  ACTIVE
-  INACTIVE
-  SUSPENDED
-}
-
-enum MembershipStatus {
-  PENDING
-  ACTIVE
-  REJECTED
-  REVOKED
-}
-
-enum CommunityRole {
-  MEMBER
-  MODERATOR
-  ADMIN
-}
-
-enum VerificationStatus {
-  NOT_STARTED
-  PENDING
-  VERIFIED
-  REJECTED
-  NOT_REQUIRED
-}
-
-enum VerificationMethod {
-  EMAIL_DOMAIN
-  INVITE_CODE
-  MANUAL
-}
-
-enum VerificationAttemptStatus {
-  PENDING
-  VERIFIED
-  REJECTED
-  EXPIRED
-}
-
-// ==========================================
-// MODELS (PART 1: IDENTITY & COMMUNITIES)
-// ==========================================
-
-model User {
-  userId          String        @id @default(uuid()) @db.Uuid
-  name            String        @db.VarChar(100)
-  email           String        @unique @db.VarChar(255)
-  phone           String?       @unique @db.VarChar(20)
-  phoneVerifiedAt DateTime?
-  passwordHash    String
-  profileImage    String?
-  accountStatus   AccountStatus @default(ACTIVE)
-  emailVerifiedAt DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  deletedAt       DateTime?
-
-  // Inverse Relations (Part 1)
-  roles                  UserRole[]
-  sessions               UserSession[]
-  emailVerifications     EmailVerification[]
-  passwordResetTokens    PasswordResetToken[]
-  phoneVerifications     PhoneVerification[]
-  preference             UserPreference?
-  createdCommunities     Community[]             @relation("CommunityCreatedBy")
-  memberships            CommunityMembership[]
-  invitesCreated         CommunityInvite[]       @relation("InviteCreatedBy")
-  verificationsReviewed  CommunityVerification[] @relation("VerificationReviewedBy")
+  // Inverse Relations (Part 2)
+  vehicles                 Vehicle[]
+  driverProfile            DriverProfile?
+  vehicleDocumentsReviewed VehicleDocument[] @relation("VehicleDocumentReviewedBy")
 
   @@map("users")
 }
@@ -371,158 +334,66 @@ model CommunityVerification {
   @@map("community_verifications")
 }
 
-model EmailVerification {
-  verificationId String    @id @default(uuid()) @db.Uuid
-  userId         String    @db.Uuid
-  tokenHash      String    @unique
-  expiresAt      DateTime
-  usedAt         DateTime?
-  createdAt      DateTime  @default(now())
+// ==========================================
+// MODELS (PART 2: VEHICLES & DRIVERS)
+// ==========================================
 
-  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("email_verifications")
-}
-
-model PasswordResetToken {
-  resetId   String    @id @default(uuid()) @db.Uuid
-  userId    String    @db.Uuid
-  tokenHash String    @unique
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("password_reset_tokens")
-}
-
-model PhoneVerification {
-  verificationId String    @id @default(uuid()) @db.Uuid
-  userId         String    @db.Uuid
-  phone          String    @db.VarChar(20)
-  otpHash        String
-  expiresAt      DateTime
-  verifiedAt     DateTime?
-  attemptCount   Int       @default(0)
-  createdAt      DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("phone_verifications")
-}
-
-model UserPreference {
-  preferenceId          String    @id @default(uuid()) @db.Uuid
-  userId                String    @unique @db.Uuid
-  language              String    @default("en") @db.VarChar(10)
-  theme                 ThemeType @default(SYSTEM)
-  accessibilitySettings Json?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@map("user_preferences")
-}
-
-model Community {
-  communityId    String          @id @default(uuid()) @db.Uuid
-  name           String          @db.VarChar(150)
-  type           CommunityType
-  description    String?
-  status         CommunityStatus @default(ACTIVE)
-  isDiscoverable Boolean         @default(true)
-  createdById    String          @db.Uuid
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-
-  createdBy   User                  @relation("CommunityCreatedBy", fields: [createdById], references: [userId], onDelete: Restrict)
-  memberships CommunityMembership[]
-  domains     CommunityDomain[]
-  invites     CommunityInvite[]
-
-  @@index([createdById])
-  @@index([type, status])
-  @@map("communities")
-}
-
-model CommunityMembership {
-  membershipId       String             @id @default(uuid()) @db.Uuid
-  userId             String             @db.Uuid
-  communityId        String             @db.Uuid
-  membershipStatus   MembershipStatus   @default(PENDING)
-  membershipRole     CommunityRole      @default(MEMBER)
-  verificationStatus VerificationStatus @default(PENDING)
-  verificationMethod VerificationMethod?
-  verifiedAt         DateTime?
-  joinedAt           DateTime?
+model Vehicle {
+  vehicleId          String             @id @default(uuid()) @db.Uuid
+  ownerId            String             @db.Uuid
+  vehicleType        VehicleType
+  registrationNumber String             @unique @db.VarChar(50)
+  make               String             @db.VarChar(50)
+  model              String             @db.VarChar(50)
+  color              String             @db.VarChar(30)
+  seatCapacity       Int
+  verificationStatus VerificationStatus @default(NOT_STARTED)
+  isActive           Boolean            @default(true)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  user          User                    @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  community     Community               @relation(fields: [communityId], references: [communityId], onDelete: Cascade)
-  verifications CommunityVerification[]
+  owner     User              @relation(fields: [ownerId], references: [userId], onDelete: Cascade)
+  documents VehicleDocument[]
 
-  @@unique([userId, communityId])
-  @@index([communityId, membershipStatus])
-  @@index([userId])
-  @@map("community_memberships")
+  @@index([ownerId])
+  @@index([registrationNumber, isActive])
+  @@map("vehicles")
 }
 
-model CommunityDomain {
-  domainId    String    @id @default(uuid()) @db.Uuid
-  communityId String    @db.Uuid
-  domain      String    @db.VarChar(255)
-  isActive    Boolean   @default(true)
-  approvedAt  DateTime?
-  createdAt   DateTime  @default(now())
+model DriverProfile {
+  driverProfileId           String                  @id @default(uuid()) @db.Uuid
+  userId                    String                  @unique @db.Uuid
+  driverVerificationStatus  VerificationStatus      @default(NOT_STARTED)
+  licenseVerificationStatus VerificationStatus      @default(NOT_STARTED)
+  licenseNumber             String?                 @db.VarChar(50)
+  eligibilityStatus         DriverEligibilityStatus @default(PENDING_REVIEW)
+  approvedAt                DateTime?
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
 
-  community Community @relation(fields: [communityId], references: [communityId], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
-  @@unique([communityId, domain])
-  @@index([domain])
-  @@map("community_domains")
+  @@index([eligibilityStatus])
+  @@map("driver_profiles")
 }
 
-model CommunityInvite {
-  inviteId         String    @id @default(uuid()) @db.Uuid
-  communityId      String    @db.Uuid
-  createdById      String    @db.Uuid
-  codeHash         String    @unique
-  emailRestriction String?   @db.VarChar(255)
-  maxUses          Int?
-  useCount         Int       @default(0)
-  expiresAt        DateTime?
-  revokedAt        DateTime?
-  createdAt        DateTime  @default(now())
+model VehicleDocument {
+  documentId         String                     @id @default(uuid()) @db.Uuid
+  vehicleId          String                     @db.Uuid
+  documentType       VehicleDocumentType
+  fileUrl            String                     @db.VarChar(500)
+  verificationStatus DocumentVerificationStatus @default(PENDING)
+  reviewedById       String?                    @db.Uuid
+  reviewedAt         DateTime?
+  expiresAt          DateTime?
+  rejectionReason    String?
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
 
-  community Community @relation(fields: [communityId], references: [communityId], onDelete: Cascade)
-  createdBy User      @relation("InviteCreatedBy", fields: [createdById], references: [userId], onDelete: Restrict)
+  vehicle  Vehicle @relation(fields: [vehicleId], references: [vehicleId], onDelete: Cascade)
+  reviewer User?   @relation("VehicleDocumentReviewedBy", fields: [reviewedById], references: [userId], onDelete: SetNull)
 
-  @@index([communityId])
-  @@index([createdById])
-  @@map("community_invites")
-}
-
-model CommunityVerification {
-  verificationId String                    @id @default(uuid()) @db.Uuid
-  membershipId   String                    @db.Uuid
-  method         VerificationMethod
-  status         VerificationAttemptStatus @default(PENDING)
-  reviewerId     String?                   @db.Uuid
-  reviewedAt     DateTime?
-  reason         String?
-  metadata       Json?
-  createdAt      DateTime                  @default(now())
-
-  membership CommunityMembership @relation(fields: [membershipId], references: [membershipId], onDelete: Cascade)
-  reviewer   User?               @relation("VerificationReviewedBy", fields: [reviewerId], references: [userId], onDelete: SetNull)
-
-  @@index([membershipId])
-  @@index([reviewerId])
-  @@map("community_verifications")
+  @@index([vehicleId])
+  @@index([reviewedById])
+  @@map("vehicle_documents")
 }

@@ -10,7 +10,7 @@ This document tracks the incremental implementation and validation of the Rydora
 | :--- | :--- | :--- | :--- |
 | **Part 0** | Initial Repository Audit | **COMPLETED** | Repository, dependencies, and git state audited |
 | **Part 1** | Identity, Authentication & Communities | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
-| **Part 2** | Vehicles and Driver Eligibility | Pending Confirmation | Not Started |
+| **Part 2** | Vehicles and Driver Eligibility | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 3** | Rides and Routes | Pending Confirmation | Not Started |
 | **Part 4** | Bookings, Fare Quotes and Cancellations | Pending Confirmation | Not Started |
 | **Part 5** | Payments, Ledger and Driver Earnings | Pending Confirmation | Not Started |
@@ -61,7 +61,27 @@ This document tracks the incremental implementation and validation of the Rydora
 - `VerificationMethod` (`EMAIL_DOMAIN`, `INVITE_CODE`, `MANUAL`)
 - `VerificationAttemptStatus` (`PENDING`, `VERIFIED`, `REJECTED`, `EXPIRED`)
 
+---
+
+## Part 2: Vehicles and Driver Eligibility
+
+### Models Implemented
+1. `Vehicle` — Vehicles owned by users, tracking plate registration (unique), capacity, make/model, type, active status, and verification.
+2. `DriverProfile` — 1-to-1 driver profile per user, tracking driver license verification, driver verification status, and overall eligibility (`ELIGIBLE`, `PENDING_REVIEW`, etc.).
+3. `VehicleDocument` — Document verification audit trail for vehicle registration certificates (RC), insurance, pollution certificates, and permits with expiration dates and reviewer tracking.
+
+### Enums Implemented
+- `VehicleType` (`SEDAN`, `HATCHBACK`, `SUV`, `MOTORCYCLE`, `VAN`, `OTHER`)
+- `DriverEligibilityStatus` (`ELIGIBLE`, `INELIGIBLE`, `PENDING_REVIEW`, `SUSPENDED`)
+- `VehicleDocumentType` (`REGISTRATION_CERTIFICATE`, `INSURANCE`, `POLLUTION_FITNESS`, `COMMERCIAL_PERMIT`, `OTHER`)
+- `DocumentVerificationStatus` (`PENDING`, `VERIFIED`, `REJECTED`, `EXPIRED`)
+
+### Relationships Created / Updated
+- `User` ↔ `Vehicle` (1-to-many, user can own multiple vehicles, cascade deletion on vehicle).
+- `User` ↔ `DriverProfile` (1-to-1, cascade deletion on profile).
+- `Vehicle` ↔ `VehicleDocument` (1-to-many, cascade deletion on documents).
+- `User` ↔ `VehicleDocument` (`VehicleDocumentReviewedBy` relation, `SetNull` on reviewer deletion).
+
 ### Validation Commands
 - `npx prisma@6 format` -> Succeeded.
 - `DATABASE_URL="..." npx prisma@6 validate` -> Validated successfully with 0 errors.
-
