@@ -247,6 +247,81 @@ enum DriverEarningStatus {
 }
 
 // ==========================================
+// ENUMS (PART 6: SAFETY, RATINGS & TRUST)
+// ==========================================
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  REPORTED
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+enum IncidentCategory {
+  HARASSMENT
+  RECKLESS_DRIVING
+  ROUTE_DEVIATION
+  VEHICLE_CONDITION
+  PAYMENT_DISPUTE
+  OTHER
+}
+
+enum SOSAlertStatus {
+  TRIGGERED
+  ACKNOWLEDGED
+  RESOLVED
+  FALSE_ALARM
+}
+
+enum DeviationStatus {
+  DETECTED
+  ACKNOWLEDGED
+  RESOLVED
+  FALSE_POSITIVE
+}
+
+enum ConsentType {
+  LOCATION_TRACKING
+  EMERGENCY_CONTACT_SHARING
+  AUDIO_RECORDING
+  MARKETING_COMMUNICATION
+}
+
+enum SentimentLabel {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+enum ModerationTargetType {
+  USER
+  REVIEW
+  COMMUNITY
+  CHAT
+}
+
+enum ModerationStatus {
+  PENDING
+  INVESTIGATING
+  RESOLVED
+  DISMISSED
+}
+
+enum IncentiveStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+// ==========================================
 // MODELS (PART 1: IDENTITY & COMMUNITIES)
 // ==========================================
 
@@ -297,6 +372,22 @@ model User {
   refundsRequested Refund[]          @relation("RefundsRequested")
   financialAccount FinancialAccount?
   driverEarnings   DriverEarning[]   @relation("DriverEarnings")
+
+  // Inverse Relations (Part 6)
+  trustedContacts         TrustedContact[]     @relation("UserTrustedContacts")
+  incidentsReported       SafetyIncident[]     @relation("ReportedIncidents")
+  incidentsAgainst        SafetyIncident[]     @relation("IncidentsAgainstUser")
+  incidentsResolved       SafetyIncident[]     @relation("ResolvedIncidents")
+  sosAlertsTriggered      SOSAlert[]           @relation("SOSAlertsTriggered")
+  sosAlertsResolved       SOSAlert[]           @relation("SOSAlertsResolved")
+  evidenceUploaded        SafetyEvidence[]     @relation("EvidenceUploaded")
+  consents                ConsentRecord[]      @relation("UserConsents")
+  ratingsGiven            Rating[]             @relation("RatingsGiven")
+  ratingsReceived         Rating[]             @relation("RatingsReceived")
+  moderationReportsFiled  ModerationReport[]   @relation("ModerationReportsFiled")
+  moderationReportsHandled ModerationReport[]  @relation("ModerationReportsHandled")
+  tierHistories           DriverTierHistory[]  @relation("DriverTierHistories")
+  incentives              DriverIncentive[]    @relation("DriverIncentives")
 
   @@map("users")
 }
@@ -586,7 +677,12 @@ model Ride {
   route          RideRoute?
   bookings       Booking[]
   fareQuotes     FareQuote[]
-  driverEarnings DriverEarning[]
+  driverEarnings  DriverEarning[]
+  safetyIncidents SafetyIncident[]
+  sosAlerts       SOSAlert[]
+  locations       RideLocation[]
+  deviations      RouteDeviationEvent[]
+  ratings         Rating[]
 
   @@index([driverId])
   @@index([vehicleId])
@@ -675,6 +771,7 @@ model Booking {
   disputes           DisputeCase[]
   payments           Payment[]
   driverEarning      DriverEarning?
+  ratings            Rating[]
 
   @@index([rideId])
   @@index([riderId])
@@ -945,4 +1042,270 @@ model DriverEarning {
   @@index([rideId])
   @@index([status])
   @@map("driver_earnings")
+}
+
+// ==========================================
+// MODELS (PART 6: SAFETY, RATINGS & TRUST)
+// ==========================================
+
+model TrustedContact {
+  contactId          String   @id @default(uuid()) @db.Uuid
+  userId             String   @db.Uuid
+  name               String   @db.VarChar(100)
+  phone              String   @db.VarChar(20)
+  email              String?  @db.VarChar(255)
+  relationship       String?  @db.VarChar(50)
+  isEmergencyContact Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation("UserTrustedContacts", fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("trusted_contacts")
+}
+
+model SafetyIncident {
+  incidentId      String           @id @default(uuid()) @db.Uuid
+  rideId          String?          @db.Uuid
+  reporterId      String           @db.Uuid
+  reportedUserId  String?          @db.Uuid
+  severity        IncidentSeverity
+  status          IncidentStatus   @default(REPORTED)
+  category        IncidentCategory
+  description     String
+  resolutionNotes String?
+  resolvedById    String?          @db.Uuid
+  resolvedAt      DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  ride         Ride?            @relation(fields: [rideId], references: [rideId], onDelete: SetNull)
+  reporter     User             @relation("ReportedIncidents", fields: [reporterId], references: [userId], onDelete: Restrict)
+  reportedUser User?            @relation("IncidentsAgainstUser", fields: [reportedUserId], references: [userId], onDelete: SetNull)
+  resolvedBy   User?            @relation("ResolvedIncidents", fields: [resolvedById], references: [userId], onDelete: SetNull)
+  evidence     SafetyEvidence[]
+
+  @@index([rideId])
+  @@index([reporterId])
+  @@index([reportedUserId])
+  @@index([status])
+  @@map("safety_incidents")
+}
+
+model SOSAlert {
+  alertId       String         @id @default(uuid()) @db.Uuid
+  rideId        String         @db.Uuid
+  userId        String         @db.Uuid
+  status        SOSAlertStatus @default(TRIGGERED)
+  latitude      Float
+  longitude     Float
+  address       String?        @db.VarChar(255)
+  triggeredAt   DateTime       @default(now())
+  resolvedAt    DateTime?
+  resolverNotes String?
+  resolvedById  String?        @db.Uuid
+
+  ride       Ride  @relation(fields: [rideId], references: [rideId], onDelete: Restrict)
+  user       User  @relation("SOSAlertsTriggered", fields: [userId], references: [userId], onDelete: Restrict)
+  resolvedBy User? @relation("SOSAlertsResolved", fields: [resolvedById], references: [userId], onDelete: SetNull)
+
+  @@index([rideId])
+  @@index([userId])
+  @@index([status])
+  @@map("sos_alerts")
+}
+
+model RideLocation {
+  locationId String   @id @default(uuid()) @db.Uuid
+  rideId     String   @db.Uuid
+  latitude   Float
+  longitude  Float
+  bearing    Float?
+  speedKmh   Float?
+  recordedAt DateTime @default(now())
+
+  ride Ride @relation(fields: [rideId], references: [rideId], onDelete: Cascade)
+
+  @@index([rideId, recordedAt])
+  @@map("ride_locations")
+}
+
+model RouteDeviationEvent {
+  deviationId             String          @id @default(uuid()) @db.Uuid
+  rideId                  String          @db.Uuid
+  deviationDistanceMeters Int
+  latitude                Float
+  longitude               Float
+  status                  DeviationStatus @default(DETECTED)
+  acknowledgedByDriverAt  DateTime?
+  acknowledgedByRiderAt   DateTime?
+  createdAt               DateTime        @default(now())
+
+  ride Ride @relation(fields: [rideId], references: [rideId], onDelete: Cascade)
+
+  @@index([rideId])
+  @@map("route_deviation_events")
+}
+
+model SafetyEvidence {
+  evidenceId   String   @id @default(uuid()) @db.Uuid
+  incidentId   String   @db.Uuid
+  fileUrl      String   @db.VarChar(500)
+  fileType     String   @db.VarChar(50)
+  description  String?
+  isRestricted Boolean  @default(true)
+  uploadedById String   @db.Uuid
+  createdAt    DateTime @default(now())
+
+  incident   SafetyIncident @relation(fields: [incidentId], references: [incidentId], onDelete: Cascade)
+  uploadedBy User           @relation("EvidenceUploaded", fields: [uploadedById], references: [userId], onDelete: Restrict)
+
+  @@index([incidentId])
+  @@map("safety_evidences")
+}
+
+model ConsentRecord {
+  consentId   String      @id @default(uuid()) @db.Uuid
+  userId      String      @db.Uuid
+  consentType ConsentType
+  isGranted   Boolean     @default(true)
+  ipAddress   String?     @db.VarChar(45)
+  grantedAt   DateTime    @default(now())
+  revokedAt   DateTime?
+
+  user User @relation("UserConsents", fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId, consentType])
+  @@map("consent_records")
+}
+
+model Rating {
+  ratingId  String   @id @default(uuid()) @db.Uuid
+  bookingId String   @db.Uuid
+  rideId    String   @db.Uuid
+  raterId   String   @db.Uuid
+  rateeId   String   @db.Uuid
+  score     Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [bookingId], onDelete: Restrict)
+  ride    Ride    @relation(fields: [rideId], references: [rideId], onDelete: Restrict)
+  rater   User    @relation("RatingsGiven", fields: [raterId], references: [userId], onDelete: Restrict)
+  ratee   User    @relation("RatingsReceived", fields: [rateeId], references: [userId], onDelete: Restrict)
+  review  Review?
+
+  @@unique([bookingId, raterId])
+  @@index([rateeId])
+  @@index([rideId])
+  @@map("ratings")
+}
+
+model Review {
+  reviewId   String   @id @default(uuid()) @db.Uuid
+  ratingId   String   @unique @db.Uuid
+  headline   String?  @db.VarChar(150)
+  reviewText String
+  isPublic   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  rating           Rating            @relation(fields: [ratingId], references: [ratingId], onDelete: Cascade)
+  feedbackAnalysis FeedbackAnalysis?
+
+  @@map("reviews")
+}
+
+model FeedbackCategory {
+  categoryId String   @id @default(uuid()) @db.Uuid
+  name       String   @unique @db.VarChar(50)
+  isPositive Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@map("feedback_categories")
+}
+
+model FeedbackAnalysis {
+  analysisId         String         @id @default(uuid()) @db.Uuid
+  reviewId           String         @unique @db.Uuid
+  sentimentScore     Float
+  sentimentLabel     SentimentLabel
+  detectedIssues     Json?
+  isFlaggedForReview Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+
+  review Review @relation(fields: [reviewId], references: [reviewId], onDelete: Cascade)
+
+  @@map("feedback_analyses")
+}
+
+model ModerationReport {
+  reportId    String               @id @default(uuid()) @db.Uuid
+  reporterId  String               @db.Uuid
+  targetType  ModerationTargetType
+  targetId    String               @db.Uuid
+  reason      String
+  status      ModerationStatus     @default(PENDING)
+  actionTaken String?
+  moderatorId String?              @db.Uuid
+  reviewedAt  DateTime?
+  createdAt   DateTime             @default(now())
+
+  reporter  User  @relation("ModerationReportsFiled", fields: [reporterId], references: [userId], onDelete: Restrict)
+  moderator User? @relation("ModerationReportsHandled", fields: [moderatorId], references: [userId], onDelete: SetNull)
+
+  @@index([targetType, targetId])
+  @@index([status])
+  @@map("moderation_reports")
+}
+
+model DriverTier {
+  tierId                    String   @id @default(uuid()) @db.Uuid
+  tierName                  String   @unique @db.VarChar(50)
+  minRating                 Float    @default(4.0)
+  minCompletedRides         Int      @default(0)
+  commissionDiscountPercent Decimal  @default(0) @db.Decimal(5, 2)
+  isActive                  Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+
+  tierHistories DriverTierHistory[]
+
+  @@map("driver_tiers")
+}
+
+model DriverTierHistory {
+  historyId  String    @id @default(uuid()) @db.Uuid
+  driverId   String    @db.Uuid
+  tierId     String    @db.Uuid
+  assignedAt DateTime  @default(now())
+  validUntil DateTime?
+  reason     String?
+
+  driver User       @relation("DriverTierHistories", fields: [driverId], references: [userId], onDelete: Cascade)
+  tier   DriverTier @relation(fields: [tierId], references: [tierId], onDelete: Restrict)
+
+  @@index([driverId])
+  @@index([tierId])
+  @@map("driver_tier_histories")
+}
+
+model DriverIncentive {
+  incentiveId    String          @id @default(uuid()) @db.Uuid
+  driverId       String          @db.Uuid
+  title          String          @db.VarChar(150)
+  description    String?
+  bonusAmount    Decimal         @db.Decimal(10, 2)
+  targetRides    Int
+  completedRides Int             @default(0)
+  status         IncentiveStatus @default(ACTIVE)
+  expiresAt      DateTime
+  awardedAt      DateTime?
+  createdAt      DateTime        @default(now())
+
+  driver User @relation("DriverIncentives", fields: [driverId], references: [userId], onDelete: Cascade)
+
+  @@index([driverId])
+  @@index([status])
+  @@map("driver_incentives")
 }

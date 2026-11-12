@@ -14,7 +14,7 @@ This document tracks the incremental implementation and validation of the Rydora
 | **Part 3** | Rides and Routes | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 4** | Bookings, Fare Quotes and Cancellations | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 5** | Payments, Ledger and Driver Earnings | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
-| **Part 6** | Safety, Ratings and Trust | Pending Confirmation | Not Started |
+| **Part 6** | Safety, Ratings and Trust | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 7** | Notifications, Calendar, AI, Sustainability & Admin | Pending Confirmation | Not Started |
 | **Part 8** | Final Schema Integration and Validation | Pending Confirmation | Not Started |
 
@@ -149,17 +149,59 @@ This document tracks the incremental implementation and validation of the Rydora
 - `LedgerEntryType` (`DEBIT`, `CREDIT`)
 - `DriverEarningStatus` (`PENDING`, `AVAILABLE`, `PAID_OUT`, `WITHHELD`)
 
+---
+
+## Part 6: Safety, Ratings and Trust
+
+### Models Implemented
+1. `TrustedContact` — Up to 3 emergency contacts per user with relationship and emergency notification flags.
+2. `SafetyIncident` — Incident reports linked optionally to rides, tracking reporters, reported users, severity, categories, and resolution logs.
+3. `SOSAlert` — Immediate emergency alerts tied to an active ride with GPS coordinates, timestamps, and resolution audit.
+4. `RideLocation` — Periodic GPS location breadcrumbs during active rides (prunable for privacy retention).
+5. `RouteDeviationEvent` — Automated deviation detection with deviation distance metrics and driver/rider acknowledgments.
+6. `SafetyEvidence` — Secure file attachments (photos, audio) for incident investigation with strict restriction flags.
+7. `ConsentRecord` — Explicit user consents for location tracking, audio recording, and emergency data access.
+8. `Rating` — Bidirectional 1-5 star ratings between rider and driver per booking, enforcing a single rating per rater per booking (`@@unique([bookingId, raterId])`).
+9. `Review` — Qualitative review text and headlines linked 1-to-1 with a rating.
+10. `FeedbackCategory` — Feedback tags (e.g., "Punctual", "Clean Car", "Safe Driver").
+11. `FeedbackAnalysis` — Decoupled AI sentiment analysis (`SentimentLabel`, sentiment score, issue detection) that does not directly trigger automated administrative punishments.
+12. `ModerationReport` — Administrative moderation queue for reported users, reviews, or chat incidents.
+13. `DriverTier` — Tier definitions (Bronze, Silver, Gold, Platinum) with rating thresholds and commission incentives.
+14. `DriverTierHistory` — Audit history of tier promotions and demotions.
+15. `DriverIncentive` — Performance targets and bonus rewards with ride progress counters.
+
+### Enums Implemented
+- `IncidentSeverity` (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`)
+- `IncidentStatus` (`REPORTED`, `INVESTIGATING`, `RESOLVED`, `DISMISSED`)
+- `IncidentCategory` (`HARASSMENT`, `RECKLESS_DRIVING`, `ROUTE_DEVIATION`, `VEHICLE_CONDITION`, `PAYMENT_DISPUTE`, `OTHER`)
+- `SOSAlertStatus` (`TRIGGERED`, `ACKNOWLEDGED`, `RESOLVED`, `FALSE_ALARM`)
+- `DeviationStatus` (`DETECTED`, `ACKNOWLEDGED`, `RESOLVED`, `FALSE_POSITIVE`)
+- `ConsentType` (`LOCATION_TRACKING`, `EMERGENCY_CONTACT_SHARING`, `AUDIO_RECORDING`, `MARKETING_COMMUNICATION`)
+- `SentimentLabel` (`POSITIVE`, `NEUTRAL`, `NEGATIVE`)
+- `ModerationTargetType` (`USER`, `REVIEW`, `COMMUNITY`, `CHAT`)
+- `ModerationStatus` (`PENDING`, `INVESTIGATING`, `RESOLVED`, `DISMISSED`)
+- `IncentiveStatus` (`ACTIVE`, `COMPLETED`, `EXPIRED`, `CANCELLED`)
+
 ### Relationships Created / Updated
-- `User` ↔ `Payment` (`UserPayments` relation, `Restrict` deletion).
-- `Booking` ↔ `Payment` (1-to-many, `Restrict` deletion).
-- `Payment` ↔ `Refund` (1-to-many, `Restrict` deletion).
-- `User` ↔ `Refund` (`RefundsRequested` relation, `Restrict` deletion).
-- `User` ↔ `FinancialAccount` (1-to-1, `Restrict` deletion).
-- `FinancialAccount` ↔ `LedgerEntry` (1-to-many, `Restrict` deletion).
-- `LedgerTransaction` ↔ `LedgerEntry` (1-to-many, `Cascade` deletion).
-- `User` ↔ `DriverEarning` (`DriverEarnings` relation, `Restrict` deletion).
-- `Ride` ↔ `DriverEarning` (1-to-many, `Restrict` deletion).
-- `Booking` ↔ `DriverEarning` (1-to-1 optional, `SetNull`).
+- `User` ↔ `TrustedContact` (1-to-many, `Cascade` deletion).
+- `User` ↔ `SafetyIncident` (`ReportedIncidents`, `IncidentsAgainstUser`, `ResolvedIncidents`).
+- `Ride` ↔ `SafetyIncident` (1-to-many optional, `SetNull`).
+- `Ride` ↔ `SOSAlert` (1-to-many, `Restrict` deletion).
+- `User` ↔ `SOSAlert` (`SOSAlertsTriggered`, `SOSAlertsResolved`).
+- `Ride` ↔ `RideLocation` (1-to-many, `Cascade` deletion).
+- `Ride` ↔ `RouteDeviationEvent` (1-to-many, `Cascade` deletion).
+- `SafetyIncident` ↔ `SafetyEvidence` (1-to-many, `Cascade` deletion).
+- `User` ↔ `SafetyEvidence` (`EvidenceUploaded` relation, `Restrict` deletion).
+- `User` ↔ `ConsentRecord` (1-to-many, `Cascade` deletion).
+- `Booking` ↔ `Rating` (1-to-many, `Restrict` deletion).
+- `Ride` ↔ `Rating` (1-to-many, `Restrict` deletion).
+- `User` ↔ `Rating` (`RatingsGiven`, `RatingsReceived`, `Restrict` deletion).
+- `Rating` ↔ `Review` (1-to-1, `Cascade` deletion).
+- `Review` ↔ `FeedbackAnalysis` (1-to-1, `Cascade` deletion).
+- `User` ↔ `ModerationReport` (`ModerationReportsFiled`, `ModerationReportsHandled`).
+- `DriverTier` ↔ `DriverTierHistory` (1-to-many, `Restrict` deletion).
+- `User` ↔ `DriverTierHistory` (1-to-many, `Cascade` deletion).
+- `User` ↔ `DriverIncentive` (1-to-many, `Cascade` deletion).
 
 ### Validation Commands
 - `npx prisma@6 format` -> Succeeded.
