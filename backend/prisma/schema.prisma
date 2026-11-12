@@ -129,6 +129,63 @@ enum StopType {
 }
 
 // ==========================================
+// ENUMS (PART 4: BOOKINGS & CANCELLATIONS)
+// ==========================================
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  EXPIRED
+}
+
+enum FareQuoteStatus {
+  ACTIVE
+  ACCEPTED
+  EXPIRED
+  REJECTED
+}
+
+enum FareLineItemType {
+  BASE_FARE
+  DISTANCE_FARE
+  TIME_FARE
+  PLATFORM_FEE
+  COMMUNITY_DISCOUNT
+  SURGE
+  TAX
+  OTHER
+}
+
+enum ResponsibleParty {
+  RIDER
+  DRIVER
+  PLATFORM
+}
+
+enum NoShowStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum PenaltyAssessmentStatus {
+  PENDING
+  WAIVED
+  APPLIED
+  DISPUTED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+// ==========================================
 // MODELS (PART 1: IDENTITY & COMMUNITIES)
 // ==========================================
 
@@ -165,6 +222,14 @@ model User {
 
   // Inverse Relations (Part 3)
   ridesDriven Ride[] @relation("DriverRides")
+
+  // Inverse Relations (Part 4)
+  bookings               Booking[]           @relation("RiderBookings")
+  fareQuotes             FareQuote[]         @relation("RiderFareQuotes")
+  cancellations          Cancellation[]      @relation("CancellationsPerformed")
+  noShowsReported        NoShowRecord[]      @relation("NoShowsReported")
+  disputesSubmitted      DisputeCase[]       @relation("DisputesSubmitted")
+  disputesReviewed       DisputeCase[]       @relation("DisputesReviewed")
 
   @@map("users")
 }
@@ -452,6 +517,8 @@ model Ride {
   communities RideCommunity[]
   stops       RideStop[]
   route       RideRoute?
+  bookings    Booking[]
+  fareQuotes  FareQuote[]
 
   @@index([driverId])
   @@index([vehicleId])
@@ -507,4 +574,178 @@ model RideRoute {
   ride Ride @relation(fields: [rideId], references: [rideId], onDelete: Cascade)
 
   @@map("ride_routes")
+}
+
+// ==========================================
+// MODELS (PART 4: BOOKINGS & CANCELLATIONS)
+// ==========================================
+
+model Booking {
+  bookingId       String        @id @default(uuid()) @db.Uuid
+  rideId          String        @db.Uuid
+  riderId         String        @db.Uuid
+  pickupAddress   String        @db.VarChar(255)
+  pickupLat       Float
+  pickupLng       Float
+  dropoffAddress  String        @db.VarChar(255)
+  dropoffLat      Float
+  dropoffLng      Float
+  seatCount       Int           @default(1)
+  bookingStatus   BookingStatus @default(PENDING)
+  totalFare       Decimal       @db.Decimal(10, 2)
+  fareQuoteId     String?       @db.Uuid
+  confirmedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  ride               Ride                @relation(fields: [rideId], references: [rideId], onDelete: Restrict)
+  rider              User                @relation("RiderBookings", fields: [riderId], references: [userId], onDelete: Restrict)
+  fareQuote          FareQuote?          @relation(fields: [fareQuoteId], references: [quoteId], onDelete: SetNull)
+  cancellation       Cancellation?
+  noShowRecord       NoShowRecord?
+  penaltyAssessments PenaltyAssessment[]
+  disputes           DisputeCase[]
+
+  @@index([rideId])
+  @@index([riderId])
+  @@index([bookingStatus])
+  @@map("bookings")
+}
+
+model FareQuote {
+  quoteId            String          @id @default(uuid()) @db.Uuid
+  rideId             String          @db.Uuid
+  riderId            String          @db.Uuid
+  quotedAmount       Decimal         @db.Decimal(10, 2)
+  status             FareQuoteStatus @default(ACTIVE)
+  expiresAt          DateTime
+  calculationDetails Json?
+  createdAt          DateTime        @default(now())
+
+  ride      Ride           @relation(fields: [rideId], references: [rideId], onDelete: Cascade)
+  rider     User           @relation("RiderFareQuotes", fields: [riderId], references: [userId], onDelete: Cascade)
+  lineItems FareLineItem[]
+  bookings  Booking[]
+
+  @@index([rideId])
+  @@index([riderId])
+  @@map("fare_quotes")
+}
+
+model FareLineItem {
+  lineItemId          String           @id @default(uuid()) @db.Uuid
+  fareQuoteId         String           @db.Uuid
+  itemType            FareLineItemType
+  description         String           @db.VarChar(150)
+  amount              Decimal          @db.Decimal(10, 2)
+  calculationMetadata Json?
+  createdAt           DateTime         @default(now())
+
+  fareQuote FareQuote @relation(fields: [fareQuoteId], references: [quoteId], onDelete: Cascade)
+
+  @@index([fareQuoteId])
+  @@map("fare_line_items")
+}
+
+model CancellationPolicy {
+  policyId                      String   @id @default(uuid()) @db.Uuid
+  name                          String   @db.VarChar(100)
+  description                   String?
+  freeCancellationWindowMinutes Int      @default(15)
+  penaltyPercentage             Decimal  @default(0) @db.Decimal(5, 2)
+  flatPenaltyAmount             Decimal  @default(0) @db.Decimal(10, 2)
+  isActive                      Boolean  @default(true)
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  cancellations      Cancellation[]
+  penaltyAssessments PenaltyAssessment[]
+
+  @@map("cancellation_policies")
+}
+
+model Cancellation {
+  cancellationId   String           @id @default(uuid()) @db.Uuid
+  bookingId        String           @unique @db.Uuid
+  cancelledById    String           @db.Uuid
+  responsibleParty ResponsibleParty
+  reason           String
+  penaltyAmount    Decimal          @default(0) @db.Decimal(10, 2)
+  policyId         String?          @db.Uuid
+  cancelledAt      DateTime         @default(now())
+  createdAt        DateTime         @default(now())
+
+  booking           Booking             @relation(fields: [bookingId], references: [bookingId], onDelete: Restrict)
+  cancelledBy       User                @relation("CancellationsPerformed", fields: [cancelledById], references: [userId], onDelete: Restrict)
+  policy            CancellationPolicy? @relation(fields: [policyId], references: [policyId], onDelete: SetNull)
+  penaltyAssessment PenaltyAssessment?
+
+  @@index([cancelledById])
+  @@index([policyId])
+  @@map("cancellations")
+}
+
+model NoShowRecord {
+  noShowId        String       @id @default(uuid()) @db.Uuid
+  bookingId       String       @unique @db.Uuid
+  reportedById    String       @db.Uuid
+  waitTimeMinutes Int          @default(5)
+  waitStartedAt   DateTime?
+  waitEndedAt     DateTime?
+  status          NoShowStatus @default(PENDING)
+  reason          String?
+  createdAt       DateTime     @default(now())
+
+  booking           Booking            @relation(fields: [bookingId], references: [bookingId], onDelete: Restrict)
+  reportedBy        User               @relation("NoShowsReported", fields: [reportedById], references: [userId], onDelete: Restrict)
+  penaltyAssessment PenaltyAssessment?
+
+  @@index([reportedById])
+  @@map("no_show_records")
+}
+
+model PenaltyAssessment {
+  assessmentId     String                  @id @default(uuid()) @db.Uuid
+  bookingId        String                  @db.Uuid
+  cancellationId   String?                 @unique @db.Uuid
+  noShowId         String?                 @unique @db.Uuid
+  responsibleParty ResponsibleParty
+  amount           Decimal                 @db.Decimal(10, 2)
+  status           PenaltyAssessmentStatus @default(PENDING)
+  policyId         String?                 @db.Uuid
+  reason           String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  booking      Booking             @relation(fields: [bookingId], references: [bookingId], onDelete: Restrict)
+  cancellation Cancellation?       @relation(fields: [cancellationId], references: [cancellationId], onDelete: SetNull)
+  noShowRecord NoShowRecord?       @relation(fields: [noShowId], references: [noShowId], onDelete: SetNull)
+  policy       CancellationPolicy? @relation(fields: [policyId], references: [policyId], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@index([status])
+  @@map("penalty_assessments")
+}
+
+model DisputeCase {
+  disputeId    String        @id @default(uuid()) @db.Uuid
+  bookingId    String        @db.Uuid
+  submittedById String       @db.Uuid
+  reviewerId   String?       @db.Uuid
+  reason       String
+  status       DisputeStatus @default(OPEN)
+  resolution   String?
+  resolvedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  booking     Booking @relation(fields: [bookingId], references: [bookingId], onDelete: Restrict)
+  submittedBy User    @relation("DisputesSubmitted", fields: [submittedById], references: [userId], onDelete: Restrict)
+  reviewer    User?   @relation("DisputesReviewed", fields: [reviewerId], references: [userId], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@index([submittedById])
+  @@index([reviewerId])
+  @@index([status])
+  @@map("dispute_cases")
 }

@@ -12,7 +12,7 @@ This document tracks the incremental implementation and validation of the Rydora
 | **Part 1** | Identity, Authentication & Communities | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 2** | Vehicles and Driver Eligibility | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 3** | Rides and Routes | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
-| **Part 4** | Bookings, Fare Quotes and Cancellations | Pending Confirmation | Not Started |
+| **Part 4** | Bookings, Fare Quotes and Cancellations | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 5** | Payments, Ledger and Driver Earnings | Pending Confirmation | Not Started |
 | **Part 6** | Safety, Ratings and Trust | Pending Confirmation | Not Started |
 | **Part 7** | Notifications, Calendar, AI, Sustainability & Admin | Pending Confirmation | Not Started |
@@ -103,6 +103,45 @@ This document tracks the incremental implementation and validation of the Rydora
 - `Community` ↔ `RideCommunity` (1-to-many, `Cascade` deletion).
 - `Ride` ↔ `RideStop` (1-to-many, `Cascade` deletion).
 - `Ride` ↔ `RideRoute` (1-to-1, `Cascade` deletion).
+
+---
+
+## Part 4: Bookings, Fare Quotes and Cancellations
+
+### Models Implemented
+1. `Booking` — Rider seat reservation capturing agreed pickup/drop-off, seat counts, immutable fare snapshot, lifecycle status, and confirmation timestamps.
+2. `FareQuote` — Pre-booking pricing quotation with validity period, calculation details, and line item breakdown.
+3. `FareLineItem` — Granular fare calculation components (base fare, distance, time, surge, platform fee, community discounts).
+4. `CancellationPolicy` — Configurable cancellation rules (free cancellation window, percentage/flat penalty).
+5. `Cancellation` — Cancellation audit trail recording responsible party (`RIDER`, `DRIVER`, `PLATFORM`), reason, timestamp, and calculated penalty.
+6. `NoShowRecord` — Explicit tracking for rider/driver no-shows with wait duration evidence and review status.
+7. `PenaltyAssessment` — Non-settlement penalty evaluation decoupled from real payments, referencing policy and responsible party.
+8. `DisputeCase` — Rider/driver dispute lifecycle management with administrative review and resolution auditing.
+
+### Enums Implemented
+- `BookingStatus` (`PENDING`, `CONFIRMED`, `COMPLETED`, `CANCELLED`, `NO_SHOW`, `EXPIRED`)
+- `FareQuoteStatus` (`ACTIVE`, `ACCEPTED`, `EXPIRED`, `REJECTED`)
+- `FareLineItemType` (`BASE_FARE`, `DISTANCE_FARE`, `TIME_FARE`, `PLATFORM_FEE`, `COMMUNITY_DISCOUNT`, `SURGE`, `TAX`, `OTHER`)
+- `ResponsibleParty` (`RIDER`, `DRIVER`, `PLATFORM`)
+- `NoShowStatus` (`PENDING`, `VERIFIED`, `REJECTED`)
+- `PenaltyAssessmentStatus` (`PENDING`, `WAIVED`, `APPLIED`, `DISPUTED`)
+- `DisputeStatus` (`OPEN`, `UNDER_REVIEW`, `RESOLVED`, `REJECTED`)
+
+### Relationships Created / Updated
+- `User` ↔ `Booking` (`RiderBookings` relation, `Restrict` deletion).
+- `Ride` ↔ `Booking` (1-to-many, `Restrict` deletion on ride when bookings exist).
+- `FareQuote` ↔ `Booking` (1-to-many, optional historical reference, `SetNull`).
+- `FareQuote` ↔ `FareLineItem` (1-to-many, `Cascade` deletion).
+- `User` ↔ `FareQuote` (`RiderFareQuotes` relation, `Cascade` deletion).
+- `Ride` ↔ `FareQuote` (1-to-many, `Cascade` deletion).
+- `Booking` ↔ `Cancellation` (1-to-1, `Restrict` deletion to preserve cancellation audit).
+- `Booking` ↔ `NoShowRecord` (1-to-1, `Restrict` deletion).
+- `Booking` ↔ `PenaltyAssessment` (1-to-many, `Restrict` deletion).
+- `Booking` ↔ `DisputeCase` (1-to-many, `Restrict` deletion).
+- `User` ↔ `Cancellation` (`CancellationsPerformed`, `Restrict` deletion).
+- `User` ↔ `NoShowRecord` (`NoShowsReported`, `Restrict` deletion).
+- `User` ↔ `DisputeCase` (`DisputesSubmitted` / `DisputesReviewed`).
+- `CancellationPolicy` ↔ `Cancellation` & `PenaltyAssessment` (Optional policy reference, `SetNull`).
 
 ### Validation Commands
 - `npx prisma@6 format` -> Succeeded.
