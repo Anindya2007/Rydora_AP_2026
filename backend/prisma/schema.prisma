@@ -186,6 +186,67 @@ enum DisputeStatus {
 }
 
 // ==========================================
+// ENUMS (PART 5: PAYMENTS & FINANCIAL LEDGER)
+// ==========================================
+
+enum PaymentMethod {
+  CARD
+  UPI
+  NET_BANKING
+  WALLET
+  SIMULATED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
+
+enum FinancialAccountType {
+  USER_WALLET
+  DRIVER_ESCROW
+  PLATFORM_TREASURY
+}
+
+enum FinancialAccountStatus {
+  ACTIVE
+  FROZEN
+  CLOSED
+}
+
+enum LedgerTransactionType {
+  RIDE_PAYMENT
+  DRIVER_PAYOUT
+  PLATFORM_COMMISSION
+  REFUND
+  PENALTY
+  INCENTIVE
+}
+
+enum LedgerEntryType {
+  DEBIT
+  CREDIT
+}
+
+enum DriverEarningStatus {
+  PENDING
+  AVAILABLE
+  PAID_OUT
+  WITHHELD
+}
+
+// ==========================================
 // MODELS (PART 1: IDENTITY & COMMUNITIES)
 // ==========================================
 
@@ -224,12 +285,18 @@ model User {
   ridesDriven Ride[] @relation("DriverRides")
 
   // Inverse Relations (Part 4)
-  bookings               Booking[]           @relation("RiderBookings")
-  fareQuotes             FareQuote[]         @relation("RiderFareQuotes")
-  cancellations          Cancellation[]      @relation("CancellationsPerformed")
-  noShowsReported        NoShowRecord[]      @relation("NoShowsReported")
-  disputesSubmitted      DisputeCase[]       @relation("DisputesSubmitted")
-  disputesReviewed       DisputeCase[]       @relation("DisputesReviewed")
+  bookings          Booking[]      @relation("RiderBookings")
+  fareQuotes        FareQuote[]    @relation("RiderFareQuotes")
+  cancellations     Cancellation[] @relation("CancellationsPerformed")
+  noShowsReported   NoShowRecord[] @relation("NoShowsReported")
+  disputesSubmitted DisputeCase[]  @relation("DisputesSubmitted")
+  disputesReviewed  DisputeCase[]  @relation("DisputesReviewed")
+
+  // Inverse Relations (Part 5)
+  payments         Payment[]         @relation("UserPayments")
+  refundsRequested Refund[]          @relation("RefundsRequested")
+  financialAccount FinancialAccount?
+  driverEarnings   DriverEarning[]   @relation("DriverEarnings")
 
   @@map("users")
 }
@@ -512,13 +579,14 @@ model Ride {
   createdAt              DateTime   @default(now())
   updatedAt              DateTime   @updatedAt
 
-  driver      User            @relation("DriverRides", fields: [driverId], references: [userId], onDelete: Restrict)
-  vehicle     Vehicle         @relation(fields: [vehicleId], references: [vehicleId], onDelete: Restrict)
-  communities RideCommunity[]
-  stops       RideStop[]
-  route       RideRoute?
-  bookings    Booking[]
-  fareQuotes  FareQuote[]
+  driver         User            @relation("DriverRides", fields: [driverId], references: [userId], onDelete: Restrict)
+  vehicle        Vehicle         @relation(fields: [vehicleId], references: [vehicleId], onDelete: Restrict)
+  communities    RideCommunity[]
+  stops          RideStop[]
+  route          RideRoute?
+  bookings       Booking[]
+  fareQuotes     FareQuote[]
+  driverEarnings DriverEarning[]
 
   @@index([driverId])
   @@index([vehicleId])
@@ -581,22 +649,22 @@ model RideRoute {
 // ==========================================
 
 model Booking {
-  bookingId       String        @id @default(uuid()) @db.Uuid
-  rideId          String        @db.Uuid
-  riderId         String        @db.Uuid
-  pickupAddress   String        @db.VarChar(255)
-  pickupLat       Float
-  pickupLng       Float
-  dropoffAddress  String        @db.VarChar(255)
-  dropoffLat      Float
-  dropoffLng      Float
-  seatCount       Int           @default(1)
-  bookingStatus   BookingStatus @default(PENDING)
-  totalFare       Decimal       @db.Decimal(10, 2)
-  fareQuoteId     String?       @db.Uuid
-  confirmedAt     DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  bookingId      String        @id @default(uuid()) @db.Uuid
+  rideId         String        @db.Uuid
+  riderId        String        @db.Uuid
+  pickupAddress  String        @db.VarChar(255)
+  pickupLat      Float
+  pickupLng      Float
+  dropoffAddress String        @db.VarChar(255)
+  dropoffLat     Float
+  dropoffLng     Float
+  seatCount      Int           @default(1)
+  bookingStatus  BookingStatus @default(PENDING)
+  totalFare      Decimal       @db.Decimal(10, 2)
+  fareQuoteId    String?       @db.Uuid
+  confirmedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   ride               Ride                @relation(fields: [rideId], references: [rideId], onDelete: Restrict)
   rider              User                @relation("RiderBookings", fields: [riderId], references: [userId], onDelete: Restrict)
@@ -605,6 +673,8 @@ model Booking {
   noShowRecord       NoShowRecord?
   penaltyAssessments PenaltyAssessment[]
   disputes           DisputeCase[]
+  payments           Payment[]
+  driverEarning      DriverEarning?
 
   @@index([rideId])
   @@index([riderId])
@@ -728,16 +798,16 @@ model PenaltyAssessment {
 }
 
 model DisputeCase {
-  disputeId    String        @id @default(uuid()) @db.Uuid
-  bookingId    String        @db.Uuid
-  submittedById String       @db.Uuid
-  reviewerId   String?       @db.Uuid
-  reason       String
-  status       DisputeStatus @default(OPEN)
-  resolution   String?
-  resolvedAt   DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  disputeId     String        @id @default(uuid()) @db.Uuid
+  bookingId     String        @db.Uuid
+  submittedById String        @db.Uuid
+  reviewerId    String?       @db.Uuid
+  reason        String
+  status        DisputeStatus @default(OPEN)
+  resolution    String?
+  resolvedAt    DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   booking     Booking @relation(fields: [bookingId], references: [bookingId], onDelete: Restrict)
   submittedBy User    @relation("DisputesSubmitted", fields: [submittedById], references: [userId], onDelete: Restrict)
@@ -748,4 +818,131 @@ model DisputeCase {
   @@index([reviewerId])
   @@index([status])
   @@map("dispute_cases")
+}
+
+// ==========================================
+// MODELS (PART 5: PAYMENTS & FINANCIAL LEDGER)
+// ==========================================
+
+model Payment {
+  paymentId            String        @id @default(uuid()) @db.Uuid
+  bookingId            String        @db.Uuid
+  payerId              String        @db.Uuid
+  amount               Decimal       @db.Decimal(10, 2)
+  currency             String        @default("INR") @db.VarChar(3)
+  paymentMethod        PaymentMethod
+  paymentStatus        PaymentStatus @default(PENDING)
+  paymentGateway       String?       @db.VarChar(50)
+  gatewayTransactionId String?       @unique @db.VarChar(150)
+  isSimulated          Boolean       @default(false)
+  idempotencyKey       String?       @unique @db.VarChar(100)
+  paymentMetadata      Json?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  booking Booking  @relation(fields: [bookingId], references: [bookingId], onDelete: Restrict)
+  payer   User     @relation("UserPayments", fields: [payerId], references: [userId], onDelete: Restrict)
+  refunds Refund[]
+
+  @@index([bookingId])
+  @@index([payerId])
+  @@index([paymentStatus])
+  @@map("payments")
+}
+
+model Refund {
+  refundId        String       @id @default(uuid()) @db.Uuid
+  paymentId       String       @db.Uuid
+  requestedById   String       @db.Uuid
+  amount          Decimal      @db.Decimal(10, 2)
+  reason          String
+  refundStatus    RefundStatus @default(PENDING)
+  gatewayRefundId String?      @unique @db.VarChar(150)
+  isSimulated     Boolean      @default(false)
+  processedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  payment     Payment @relation(fields: [paymentId], references: [paymentId], onDelete: Restrict)
+  requestedBy User    @relation("RefundsRequested", fields: [requestedById], references: [userId], onDelete: Restrict)
+
+  @@index([paymentId])
+  @@index([requestedById])
+  @@index([refundStatus])
+  @@map("refunds")
+}
+
+model FinancialAccount {
+  accountId   String                 @id @default(uuid()) @db.Uuid
+  userId      String                 @unique @db.Uuid
+  accountType FinancialAccountType   @default(USER_WALLET)
+  currency    String                 @default("INR") @db.VarChar(3)
+  status      FinancialAccountStatus @default(ACTIVE)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  user          User          @relation(fields: [userId], references: [userId], onDelete: Restrict)
+  ledgerEntries LedgerEntry[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("financial_accounts")
+}
+
+model LedgerTransaction {
+  transactionId   String                @id @default(uuid()) @db.Uuid
+  transactionType LedgerTransactionType
+  referenceType   String?               @db.VarChar(50)
+  referenceId     String?               @db.Uuid
+  description     String                @db.VarChar(255)
+  isSimulated     Boolean               @default(false)
+  idempotencyKey  String?               @unique @db.VarChar(100)
+  createdAt       DateTime              @default(now())
+
+  entries LedgerEntry[]
+
+  @@index([referenceType, referenceId])
+  @@index([transactionType])
+  @@map("ledger_transactions")
+}
+
+model LedgerEntry {
+  entryId       String          @id @default(uuid()) @db.Uuid
+  transactionId String          @db.Uuid
+  accountId     String          @db.Uuid
+  entryType     LedgerEntryType
+  amount        Decimal         @db.Decimal(10, 2)
+  balanceAfter  Decimal?        @db.Decimal(10, 2)
+  createdAt     DateTime        @default(now())
+
+  transaction LedgerTransaction @relation(fields: [transactionId], references: [transactionId], onDelete: Cascade)
+  account     FinancialAccount  @relation(fields: [accountId], references: [accountId], onDelete: Restrict)
+
+  @@index([transactionId])
+  @@index([accountId])
+  @@map("ledger_entries")
+}
+
+model DriverEarning {
+  earningId     String              @id @default(uuid()) @db.Uuid
+  driverId      String              @db.Uuid
+  rideId        String              @db.Uuid
+  bookingId     String?             @unique @db.Uuid
+  grossEarning  Decimal             @db.Decimal(10, 2)
+  platformFee   Decimal             @db.Decimal(10, 2)
+  deductions    Decimal             @default(0) @db.Decimal(10, 2)
+  netEarning    Decimal             @db.Decimal(10, 2)
+  status        DriverEarningStatus @default(PENDING)
+  payoutBatchId String?             @db.Uuid
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  driver  User     @relation("DriverEarnings", fields: [driverId], references: [userId], onDelete: Restrict)
+  ride    Ride     @relation(fields: [rideId], references: [rideId], onDelete: Restrict)
+  booking Booking? @relation(fields: [bookingId], references: [bookingId], onDelete: SetNull)
+
+  @@index([driverId])
+  @@index([rideId])
+  @@index([status])
+  @@map("driver_earnings")
 }

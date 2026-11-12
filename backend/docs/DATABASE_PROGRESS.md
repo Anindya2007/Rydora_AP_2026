@@ -13,7 +13,7 @@ This document tracks the incremental implementation and validation of the Rydora
 | **Part 2** | Vehicles and Driver Eligibility | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 3** | Rides and Routes | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 4** | Bookings, Fare Quotes and Cancellations | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
-| **Part 5** | Payments, Ledger and Driver Earnings | Pending Confirmation | Not Started |
+| **Part 5** | Payments, Ledger and Driver Earnings | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 6** | Safety, Ratings and Trust | Pending Confirmation | Not Started |
 | **Part 7** | Notifications, Calendar, AI, Sustainability & Admin | Pending Confirmation | Not Started |
 | **Part 8** | Final Schema Integration and Validation | Pending Confirmation | Not Started |
@@ -127,21 +127,39 @@ This document tracks the incremental implementation and validation of the Rydora
 - `PenaltyAssessmentStatus` (`PENDING`, `WAIVED`, `APPLIED`, `DISPUTED`)
 - `DisputeStatus` (`OPEN`, `UNDER_REVIEW`, `RESOLVED`, `REJECTED`)
 
+---
+
+## Part 5: Payments, Ledger and Driver Earnings
+
+### Models Implemented
+1. `Payment` — Actual payment attempts with gateway reference, idempotency keys, currency, status, and simulated flag.
+2. `Refund` — Refund tracking referencing original payment, requested amounts, processing timestamps, and status.
+3. `FinancialAccount` — Internal financial account entities (User Wallet, Driver Escrow, Platform Treasury) decoupled from external real settlement.
+4. `LedgerTransaction` — Balanced ledger transaction records grouping double-entry journal operations with idempotency protection.
+5. `LedgerEntry` — Individual debit/credit double-entry bookkeeping lines with running balance auditing.
+6. `DriverEarning` — Driver earnings accounting per ride/booking tracking gross fares, platform commissions, deductions, net payouts, and payout status.
+
+### Enums Implemented
+- `PaymentMethod` (`CARD`, `UPI`, `NET_BANKING`, `WALLET`, `SIMULATED`)
+- `PaymentStatus` (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`, `REFUNDED`, `PARTIALLY_REFUNDED`)
+- `RefundStatus` (`PENDING`, `PROCESSING`, `SUCCEEDED`, `FAILED`)
+- `FinancialAccountType` (`USER_WALLET`, `DRIVER_ESCROW`, `PLATFORM_TREASURY`)
+- `FinancialAccountStatus` (`ACTIVE`, `FROZEN`, `CLOSED`)
+- `LedgerTransactionType` (`RIDE_PAYMENT`, `DRIVER_PAYOUT`, `PLATFORM_COMMISSION`, `REFUND`, `PENALTY`, `INCENTIVE`)
+- `LedgerEntryType` (`DEBIT`, `CREDIT`)
+- `DriverEarningStatus` (`PENDING`, `AVAILABLE`, `PAID_OUT`, `WITHHELD`)
+
 ### Relationships Created / Updated
-- `User` ↔ `Booking` (`RiderBookings` relation, `Restrict` deletion).
-- `Ride` ↔ `Booking` (1-to-many, `Restrict` deletion on ride when bookings exist).
-- `FareQuote` ↔ `Booking` (1-to-many, optional historical reference, `SetNull`).
-- `FareQuote` ↔ `FareLineItem` (1-to-many, `Cascade` deletion).
-- `User` ↔ `FareQuote` (`RiderFareQuotes` relation, `Cascade` deletion).
-- `Ride` ↔ `FareQuote` (1-to-many, `Cascade` deletion).
-- `Booking` ↔ `Cancellation` (1-to-1, `Restrict` deletion to preserve cancellation audit).
-- `Booking` ↔ `NoShowRecord` (1-to-1, `Restrict` deletion).
-- `Booking` ↔ `PenaltyAssessment` (1-to-many, `Restrict` deletion).
-- `Booking` ↔ `DisputeCase` (1-to-many, `Restrict` deletion).
-- `User` ↔ `Cancellation` (`CancellationsPerformed`, `Restrict` deletion).
-- `User` ↔ `NoShowRecord` (`NoShowsReported`, `Restrict` deletion).
-- `User` ↔ `DisputeCase` (`DisputesSubmitted` / `DisputesReviewed`).
-- `CancellationPolicy` ↔ `Cancellation` & `PenaltyAssessment` (Optional policy reference, `SetNull`).
+- `User` ↔ `Payment` (`UserPayments` relation, `Restrict` deletion).
+- `Booking` ↔ `Payment` (1-to-many, `Restrict` deletion).
+- `Payment` ↔ `Refund` (1-to-many, `Restrict` deletion).
+- `User` ↔ `Refund` (`RefundsRequested` relation, `Restrict` deletion).
+- `User` ↔ `FinancialAccount` (1-to-1, `Restrict` deletion).
+- `FinancialAccount` ↔ `LedgerEntry` (1-to-many, `Restrict` deletion).
+- `LedgerTransaction` ↔ `LedgerEntry` (1-to-many, `Cascade` deletion).
+- `User` ↔ `DriverEarning` (`DriverEarnings` relation, `Restrict` deletion).
+- `Ride` ↔ `DriverEarning` (1-to-many, `Restrict` deletion).
+- `Booking` ↔ `DriverEarning` (1-to-1 optional, `SetNull`).
 
 ### Validation Commands
 - `npx prisma@6 format` -> Succeeded.
