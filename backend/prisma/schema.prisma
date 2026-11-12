@@ -322,6 +322,67 @@ enum IncentiveStatus {
 }
 
 // ==========================================
+// ENUMS (PART 7: NOTIFICATIONS, AI, SUSTAINABILITY & ADMIN)
+// ==========================================
+
+enum NotificationType {
+  RIDE_UPDATE
+  BOOKING_CONFIRMATION
+  SAFETY_ALERT
+  PAYMENT_RECEIPT
+  COMMUNITY_ANNOUNCEMENT
+  REWARD_EARNED
+  SYSTEM
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum CalendarProvider {
+  GOOGLE
+  OUTLOOK
+  APPLE
+}
+
+enum AISessionType {
+  RIDE_ASSISTANT
+  SUPPORT_CHATBOT
+  ROUTE_OPTIMIZER
+}
+
+enum AIMessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+}
+
+enum GreenPointType {
+  RIDE_SHARED
+  ZERO_EMISSION_BONUS
+  COMMUNITY_BONUS
+  REWARD_REDEMPTION
+  ADJUSTMENT
+}
+
+enum RedemptionStatus {
+  PENDING
+  FULFILLED
+  CANCELLED
+  EXPIRED
+}
+
+// ==========================================
 // MODELS (PART 1: IDENTITY & COMMUNITIES)
 // ==========================================
 
@@ -388,6 +449,16 @@ model User {
   moderationReportsHandled ModerationReport[]  @relation("ModerationReportsHandled")
   tierHistories           DriverTierHistory[]  @relation("DriverTierHistories")
   incentives              DriverIncentive[]    @relation("DriverIncentives")
+
+  // Inverse Relations (Part 7)
+  notifications           Notification[]          @relation("UserNotifications")
+  notificationPreference  NotificationPreference?
+  calendarConnections     CalendarConnection[]    @relation("UserCalendarConnections")
+  aiSessions              AISession[]             @relation("UserAISessions")
+  greenPoints             GreenPointTransaction[] @relation("UserGreenPoints")
+  rewardRedemptions       RewardRedemption[]      @relation("UserRewardRedemptions")
+  adminAuditLogs          AdminAuditLog[]         @relation("AdminAuditLogs")
+  platformSettingsUpdated PlatformSetting[]       @relation("PlatformSettingsUpdated")
 
   @@map("users")
 }
@@ -681,8 +752,10 @@ model Ride {
   safetyIncidents SafetyIncident[]
   sosAlerts       SOSAlert[]
   locations       RideLocation[]
-  deviations      RouteDeviationEvent[]
-  ratings         Rating[]
+  deviations        RouteDeviationEvent[]
+  ratings           Rating[]
+  calendarEvents    CalendarEvent[]
+  emissionEstimates EmissionEstimate[]
 
   @@index([driverId])
   @@index([vehicleId])
@@ -772,6 +845,7 @@ model Booking {
   payments           Payment[]
   driverEarning      DriverEarning?
   ratings            Rating[]
+  emissionEstimate   EmissionEstimate?
 
   @@index([rideId])
   @@index([riderId])
@@ -1308,4 +1382,273 @@ model DriverIncentive {
   @@index([driverId])
   @@index([status])
   @@map("driver_incentives")
+}
+
+// ==========================================
+// MODELS (PART 7: NOTIFICATIONS, CALENDAR, AI, SUSTAINABILITY & ADMIN)
+// ==========================================
+
+model Notification {
+  notificationId String           @id @default(uuid()) @db.Uuid
+  userId         String           @db.Uuid
+  title          String           @db.VarChar(150)
+  body           String
+  type           NotificationType
+  referenceType  String?          @db.VarChar(50)
+  referenceId    String?          @db.Uuid
+  isRead         Boolean          @default(false)
+  readAt         DateTime?
+  createdAt      DateTime         @default(now())
+
+  user       User                   @relation("UserNotifications", fields: [userId], references: [userId], onDelete: Cascade)
+  deliveries NotificationDelivery[]
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  preferenceId    String   @id @default(uuid()) @db.Uuid
+  userId          String   @unique @db.Uuid
+  emailEnabled    Boolean  @default(true)
+  smsEnabled      Boolean  @default(true)
+  pushEnabled     Boolean  @default(true)
+  rideUpdates     Boolean  @default(true)
+  communityAlerts Boolean  @default(true)
+  marketingPromos Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+model NotificationDelivery {
+  deliveryId       String              @id @default(uuid()) @db.Uuid
+  notificationId   String              @db.Uuid
+  channel          NotificationChannel
+  status           DeliveryStatus      @default(PENDING)
+  providerResponse String?
+  sentAt           DateTime?
+  deliveredAt      DateTime?
+  failedAt         DateTime?
+  failureReason    String?
+  createdAt        DateTime            @default(now())
+
+  notification Notification @relation(fields: [notificationId], references: [notificationId], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([status])
+  @@map("notification_deliveries")
+}
+
+model CalendarConnection {
+  connectionId          String           @id @default(uuid()) @db.Uuid
+  userId                String           @db.Uuid
+  provider              CalendarProvider
+  accessTokenEncrypted  String?
+  refreshTokenEncrypted String?
+  calendarEmail         String?          @db.VarChar(255)
+  syncEnabled           Boolean          @default(true)
+  lastSyncedAt          DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  user   User            @relation("UserCalendarConnections", fields: [userId], references: [userId], onDelete: Cascade)
+  events CalendarEvent[]
+
+  @@index([userId])
+  @@map("calendar_connections")
+}
+
+model CalendarEvent {
+  eventId         String   @id @default(uuid()) @db.Uuid
+  connectionId    String   @db.Uuid
+  externalEventId String?  @db.VarChar(255)
+  title           String   @db.VarChar(200)
+  startTime       DateTime
+  endTime         DateTime
+  locationAddress String?  @db.VarChar(255)
+  suggestedRideId String?  @db.Uuid
+  createdAt       DateTime @default(now())
+
+  connection    CalendarConnection @relation(fields: [connectionId], references: [connectionId], onDelete: Cascade)
+  suggestedRide Ride?              @relation(fields: [suggestedRideId], references: [rideId], onDelete: SetNull)
+
+  @@index([connectionId, startTime])
+  @@map("calendar_events")
+}
+
+model AISession {
+  sessionId   String        @id @default(uuid()) @db.Uuid
+  userId      String        @db.Uuid
+  sessionType AISessionType @default(RIDE_ASSISTANT)
+  provider    String        @default("gemini") @db.VarChar(50)
+  modelName   String        @default("gemini-1.5-flash") @db.VarChar(100)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user         User            @relation("UserAISessions", fields: [userId], references: [userId], onDelete: Cascade)
+  messages     AIMessage[]
+  analysisLogs AIAnalysisLog[]
+
+  @@index([userId])
+  @@map("ai_sessions")
+}
+
+model AIMessage {
+  messageId  String        @id @default(uuid()) @db.Uuid
+  sessionId  String        @db.Uuid
+  senderRole AIMessageRole
+  content    String
+  tokenCount Int?
+  metadata   Json?
+  createdAt  DateTime      @default(now())
+
+  session AISession @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("ai_messages")
+}
+
+model AIAnalysisLog {
+  logId         String   @id @default(uuid()) @db.Uuid
+  sessionId     String?  @db.Uuid
+  analysisType  String   @db.VarChar(100)
+  provider      String   @db.VarChar(50)
+  modelUsed     String   @db.VarChar(100)
+  inputPayload  Json?
+  outputPayload Json?
+  latencyMs     Int?
+  costEstimated Decimal? @db.Decimal(8, 4)
+  createdAt     DateTime @default(now())
+
+  session AISession? @relation(fields: [sessionId], references: [sessionId], onDelete: SetNull)
+
+  @@index([analysisType])
+  @@index([createdAt])
+  @@map("ai_analysis_logs")
+}
+
+model EmissionEstimate {
+  estimateId       String   @id @default(uuid()) @db.Uuid
+  rideId           String   @db.Uuid
+  bookingId        String?  @unique @db.Uuid
+  distanceKm       Decimal  @db.Decimal(8, 2)
+  co2SavedKg       Decimal  @db.Decimal(8, 2)
+  baselineCo2Kg    Decimal  @db.Decimal(8, 2)
+  actualCo2Kg      Decimal  @db.Decimal(8, 2)
+  calculationModel String   @default("DEFRA_2024") @db.VarChar(50)
+  createdAt        DateTime @default(now())
+
+  ride    Ride     @relation(fields: [rideId], references: [rideId], onDelete: Restrict)
+  booking Booking? @relation(fields: [bookingId], references: [bookingId], onDelete: SetNull)
+
+  @@index([rideId])
+  @@map("emission_estimates")
+}
+
+model GreenPointTransaction {
+  transactionId String         @id @default(uuid()) @db.Uuid
+  userId        String         @db.Uuid
+  points        Int
+  type          GreenPointType
+  referenceType String?        @db.VarChar(50)
+  referenceId   String?        @db.Uuid
+  description   String         @db.VarChar(255)
+  createdAt     DateTime       @default(now())
+
+  user User @relation("UserGreenPoints", fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@map("green_point_transactions")
+}
+
+model Reward {
+  rewardId       String    @id @default(uuid()) @db.Uuid
+  title          String    @db.VarChar(150)
+  description    String?
+  pointsRequired Int
+  partnerName    String?   @db.VarChar(100)
+  isActive       Boolean   @default(true)
+  stockQuantity  Int?
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  redemptions RewardRedemption[]
+
+  @@map("rewards")
+}
+
+model RewardRedemption {
+  redemptionId   String           @id @default(uuid()) @db.Uuid
+  userId         String           @db.Uuid
+  rewardId       String           @db.Uuid
+  pointsSpent    Int
+  status         RedemptionStatus @default(PENDING)
+  redemptionCode String?          @db.VarChar(100)
+  redeemedAt     DateTime         @default(now())
+
+  user   User   @relation("UserRewardRedemptions", fields: [userId], references: [userId], onDelete: Restrict)
+  reward Reward @relation(fields: [rewardId], references: [rewardId], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([rewardId])
+  @@map("reward_redemptions")
+}
+
+model AdminAuditLog {
+  logId        String   @id @default(uuid()) @db.Uuid
+  adminId      String   @db.Uuid
+  action       String   @db.VarChar(100)
+  targetEntity String   @db.VarChar(50)
+  targetId     String?  @db.Uuid
+  ipAddress    String?  @db.VarChar(45)
+  changes      Json?
+  createdAt    DateTime @default(now())
+
+  admin User @relation("AdminAuditLogs", fields: [adminId], references: [userId], onDelete: Restrict)
+
+  @@index([adminId])
+  @@index([targetEntity, targetId])
+  @@index([createdAt])
+  @@map("admin_audit_logs")
+}
+
+model PlatformSetting {
+  settingId   String   @id @default(uuid()) @db.Uuid
+  key         String   @unique @db.VarChar(100)
+  value       String
+  description String?
+  isEncrypted Boolean  @default(false)
+  updatedById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  updatedBy User? @relation("PlatformSettingsUpdated", fields: [updatedById], references: [userId], onDelete: SetNull)
+
+  @@map("platform_settings")
+}
+
+model FarePolicy {
+  policyId                  String    @id @default(uuid()) @db.Uuid
+  name                      String    @db.VarChar(100)
+  baseFare                  Decimal   @db.Decimal(10, 2)
+  perKmRate                 Decimal   @db.Decimal(10, 2)
+  perMinuteRate             Decimal   @db.Decimal(10, 2)
+  platformCommissionPercent Decimal   @db.Decimal(5, 2)
+  minimumFare               Decimal   @db.Decimal(10, 2)
+  surgeMultiplierMax        Decimal   @default(2.00) @db.Decimal(3, 2)
+  isActive                  Boolean   @default(true)
+  effectiveFrom             DateTime  @default(now())
+  effectiveTo               DateTime?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@map("fare_policies")
 }

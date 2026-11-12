@@ -15,7 +15,7 @@ This document tracks the incremental implementation and validation of the Rydora
 | **Part 4** | Bookings, Fare Quotes and Cancellations | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 5** | Payments, Ledger and Driver Earnings | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 6** | Safety, Ratings and Trust | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
-| **Part 7** | Notifications, Calendar, AI, Sustainability & Admin | Pending Confirmation | Not Started |
+| **Part 7** | Notifications, Calendar, AI, Sustainability & Admin | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 8** | Final Schema Integration and Validation | Pending Confirmation | Not Started |
 
 ---
@@ -182,26 +182,54 @@ This document tracks the incremental implementation and validation of the Rydora
 - `ModerationStatus` (`PENDING`, `INVESTIGATING`, `RESOLVED`, `DISMISSED`)
 - `IncentiveStatus` (`ACTIVE`, `COMPLETED`, `EXPIRED`, `CANCELLED`)
 
+---
+
+## Part 7: Notifications, Calendar, AI, Sustainability and Admin
+
+### Models Implemented
+1. `Notification` — Cross-channel in-app notification records with polymorphic reference tracking (`RIDE`, `BOOKING`, `PAYMENT`, etc.).
+2. `NotificationPreference` — User delivery preferences across Email, SMS, and Push channels for ride, community, and marketing alerts.
+3. `NotificationDelivery` — Granular per-channel delivery tracking with provider response codes, sent/delivered timestamps, and failure diagnostics.
+4. `CalendarConnection` — External calendar provider integrations (Google, Outlook, Apple) with sync toggles and secure token storage.
+5. `CalendarEvent` — Synced calendar events for commute matching recommendations (strictly non-authoritative read-only suggestions).
+6. `AISession` — Multi-turn assistant sessions for user queries, ride coordination, and platform support with replaceable provider configuration (`gemini`, `openai`, etc.).
+7. `AIMessage` — Individual conversation messages within AI sessions with role and token counts.
+8. `AIAnalysisLog` — Audited logs of backend AI operations (sentiment analysis, match recommendations, route optimization suggestions) with latency and cost tracking.
+9. `EmissionEstimate` — Documented carbon calculation engine (`DEFRA_2024`) per ride and booking measuring $CO_2$ saved versus single-occupancy baselines.
+10. `GreenPointTransaction` — Eco-incentive points ledger for shared commutes, community rides, and zero-emission vehicle usage.
+11. `Reward` — Catalog of redeemable vouchers, eco-partner perks, and ride discounts.
+12. `RewardRedemption` — Audit log of reward redemptions with unique claim codes and fulfillment tracking.
+13. `AdminAuditLog` — Non-repudiable audit logs of administrative changes, security modifications, and moderation interventions.
+14. `PlatformSetting` — Centralized key-value platform configurations (commission percentages, feature toggles, timeout limits).
+15. `FarePolicy` — Configurable base fare, per-km, per-minute, commission percentage, and dynamic surge multipliers.
+
+### Enums Implemented
+- `NotificationType` (`RIDE_UPDATE`, `BOOKING_CONFIRMATION`, `SAFETY_ALERT`, `PAYMENT_RECEIPT`, `COMMUNITY_ANNOUNCEMENT`, `REWARD_EARNED`, `SYSTEM`)
+- `NotificationChannel` (`IN_APP`, `EMAIL`, `SMS`, `PUSH`)
+- `DeliveryStatus` (`PENDING`, `SENT`, `DELIVERED`, `FAILED`)
+- `CalendarProvider` (`GOOGLE`, `OUTLOOK`, `APPLE`)
+- `AISessionType` (`RIDE_ASSISTANT`, `SUPPORT_CHATBOT`, `ROUTE_OPTIMIZER`)
+- `AIMessageRole` (`SYSTEM`, `USER`, `ASSISTANT`)
+- `GreenPointType` (`RIDE_SHARED`, `ZERO_EMISSION_BONUS`, `COMMUNITY_BONUS`, `REWARD_REDEMPTION`, `ADJUSTMENT`)
+- `RedemptionStatus` (`PENDING`, `FULFILLED`, `CANCELLED`, `EXPIRED`)
+
 ### Relationships Created / Updated
-- `User` ↔ `TrustedContact` (1-to-many, `Cascade` deletion).
-- `User` ↔ `SafetyIncident` (`ReportedIncidents`, `IncidentsAgainstUser`, `ResolvedIncidents`).
-- `Ride` ↔ `SafetyIncident` (1-to-many optional, `SetNull`).
-- `Ride` ↔ `SOSAlert` (1-to-many, `Restrict` deletion).
-- `User` ↔ `SOSAlert` (`SOSAlertsTriggered`, `SOSAlertsResolved`).
-- `Ride` ↔ `RideLocation` (1-to-many, `Cascade` deletion).
-- `Ride` ↔ `RouteDeviationEvent` (1-to-many, `Cascade` deletion).
-- `SafetyIncident` ↔ `SafetyEvidence` (1-to-many, `Cascade` deletion).
-- `User` ↔ `SafetyEvidence` (`EvidenceUploaded` relation, `Restrict` deletion).
-- `User` ↔ `ConsentRecord` (1-to-many, `Cascade` deletion).
-- `Booking` ↔ `Rating` (1-to-many, `Restrict` deletion).
-- `Ride` ↔ `Rating` (1-to-many, `Restrict` deletion).
-- `User` ↔ `Rating` (`RatingsGiven`, `RatingsReceived`, `Restrict` deletion).
-- `Rating` ↔ `Review` (1-to-1, `Cascade` deletion).
-- `Review` ↔ `FeedbackAnalysis` (1-to-1, `Cascade` deletion).
-- `User` ↔ `ModerationReport` (`ModerationReportsFiled`, `ModerationReportsHandled`).
-- `DriverTier` ↔ `DriverTierHistory` (1-to-many, `Restrict` deletion).
-- `User` ↔ `DriverTierHistory` (1-to-many, `Cascade` deletion).
-- `User` ↔ `DriverIncentive` (1-to-many, `Cascade` deletion).
+- `User` ↔ `Notification` (1-to-many, `Cascade` deletion).
+- `Notification` ↔ `NotificationDelivery` (1-to-many, `Cascade` deletion).
+- `User` ↔ `NotificationPreference` (1-to-1, `Cascade` deletion).
+- `User` ↔ `CalendarConnection` (1-to-many, `Cascade` deletion).
+- `CalendarConnection` ↔ `CalendarEvent` (1-to-many, `Cascade` deletion).
+- `Ride` ↔ `CalendarEvent` (1-to-many optional, `SetNull`).
+- `User` ↔ `AISession` (1-to-many, `Cascade` deletion).
+- `AISession` ↔ `AIMessage` (1-to-many, `Cascade` deletion).
+- `AISession` ↔ `AIAnalysisLog` (1-to-many optional, `SetNull`).
+- `Ride` ↔ `EmissionEstimate` (1-to-many, `Restrict` deletion).
+- `Booking` ↔ `EmissionEstimate` (1-to-1 optional, `SetNull`).
+- `User` ↔ `GreenPointTransaction` (1-to-many, `Cascade` deletion).
+- `User` ↔ `RewardRedemption` (1-to-many, `Restrict` deletion).
+- `Reward` ↔ `RewardRedemption` (1-to-many, `Restrict` deletion).
+- `User` ↔ `AdminAuditLog` (`AdminAuditLogs` relation, `Restrict` deletion).
+- `User` ↔ `PlatformSetting` (`PlatformSettingsUpdated` relation, `SetNull`).
 
 ### Validation Commands
 - `npx prisma@6 format` -> Succeeded.
