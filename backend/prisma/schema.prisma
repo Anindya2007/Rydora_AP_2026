@@ -435,20 +435,20 @@ model User {
   driverEarnings   DriverEarning[]   @relation("DriverEarnings")
 
   // Inverse Relations (Part 6)
-  trustedContacts         TrustedContact[]     @relation("UserTrustedContacts")
-  incidentsReported       SafetyIncident[]     @relation("ReportedIncidents")
-  incidentsAgainst        SafetyIncident[]     @relation("IncidentsAgainstUser")
-  incidentsResolved       SafetyIncident[]     @relation("ResolvedIncidents")
-  sosAlertsTriggered      SOSAlert[]           @relation("SOSAlertsTriggered")
-  sosAlertsResolved       SOSAlert[]           @relation("SOSAlertsResolved")
-  evidenceUploaded        SafetyEvidence[]     @relation("EvidenceUploaded")
-  consents                ConsentRecord[]      @relation("UserConsents")
-  ratingsGiven            Rating[]             @relation("RatingsGiven")
-  ratingsReceived         Rating[]             @relation("RatingsReceived")
-  moderationReportsFiled  ModerationReport[]   @relation("ModerationReportsFiled")
+  trustedContacts          TrustedContact[]    @relation("UserTrustedContacts")
+  incidentsReported        SafetyIncident[]    @relation("ReportedIncidents")
+  incidentsAgainst         SafetyIncident[]    @relation("IncidentsAgainstUser")
+  incidentsResolved        SafetyIncident[]    @relation("ResolvedIncidents")
+  sosAlertsTriggered       SOSAlert[]          @relation("SOSAlertsTriggered")
+  sosAlertsResolved        SOSAlert[]          @relation("SOSAlertsResolved")
+  evidenceUploaded         SafetyEvidence[]    @relation("EvidenceUploaded")
+  consents                 ConsentRecord[]     @relation("UserConsents")
+  ratingsGiven             Rating[]            @relation("RatingsGiven")
+  ratingsReceived          Rating[]            @relation("RatingsReceived")
+  moderationReportsFiled   ModerationReport[]  @relation("ModerationReportsFiled")
   moderationReportsHandled ModerationReport[]  @relation("ModerationReportsHandled")
-  tierHistories           DriverTierHistory[]  @relation("DriverTierHistories")
-  incentives              DriverIncentive[]    @relation("DriverIncentives")
+  tierHistories            DriverTierHistory[] @relation("DriverTierHistories")
+  incentives               DriverIncentive[]   @relation("DriverIncentives")
 
   // Inverse Relations (Part 7)
   notifications           Notification[]          @relation("UserNotifications")
@@ -741,17 +741,17 @@ model Ride {
   createdAt              DateTime   @default(now())
   updatedAt              DateTime   @updatedAt
 
-  driver         User            @relation("DriverRides", fields: [driverId], references: [userId], onDelete: Restrict)
-  vehicle        Vehicle         @relation(fields: [vehicleId], references: [vehicleId], onDelete: Restrict)
-  communities    RideCommunity[]
-  stops          RideStop[]
-  route          RideRoute?
-  bookings       Booking[]
-  fareQuotes     FareQuote[]
-  driverEarnings  DriverEarning[]
-  safetyIncidents SafetyIncident[]
-  sosAlerts       SOSAlert[]
-  locations       RideLocation[]
+  driver            User                  @relation("DriverRides", fields: [driverId], references: [userId], onDelete: Restrict)
+  vehicle           Vehicle               @relation(fields: [vehicleId], references: [vehicleId], onDelete: Restrict)
+  communities       RideCommunity[]
+  stops             RideStop[]
+  route             RideRoute?
+  bookings          Booking[]
+  fareQuotes        FareQuote[]
+  driverEarnings    DriverEarning[]
+  safetyIncidents   SafetyIncident[]
+  sosAlerts         SOSAlert[]
+  locations         RideLocation[]
   deviations        RouteDeviationEvent[]
   ratings           Rating[]
   calendarEvents    CalendarEvent[]
