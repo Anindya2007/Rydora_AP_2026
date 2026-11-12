@@ -112,6 +112,23 @@ enum DocumentVerificationStatus {
 }
 
 // ==========================================
+// ENUMS (PART 3: RIDES & ROUTES)
+// ==========================================
+
+enum RideStatus {
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum StopType {
+  PICKUP
+  DROPOFF
+  WAYPOINT
+}
+
+// ==========================================
 // MODELS (PART 1: IDENTITY & COMMUNITIES)
 // ==========================================
 
@@ -145,6 +162,9 @@ model User {
   vehicles                 Vehicle[]
   driverProfile            DriverProfile?
   vehicleDocumentsReviewed VehicleDocument[] @relation("VehicleDocumentReviewedBy")
+
+  // Inverse Relations (Part 3)
+  ridesDriven Ride[] @relation("DriverRides")
 
   @@map("users")
 }
@@ -247,10 +267,11 @@ model Community {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  createdBy   User                  @relation("CommunityCreatedBy", fields: [createdById], references: [userId], onDelete: Restrict)
-  memberships CommunityMembership[]
-  domains     CommunityDomain[]
-  invites     CommunityInvite[]
+  createdBy       User                  @relation("CommunityCreatedBy", fields: [createdById], references: [userId], onDelete: Restrict)
+  memberships     CommunityMembership[]
+  domains         CommunityDomain[]
+  invites         CommunityInvite[]
+  rideCommunities RideCommunity[]
 
   @@index([createdById])
   @@index([type, status])
@@ -354,6 +375,7 @@ model Vehicle {
 
   owner     User              @relation(fields: [ownerId], references: [userId], onDelete: Cascade)
   documents VehicleDocument[]
+  rides     Ride[]
 
   @@index([ownerId])
   @@index([registrationNumber, isActive])
@@ -396,4 +418,93 @@ model VehicleDocument {
   @@index([vehicleId])
   @@index([reviewedById])
   @@map("vehicle_documents")
+}
+
+// ==========================================
+// MODELS (PART 3: RIDES & ROUTES)
+// ==========================================
+
+model Ride {
+  rideId                 String     @id @default(uuid()) @db.Uuid
+  driverId               String     @db.Uuid
+  vehicleId              String     @db.Uuid
+  originAddress          String     @db.VarChar(255)
+  originLat              Float
+  originLng              Float
+  originPlaceId          String?    @db.VarChar(255)
+  destinationAddress     String     @db.VarChar(255)
+  destinationLat         Float
+  destinationLng         Float
+  destinationPlaceId     String?    @db.VarChar(255)
+  departureTime          DateTime
+  totalSeats             Int
+  availableSeats         Int
+  farePerSeat            Decimal    @db.Decimal(10, 2)
+  rideStatus             RideStatus @default(SCHEDULED)
+  plannedDistanceKm      Decimal?   @db.Decimal(8, 2)
+  plannedDurationMinutes Int?
+  notes                  String?
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+
+  driver      User            @relation("DriverRides", fields: [driverId], references: [userId], onDelete: Restrict)
+  vehicle     Vehicle         @relation(fields: [vehicleId], references: [vehicleId], onDelete: Restrict)
+  communities RideCommunity[]
+  stops       RideStop[]
+  route       RideRoute?
+
+  @@index([driverId])
+  @@index([vehicleId])
+  @@index([departureTime, rideStatus])
+  @@index([rideStatus])
+  @@map("rides")
+}
+
+model RideCommunity {
+  rideCommunityId String   @id @default(uuid()) @db.Uuid
+  rideId          String   @db.Uuid
+  communityId     String   @db.Uuid
+  createdAt       DateTime @default(now())
+
+  ride      Ride      @relation(fields: [rideId], references: [rideId], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [communityId], onDelete: Cascade)
+
+  @@unique([rideId, communityId])
+  @@index([communityId])
+  @@map("ride_communities")
+}
+
+model RideStop {
+  stopId               String    @id @default(uuid()) @db.Uuid
+  rideId               String    @db.Uuid
+  stopType             StopType  @default(WAYPOINT)
+  address              String    @db.VarChar(255)
+  latitude             Float
+  longitude            Float
+  placeId              String?   @db.VarChar(255)
+  sequence             Int
+  estimatedArrivalTime DateTime?
+  createdAt            DateTime  @default(now())
+
+  ride Ride @relation(fields: [rideId], references: [rideId], onDelete: Cascade)
+
+  @@unique([rideId, sequence])
+  @@index([rideId])
+  @@map("ride_stops")
+}
+
+model RideRoute {
+  routeId         String   @id @default(uuid()) @db.Uuid
+  rideId          String   @unique @db.Uuid
+  encodedPolyline String?  @db.Text
+  distanceMeters  Int
+  durationSeconds Int
+  routeProvider   String?  @db.VarChar(50)
+  routeMetadata   Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  ride Ride @relation(fields: [rideId], references: [rideId], onDelete: Cascade)
+
+  @@map("ride_routes")
 }

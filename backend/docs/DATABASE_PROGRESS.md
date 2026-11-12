@@ -11,7 +11,7 @@ This document tracks the incremental implementation and validation of the Rydora
 | **Part 0** | Initial Repository Audit | **COMPLETED** | Repository, dependencies, and git state audited |
 | **Part 1** | Identity, Authentication & Communities | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 2** | Vehicles and Driver Eligibility | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
-| **Part 3** | Rides and Routes | Pending Confirmation | Not Started |
+| **Part 3** | Rides and Routes | **COMPLETED** | Formatted and Validated (`prisma validate` passed) |
 | **Part 4** | Bookings, Fare Quotes and Cancellations | Pending Confirmation | Not Started |
 | **Part 5** | Payments, Ledger and Driver Earnings | Pending Confirmation | Not Started |
 | **Part 6** | Safety, Ratings and Trust | Pending Confirmation | Not Started |
@@ -81,6 +81,28 @@ This document tracks the incremental implementation and validation of the Rydora
 - `User` ↔ `DriverProfile` (1-to-1, cascade deletion on profile).
 - `Vehicle` ↔ `VehicleDocument` (1-to-many, cascade deletion on documents).
 - `User` ↔ `VehicleDocument` (`VehicleDocumentReviewedBy` relation, `SetNull` on reviewer deletion).
+
+---
+
+## Part 3: Rides and Routes
+
+### Models Implemented
+1. `Ride` — Core ride entity with origin & destination geo-coordinates, address and place IDs, departure time, seats allocation, pricing, and ride status.
+2. `RideCommunity` — Many-to-many junction table connecting a ride to multiple authorized communities with composite unique constraint `[rideId, communityId]`.
+3. `RideStop` — Ordered intermediate stops (pickup, drop-off, waypoint) with strictly enforced sequence uniqueness `[rideId, sequence]`.
+4. `RideRoute` — Practical 1-to-1 routing entity storing polyline geometry, distance in meters, duration in seconds, provider reference, and route metadata without requiring complex PostGIS dependencies.
+
+### Enums Implemented
+- `RideStatus` (`SCHEDULED`, `ACTIVE`, `COMPLETED`, `CANCELLED`)
+- `StopType` (`PICKUP`, `DROPOFF`, `WAYPOINT`)
+
+### Relationships Created / Updated
+- `User` ↔ `Ride` (`DriverRides` relation, `Restrict` deletion on user when rides exist).
+- `Vehicle` ↔ `Ride` (1-to-many, `Restrict` deletion on vehicle when rides exist).
+- `Ride` ↔ `RideCommunity` (1-to-many, `Cascade` deletion).
+- `Community` ↔ `RideCommunity` (1-to-many, `Cascade` deletion).
+- `Ride` ↔ `RideStop` (1-to-many, `Cascade` deletion).
+- `Ride` ↔ `RideRoute` (1-to-1, `Cascade` deletion).
 
 ### Validation Commands
 - `npx prisma@6 format` -> Succeeded.
