@@ -9,27 +9,181 @@ datasource db {
   // directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
+// ==========================================
+// ENUMS (PART 1: IDENTITY & COMMUNITIES)
+// ==========================================
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum RoleType {
+  RIDER
+  DRIVER
+  ADMIN
+}
+
+enum ThemeType {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum CommunityType {
+  UNIVERSITY
+  OFFICE
+  NEIGHBORHOOD
+  PRIVATE
+}
+
+enum CommunityStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  REVOKED
+}
+
+enum CommunityRole {
+  MEMBER
+  MODERATOR
+  ADMIN
+}
+
+enum VerificationStatus {
+  NOT_STARTED
+  PENDING
+  VERIFIED
+  REJECTED
+  NOT_REQUIRED
+}
+
+enum VerificationMethod {
+  EMAIL_DOMAIN
+  INVITE_CODE
+  MANUAL
+}
+
+enum VerificationAttemptStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+// ==========================================
+// MODELS (PART 1: IDENTITY & COMMUNITIES)
+// ==========================================
+
 model User {
-  userId       Int      @id @default(autoincrement())
-  name         String   @db.VarChar(100)
-  email        String   @unique @db.VarChar(150)
-  phone        String   @unique @db.VarChar(15)
-  passwordHash String
-  createdAt    DateTime @default(now())
+  userId          String        @id @default(uuid()) @db.Uuid
+  name            String        @db.VarChar(100)
+  email           String        @unique @db.VarChar(255)
+  phone           String?       @unique @db.VarChar(20)
+  phoneVerifiedAt DateTime?
+  passwordHash    String
+  profileImage    String?
+  accountStatus   AccountStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
 
-  // Relationships
-  roles       UserRole[]
-  communities UserCommunity[]
-  vehicles    Vehicle[]
-  rides       Ride[]
-  bookings    Booking[]
+  // Inverse Relations (Part 1)
+  roles                 UserRole[]
+  sessions              UserSession[]
+  emailVerifications    EmailVerification[]
+  passwordResetTokens   PasswordResetToken[]
+  phoneVerifications    PhoneVerification[]
+  preference            UserPreference?
+  createdCommunities    Community[]             @relation("CommunityCreatedBy")
+  memberships           CommunityMembership[]
+  invitesCreated        CommunityInvite[]       @relation("InviteCreatedBy")
+  verificationsReviewed CommunityVerification[] @relation("VerificationReviewedBy")
 
-  // Ratings given and received
-  ratingsGiven    Rating[] @relation("RatingsGiven")
-  ratingsReceived Rating[] @relation("RatingsReceived")
+enum CommunityType {
+  UNIVERSITY
+  OFFICE
+  NEIGHBORHOOD
+  PRIVATE
+}
 
-  // Cancellations performed by this user
-  cancellations Cancellation[]
+enum CommunityStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  REVOKED
+}
+
+enum CommunityRole {
+  MEMBER
+  MODERATOR
+  ADMIN
+}
+
+enum VerificationStatus {
+  NOT_STARTED
+  PENDING
+  VERIFIED
+  REJECTED
+  NOT_REQUIRED
+}
+
+enum VerificationMethod {
+  EMAIL_DOMAIN
+  INVITE_CODE
+  MANUAL
+}
+
+enum VerificationAttemptStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+// ==========================================
+// MODELS (PART 1: IDENTITY & COMMUNITIES)
+// ==========================================
+
+model User {
+  userId          String        @id @default(uuid()) @db.Uuid
+  name            String        @db.VarChar(100)
+  email           String        @unique @db.VarChar(255)
+  phone           String?       @unique @db.VarChar(20)
+  phoneVerifiedAt DateTime?
+  passwordHash    String
+  profileImage    String?
+  accountStatus   AccountStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  // Inverse Relations (Part 1)
+  roles                  UserRole[]
+  sessions               UserSession[]
+  emailVerifications     EmailVerification[]
+  passwordResetTokens    PasswordResetToken[]
+  phoneVerifications     PhoneVerification[]
+  preference             UserPreference?
+  createdCommunities     Community[]             @relation("CommunityCreatedBy")
+  memberships            CommunityMembership[]
+  invitesCreated         CommunityInvite[]       @relation("InviteCreatedBy")
+  verificationsReviewed  CommunityVerification[] @relation("VerificationReviewedBy")
 
   @@map("users")
 }
@@ -71,28 +225,345 @@ model Rating {
   @@map("ratings")
 }
 
-model Ride {
-  rideId         Int      @id @default(autoincrement())
-  driverId       Int
-  vehicleId      Int
-  communityId    Int
-  source         String   @db.VarChar(255)
-  destination    String   @db.VarChar(255)
-  rideDate       DateTime @db.Date
-  departureTime  DateTime @db.Time
-  totalSeats     Int
-  availableSeats Int
-  farePerSeat    Decimal  @db.Decimal(10, 2)
-  status         String   @db.VarChar(20)
+model UserRole {
+  roleId    String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  role      RoleType
+  createdAt DateTime @default(now())
 
-  driver    User      @relation(fields: [driverId], references: [userId])
-  vehicle   Vehicle   @relation(fields: [vehicleId], references: [vehicleId])
-  community Community @relation(fields: [communityId], references: [communityId])
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
 
-  bookings Booking[]
-  ratings  Rating[]
+  @@unique([userId, role])
+  @@index([userId])
+  @@map("user_roles")
+}
 
-  @@map("rides")
+model UserSession {
+  sessionId        String    @id @default(uuid()) @db.Uuid
+  userId           String    @db.Uuid
+  refreshTokenHash String    @unique
+  deviceInfo       String?
+  ipAddress        String?   @db.VarChar(45)
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_sessions")
+}
+
+model EmailVerification {
+  verificationId String    @id @default(uuid()) @db.Uuid
+  userId         String    @db.Uuid
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verifications")
+}
+
+model PasswordResetToken {
+  resetId   String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model PhoneVerification {
+  verificationId String    @id @default(uuid()) @db.Uuid
+  userId         String    @db.Uuid
+  phone          String    @db.VarChar(20)
+  otpHash        String
+  expiresAt      DateTime
+  verifiedAt     DateTime?
+  attemptCount   Int       @default(0)
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("phone_verifications")
+}
+
+model UserPreference {
+  preferenceId          String    @id @default(uuid()) @db.Uuid
+  userId                String    @unique @db.Uuid
+  language              String    @default("en") @db.VarChar(10)
+  theme                 ThemeType @default(SYSTEM)
+  accessibilitySettings Json?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model Community {
+  communityId    String          @id @default(uuid()) @db.Uuid
+  name           String          @db.VarChar(150)
+  type           CommunityType
+  description    String?
+  status         CommunityStatus @default(ACTIVE)
+  isDiscoverable Boolean         @default(true)
+  createdById    String          @db.Uuid
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  createdBy   User                  @relation("CommunityCreatedBy", fields: [createdById], references: [userId], onDelete: Restrict)
+  memberships CommunityMembership[]
+  domains     CommunityDomain[]
+  invites     CommunityInvite[]
+
+  @@index([createdById])
+  @@index([type, status])
+  @@map("communities")
+}
+
+model CommunityMembership {
+  membershipId       String              @id @default(uuid()) @db.Uuid
+  userId             String              @db.Uuid
+  communityId        String              @db.Uuid
+  membershipStatus   MembershipStatus    @default(PENDING)
+  membershipRole     CommunityRole       @default(MEMBER)
+  verificationStatus VerificationStatus  @default(PENDING)
+  verificationMethod VerificationMethod?
+  verifiedAt         DateTime?
+  joinedAt           DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  user          User                    @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  community     Community               @relation(fields: [communityId], references: [communityId], onDelete: Cascade)
+  verifications CommunityVerification[]
+
+  @@unique([userId, communityId])
+  @@index([communityId, membershipStatus])
+  @@index([userId])
+  @@map("community_memberships")
+}
+
+model CommunityDomain {
+  domainId    String    @id @default(uuid()) @db.Uuid
+  communityId String    @db.Uuid
+  domain      String    @db.VarChar(255)
+  isActive    Boolean   @default(true)
+  approvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  community Community @relation(fields: [communityId], references: [communityId], onDelete: Cascade)
+
+  @@unique([communityId, domain])
+  @@index([domain])
+  @@map("community_domains")
+}
+
+model CommunityInvite {
+  inviteId         String    @id @default(uuid()) @db.Uuid
+  communityId      String    @db.Uuid
+  createdById      String    @db.Uuid
+  codeHash         String    @unique
+  emailRestriction String?   @db.VarChar(255)
+  maxUses          Int?
+  useCount         Int       @default(0)
+  expiresAt        DateTime?
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  community Community @relation(fields: [communityId], references: [communityId], onDelete: Cascade)
+  createdBy User      @relation("InviteCreatedBy", fields: [createdById], references: [userId], onDelete: Restrict)
+
+  @@index([communityId])
+  @@index([createdById])
+  @@map("community_invites")
+}
+
+model CommunityVerification {
+  verificationId String                    @id @default(uuid()) @db.Uuid
+  membershipId   String                    @db.Uuid
+  method         VerificationMethod
+  status         VerificationAttemptStatus @default(PENDING)
+  reviewerId     String?                   @db.Uuid
+  reviewedAt     DateTime?
+  reason         String?
+  metadata       Json?
+  createdAt      DateTime                  @default(now())
+
+  membership CommunityMembership @relation(fields: [membershipId], references: [membershipId], onDelete: Cascade)
+  reviewer   User?               @relation("VerificationReviewedBy", fields: [reviewerId], references: [userId], onDelete: SetNull)
+
+  @@index([membershipId])
+  @@index([reviewerId])
+  @@map("community_verifications")
+}
+
+model EmailVerification {
+  verificationId String    @id @default(uuid()) @db.Uuid
+  userId         String    @db.Uuid
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verifications")
+}
+
+model PasswordResetToken {
+  resetId   String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model PhoneVerification {
+  verificationId String    @id @default(uuid()) @db.Uuid
+  userId         String    @db.Uuid
+  phone          String    @db.VarChar(20)
+  otpHash        String
+  expiresAt      DateTime
+  verifiedAt     DateTime?
+  attemptCount   Int       @default(0)
+  createdAt      DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("phone_verifications")
+}
+
+model UserPreference {
+  preferenceId          String    @id @default(uuid()) @db.Uuid
+  userId                String    @unique @db.Uuid
+  language              String    @default("en") @db.VarChar(10)
+  theme                 ThemeType @default(SYSTEM)
+  accessibilitySettings Json?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model Community {
+  communityId    String          @id @default(uuid()) @db.Uuid
+  name           String          @db.VarChar(150)
+  type           CommunityType
+  description    String?
+  status         CommunityStatus @default(ACTIVE)
+  isDiscoverable Boolean         @default(true)
+  createdById    String          @db.Uuid
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  createdBy   User                  @relation("CommunityCreatedBy", fields: [createdById], references: [userId], onDelete: Restrict)
+  memberships CommunityMembership[]
+  domains     CommunityDomain[]
+  invites     CommunityInvite[]
+
+  @@index([createdById])
+  @@index([type, status])
+  @@map("communities")
+}
+
+model CommunityMembership {
+  membershipId       String             @id @default(uuid()) @db.Uuid
+  userId             String             @db.Uuid
+  communityId        String             @db.Uuid
+  membershipStatus   MembershipStatus   @default(PENDING)
+  membershipRole     CommunityRole      @default(MEMBER)
+  verificationStatus VerificationStatus @default(PENDING)
+  verificationMethod VerificationMethod?
+  verifiedAt         DateTime?
+  joinedAt           DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user          User                    @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  community     Community               @relation(fields: [communityId], references: [communityId], onDelete: Cascade)
+  verifications CommunityVerification[]
+
+  @@unique([userId, communityId])
+  @@index([communityId, membershipStatus])
+  @@index([userId])
+  @@map("community_memberships")
+}
+
+model CommunityDomain {
+  domainId    String    @id @default(uuid()) @db.Uuid
+  communityId String    @db.Uuid
+  domain      String    @db.VarChar(255)
+  isActive    Boolean   @default(true)
+  approvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  community Community @relation(fields: [communityId], references: [communityId], onDelete: Cascade)
+
+  @@unique([communityId, domain])
+  @@index([domain])
+  @@map("community_domains")
+}
+
+model CommunityInvite {
+  inviteId         String    @id @default(uuid()) @db.Uuid
+  communityId      String    @db.Uuid
+  createdById      String    @db.Uuid
+  codeHash         String    @unique
+  emailRestriction String?   @db.VarChar(255)
+  maxUses          Int?
+  useCount         Int       @default(0)
+  expiresAt        DateTime?
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  community Community @relation(fields: [communityId], references: [communityId], onDelete: Cascade)
+  createdBy User      @relation("InviteCreatedBy", fields: [createdById], references: [userId], onDelete: Restrict)
+
+  @@index([communityId])
+  @@index([createdById])
+  @@map("community_invites")
+}
+
+model CommunityVerification {
+  verificationId String                    @id @default(uuid()) @db.Uuid
+  membershipId   String                    @db.Uuid
+  method         VerificationMethod
+  status         VerificationAttemptStatus @default(PENDING)
+  reviewerId     String?                   @db.Uuid
+  reviewedAt     DateTime?
+  reason         String?
+  metadata       Json?
+  createdAt      DateTime                  @default(now())
+
+  membership CommunityMembership @relation(fields: [membershipId], references: [membershipId], onDelete: Cascade)
+  reviewer   User?               @relation("VerificationReviewedBy", fields: [reviewerId], references: [userId], onDelete: SetNull)
+
+  @@index([membershipId])
+  @@index([reviewerId])
+  @@map("community_verifications")
 }
 
 model Booking {
