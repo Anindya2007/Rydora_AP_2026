@@ -3,8 +3,10 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url  	    = env("DATABASE_URL")
+  // uncomment next line if you use Prisma <5.10
+  // directUrl = env("DATABASE_URL_UNPOOLED")
 }
 
 // ==========================================
@@ -461,6 +463,43 @@ model User {
   platformSettingsUpdated PlatformSetting[]       @relation("PlatformSettingsUpdated")
 
   @@map("users")
+}
+model UserRole {
+  userId Int
+  role   String @db.VarChar(20)
+
+  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@id([userId, role])
+  @@map("user_roles")
+}
+
+model Community {
+  communityId  Int    @id @default(autoincrement())
+  name         String @db.VarChar(150)
+  communityType String @db.VarChar(20)
+  emailDomain  String @unique @db.VarChar(150)
+
+  users UserCommunity[]
+  rides Ride[]
+
+  @@map("communities")
+}
+
+model Rating {
+  ratingId   Int      @id @default(autoincrement())
+  rideId     Int
+  fromUserId Int
+  toUserId   Int
+  rating     Int
+  review     String?
+  createdAt  DateTime @default(now())
+
+  ride     Ride @relation(fields: [rideId], references: [rideId], onDelete: Cascade)
+  fromUser User @relation("RatingsGiven", fields: [fromUserId], references: [userId])
+  toUser   User @relation("RatingsReceived", fields: [toUserId], references: [userId])
+
+  @@map("ratings")
 }
 
 model UserRole {
