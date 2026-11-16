@@ -3,8 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url  	    = env("DATABASE_URL")
+  provider = "postgresql"
   // uncomment next line if you use Prisma <5.10
   // directUrl = env("DATABASE_URL_UNPOOLED")
 }
@@ -464,43 +463,6 @@ model User {
 
   @@map("users")
 }
-model UserRole {
-  userId Int
-  role   String @db.VarChar(20)
-
-  user User @relation(fields: [userId], references: [userId], onDelete: Cascade)
-
-  @@id([userId, role])
-  @@map("user_roles")
-}
-
-model Community {
-  communityId  Int    @id @default(autoincrement())
-  name         String @db.VarChar(150)
-  communityType String @db.VarChar(20)
-  emailDomain  String @unique @db.VarChar(150)
-
-  users UserCommunity[]
-  rides Ride[]
-
-  @@map("communities")
-}
-
-model Rating {
-  ratingId   Int      @id @default(autoincrement())
-  rideId     Int
-  fromUserId Int
-  toUserId   Int
-  rating     Int
-  review     String?
-  createdAt  DateTime @default(now())
-
-  ride     Ride @relation(fields: [rideId], references: [rideId], onDelete: Cascade)
-  fromUser User @relation("RatingsGiven", fields: [fromUserId], references: [userId])
-  toUser   User @relation("RatingsReceived", fields: [toUserId], references: [userId])
-
-  @@map("ratings")
-}
 
 model UserRole {
   roleId    String   @id @default(uuid()) @db.Uuid
@@ -600,11 +562,12 @@ model Community {
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
-  createdBy       User                  @relation("CommunityCreatedBy", fields: [createdById], references: [userId], onDelete: Restrict)
-  memberships     CommunityMembership[]
-  domains         CommunityDomain[]
-  invites         CommunityInvite[]
-  rideCommunities RideCommunity[]
+  createdBy            User                          @relation("CommunityCreatedBy", fields: [createdById], references: [userId], onDelete: Restrict)
+  memberships          CommunityMembership[]
+  domains              CommunityDomain[]
+  invites              CommunityInvite[]
+  rideCommunities      RideCommunity[]
+  bookingEligibilities BookingCommunityEligibility[]
 
   @@index([createdById])
   @@index([type, status])
@@ -624,9 +587,10 @@ model CommunityMembership {
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
-  user          User                    @relation(fields: [userId], references: [userId], onDelete: Cascade)
-  community     Community               @relation(fields: [communityId], references: [communityId], onDelete: Cascade)
-  verifications CommunityVerification[]
+  user                 User                          @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  community            Community                     @relation(fields: [communityId], references: [communityId], onDelete: Cascade)
+  verifications        CommunityVerification[]
+  bookingEligibilities BookingCommunityEligibility[]
 
   @@unique([userId, communityId])
   @@index([communityId, membershipStatus])
@@ -869,27 +833,48 @@ model Booking {
   seatCount      Int           @default(1)
   bookingStatus  BookingStatus @default(PENDING)
   totalFare      Decimal       @db.Decimal(10, 2)
-  fareQuoteId    String?       @db.Uuid
+  fareQuoteId    String?       @unique @db.Uuid
   confirmedAt    DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  ride               Ride                @relation(fields: [rideId], references: [rideId], onDelete: Restrict)
-  rider              User                @relation("RiderBookings", fields: [riderId], references: [userId], onDelete: Restrict)
-  fareQuote          FareQuote?          @relation(fields: [fareQuoteId], references: [quoteId], onDelete: SetNull)
-  cancellation       Cancellation?
-  noShowRecord       NoShowRecord?
-  penaltyAssessments PenaltyAssessment[]
-  disputes           DisputeCase[]
-  payments           Payment[]
-  driverEarning      DriverEarning?
-  ratings            Rating[]
-  emissionEstimate   EmissionEstimate?
+  ride                   Ride                          @relation(fields: [rideId], references: [rideId], onDelete: Restrict)
+  rider                  User                          @relation("RiderBookings", fields: [riderId], references: [userId], onDelete: Restrict)
+  fareQuote              FareQuote?                    @relation(fields: [fareQuoteId], references: [quoteId], onDelete: Restrict)
+  cancellation           Cancellation?
+  noShowRecord           NoShowRecord?
+  penaltyAssessments     PenaltyAssessment[]
+  disputes               DisputeCase[]
+  payments               Payment[]
+  driverEarning          DriverEarning?
+  ratings                Rating[]
+  emissionEstimate       EmissionEstimate?
+  communityEligibilities BookingCommunityEligibility[]
 
   @@index([rideId])
   @@index([riderId])
   @@index([bookingStatus])
   @@map("bookings")
+}
+
+model BookingCommunityEligibility {
+  eligibilityId       String             @id @default(uuid()) @db.Uuid
+  bookingId           String             @db.Uuid
+  communityId         String             @db.Uuid
+  membershipId        String             @db.Uuid
+  verificationStatus  VerificationStatus @default(VERIFIED)
+  snapshotAt          DateTime           @default(now())
+  eligibilitySnapshot Json?
+
+  booking    Booking             @relation(fields: [bookingId], references: [bookingId], onDelete: Cascade)
+  community  Community           @relation(fields: [communityId], references: [communityId], onDelete: Restrict)
+  membership CommunityMembership @relation(fields: [membershipId], references: [membershipId], onDelete: Restrict)
+
+  @@unique([bookingId, communityId])
+  @@index([bookingId])
+  @@index([communityId])
+  @@index([membershipId])
+  @@map("booking_community_eligibilities")
 }
 
 model FareQuote {
@@ -900,15 +885,18 @@ model FareQuote {
   status             FareQuoteStatus @default(ACTIVE)
   expiresAt          DateTime
   calculationDetails Json?
+  farePolicyId       String?         @db.Uuid
   createdAt          DateTime        @default(now())
 
-  ride      Ride           @relation(fields: [rideId], references: [rideId], onDelete: Cascade)
-  rider     User           @relation("RiderFareQuotes", fields: [riderId], references: [userId], onDelete: Cascade)
-  lineItems FareLineItem[]
-  bookings  Booking[]
+  ride       Ride           @relation(fields: [rideId], references: [rideId], onDelete: Cascade)
+  rider      User           @relation("RiderFareQuotes", fields: [riderId], references: [userId], onDelete: Cascade)
+  farePolicy FarePolicy?    @relation(fields: [farePolicyId], references: [policyId], onDelete: Restrict)
+  lineItems  FareLineItem[]
+  booking    Booking?
 
   @@index([rideId])
   @@index([riderId])
+  @@index([farePolicyId])
   @@map("fare_quotes")
 }
 
@@ -1174,6 +1162,7 @@ model TrustedContact {
 
   user User @relation("UserTrustedContacts", fields: [userId], references: [userId], onDelete: Cascade)
 
+  @@unique([userId, phone])
   @@index([userId])
   @@map("trusted_contacts")
 }
@@ -1208,7 +1197,7 @@ model SafetyIncident {
 
 model SOSAlert {
   alertId       String         @id @default(uuid()) @db.Uuid
-  rideId        String         @db.Uuid
+  rideId        String?        @db.Uuid
   userId        String         @db.Uuid
   status        SOSAlertStatus @default(TRIGGERED)
   latitude      Float
@@ -1219,7 +1208,7 @@ model SOSAlert {
   resolverNotes String?
   resolvedById  String?        @db.Uuid
 
-  ride       Ride  @relation(fields: [rideId], references: [rideId], onDelete: Restrict)
+  ride       Ride? @relation(fields: [rideId], references: [rideId], onDelete: SetNull)
   user       User  @relation("SOSAlertsTriggered", fields: [userId], references: [userId], onDelete: Restrict)
   resolvedBy User? @relation("SOSAlertsResolved", fields: [resolvedById], references: [userId], onDelete: SetNull)
 
@@ -1487,6 +1476,8 @@ model CalendarConnection {
   connectionId          String           @id @default(uuid()) @db.Uuid
   userId                String           @db.Uuid
   provider              CalendarProvider
+  providerAccountId     String           @db.VarChar(255)
+  calendarId            String?          @default("primary") @db.VarChar(255)
   accessTokenEncrypted  String?
   refreshTokenEncrypted String?
   calendarEmail         String?          @db.VarChar(255)
@@ -1498,6 +1489,7 @@ model CalendarConnection {
   user   User            @relation("UserCalendarConnections", fields: [userId], references: [userId], onDelete: Cascade)
   events CalendarEvent[]
 
+  @@unique([userId, provider, providerAccountId])
   @@index([userId])
   @@map("calendar_connections")
 }
@@ -1688,6 +1680,10 @@ model FarePolicy {
   effectiveTo               DateTime?
   createdAt                 DateTime  @default(now())
   updatedAt                 DateTime  @updatedAt
+
+  quotes FareQuote[]
+
+
 
   @@map("fare_policies")
 }
