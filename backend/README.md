@@ -1,10 +1,10 @@
-# 🚗 RideShare Ecosystem — Full-Stack Capstone Project
+#  RideShare Ecosystem — Full-Stack Capstone Project
 
-A production-grade, community-driven taxi and carpooling backend and database system built with **Node.js, Express, Prisma ORM, PostgreSQL (Supabase), and React**.
+A community-driven taxi and carpooling backend and database system built with **Node.js, Express, Prisma ORM, PostgreSQL (NeonDB), and React**.
 
 ---
 
-## 👥 4-Member Team Ownership & Domains
+## 👥 4 Member Team Ownership & Domains
 
 | Member | Feature Domain | Database Tables Owned | Core Endpoints Handled |
 | :--- | :--- | :--- | :--- |
