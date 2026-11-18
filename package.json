@@ -4,6 +4,7 @@
   "private": true,
   "description": "Rydora RideShare Ecosystem Capstone",
   "scripts": {
+    "postinstall": "cd backend && npx prisma generate",
     "prisma:status": "cd backend && npx prisma migrate status",
     "prisma:generate": "cd backend && npx prisma generate",
     "prisma:validate": "cd backend && npx prisma validate",

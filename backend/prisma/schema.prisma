@@ -313,25 +313,3 @@ model DriverEarning {
   @@index([driverId, status, createdAt])
   @@map("driver_earnings")
 }
-
-enum TransactionStatus {
-  PENDING
-  COMPLETED
-  FAILED
-}
-
-model User {
-  userId       String      @id @default(uuid()) @map("user_id") @db.Uuid
-  name         String      @db.VarChar(100)
-  email        String      @unique @db.VarChar(255)
-  passwordHash String      @map("password_hash")
-  roles        UserRole[]  @default([USER])
-  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  communities  Community[] @relation("CommunityCreator")
-  rides        Ride[]      @relation("RideDriver")
-  bookings     Booking[]
-
-  @@map("users")
-}
