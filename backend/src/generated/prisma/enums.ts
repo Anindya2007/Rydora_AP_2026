@@ -17,8 +17,33 @@ export const UserRole = {
 export type UserRole = (typeof UserRole)[keyof typeof UserRole]
 
 
+export const CommunityStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE'
+} as const
+
+export type CommunityStatus = (typeof CommunityStatus)[keyof typeof CommunityStatus]
+
+
+export const MembershipStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE'
+} as const
+
+export type MembershipStatus = (typeof MembershipStatus)[keyof typeof MembershipStatus]
+
+
+export const CommunityMemberRole = {
+  MEMBER: 'MEMBER',
+  ADMIN: 'ADMIN'
+} as const
+
+export type CommunityMemberRole = (typeof CommunityMemberRole)[keyof typeof CommunityMemberRole]
+
+
 export const RideStatus = {
   SCHEDULED: 'SCHEDULED',
+  IN_PROGRESS: 'IN_PROGRESS',
   COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED'
 } as const
@@ -28,6 +53,7 @@ export type RideStatus = (typeof RideStatus)[keyof typeof RideStatus]
 
 export const BookingStatus = {
   PENDING: 'PENDING',
+  CONFIRMED: 'CONFIRMED',
   COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED'
 } as const
@@ -35,9 +61,20 @@ export const BookingStatus = {
 export type BookingStatus = (typeof BookingStatus)[keyof typeof BookingStatus]
 
 
+export const SOSAlertStatus = {
+  ACTIVE: 'ACTIVE',
+  RESOLVED: 'RESOLVED',
+  CANCELLED: 'CANCELLED'
+} as const
+
+export type SOSAlertStatus = (typeof SOSAlertStatus)[keyof typeof SOSAlertStatus]
+
+
 export const TransactionType = {
-  PAYMENT: 'PAYMENT',
-  REFUND: 'REFUND'
+  BOOKING_PAYMENT: 'BOOKING_PAYMENT',
+  REFUND: 'REFUND',
+  PLATFORM_FEE: 'PLATFORM_FEE',
+  DRIVER_PAYOUT: 'DRIVER_PAYOUT'
 } as const
 
 export type TransactionType = (typeof TransactionType)[keyof typeof TransactionType]
@@ -46,7 +83,18 @@ export type TransactionType = (typeof TransactionType)[keyof typeof TransactionT
 export const TransactionStatus = {
   PENDING: 'PENDING',
   COMPLETED: 'COMPLETED',
-  FAILED: 'FAILED'
+  FAILED: 'FAILED',
+  REVERSED: 'REVERSED'
 } as const
 
 export type TransactionStatus = (typeof TransactionStatus)[keyof typeof TransactionStatus]
+
+
+export const DriverEarningStatus = {
+  PENDING: 'PENDING',
+  AVAILABLE: 'AVAILABLE',
+  PAID: 'PAID',
+  REVERSED: 'REVERSED'
+} as const
+
+export type DriverEarningStatus = (typeof DriverEarningStatus)[keyof typeof DriverEarningStatus]

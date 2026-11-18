@@ -27,12 +27,20 @@ export type AggregateRide = {
 }
 
 export type RideAvgAggregateOutputType = {
+  sourceLatitude: runtime.Decimal | null
+  sourceLongitude: runtime.Decimal | null
+  destinationLatitude: runtime.Decimal | null
+  destinationLongitude: runtime.Decimal | null
   totalSeats: number | null
   availableSeats: number | null
   farePerSeat: runtime.Decimal | null
 }
 
 export type RideSumAggregateOutputType = {
+  sourceLatitude: runtime.Decimal | null
+  sourceLongitude: runtime.Decimal | null
+  destinationLatitude: runtime.Decimal | null
+  destinationLongitude: runtime.Decimal | null
   totalSeats: number | null
   availableSeats: number | null
   farePerSeat: runtime.Decimal | null
@@ -41,54 +49,80 @@ export type RideSumAggregateOutputType = {
 export type RideMinAggregateOutputType = {
   rideId: string | null
   driverId: string | null
+  vehicleId: string | null
   communityId: string | null
   source: string | null
   destination: string | null
   departureTime: Date | null
+  sourceLatitude: runtime.Decimal | null
+  sourceLongitude: runtime.Decimal | null
+  destinationLatitude: runtime.Decimal | null
+  destinationLongitude: runtime.Decimal | null
   totalSeats: number | null
   availableSeats: number | null
   farePerSeat: runtime.Decimal | null
   status: $Enums.RideStatus | null
   createdAt: Date | null
+  updatedAt: Date | null
 }
 
 export type RideMaxAggregateOutputType = {
   rideId: string | null
   driverId: string | null
+  vehicleId: string | null
   communityId: string | null
   source: string | null
   destination: string | null
   departureTime: Date | null
+  sourceLatitude: runtime.Decimal | null
+  sourceLongitude: runtime.Decimal | null
+  destinationLatitude: runtime.Decimal | null
+  destinationLongitude: runtime.Decimal | null
   totalSeats: number | null
   availableSeats: number | null
   farePerSeat: runtime.Decimal | null
   status: $Enums.RideStatus | null
   createdAt: Date | null
+  updatedAt: Date | null
 }
 
 export type RideCountAggregateOutputType = {
   rideId: number
   driverId: number
+  vehicleId: number
   communityId: number
   source: number
   destination: number
   departureTime: number
+  sourceLatitude: number
+  sourceLongitude: number
+  destinationLatitude: number
+  destinationLongitude: number
   totalSeats: number
   availableSeats: number
   farePerSeat: number
   status: number
   createdAt: number
+  updatedAt: number
   _all: number
 }
 
 
 export type RideAvgAggregateInputType = {
+  sourceLatitude?: true
+  sourceLongitude?: true
+  destinationLatitude?: true
+  destinationLongitude?: true
   totalSeats?: true
   availableSeats?: true
   farePerSeat?: true
 }
 
 export type RideSumAggregateInputType = {
+  sourceLatitude?: true
+  sourceLongitude?: true
+  destinationLatitude?: true
+  destinationLongitude?: true
   totalSeats?: true
   availableSeats?: true
   farePerSeat?: true
@@ -97,43 +131,61 @@ export type RideSumAggregateInputType = {
 export type RideMinAggregateInputType = {
   rideId?: true
   driverId?: true
+  vehicleId?: true
   communityId?: true
   source?: true
   destination?: true
   departureTime?: true
+  sourceLatitude?: true
+  sourceLongitude?: true
+  destinationLatitude?: true
+  destinationLongitude?: true
   totalSeats?: true
   availableSeats?: true
   farePerSeat?: true
   status?: true
   createdAt?: true
+  updatedAt?: true
 }
 
 export type RideMaxAggregateInputType = {
   rideId?: true
   driverId?: true
+  vehicleId?: true
   communityId?: true
   source?: true
   destination?: true
   departureTime?: true
+  sourceLatitude?: true
+  sourceLongitude?: true
+  destinationLatitude?: true
+  destinationLongitude?: true
   totalSeats?: true
   availableSeats?: true
   farePerSeat?: true
   status?: true
   createdAt?: true
+  updatedAt?: true
 }
 
 export type RideCountAggregateInputType = {
   rideId?: true
   driverId?: true
+  vehicleId?: true
   communityId?: true
   source?: true
   destination?: true
   departureTime?: true
+  sourceLatitude?: true
+  sourceLongitude?: true
+  destinationLatitude?: true
+  destinationLongitude?: true
   totalSeats?: true
   availableSeats?: true
   farePerSeat?: true
   status?: true
   createdAt?: true
+  updatedAt?: true
   _all?: true
 }
 
@@ -226,15 +278,21 @@ export type RideGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 export type RideGroupByOutputType = {
   rideId: string
   driverId: string
+  vehicleId: string
   communityId: string
   source: string
   destination: string
   departureTime: Date
+  sourceLatitude: runtime.Decimal | null
+  sourceLongitude: runtime.Decimal | null
+  destinationLatitude: runtime.Decimal | null
+  destinationLongitude: runtime.Decimal | null
   totalSeats: number
   availableSeats: number
   farePerSeat: runtime.Decimal
   status: $Enums.RideStatus
   createdAt: Date
+  updatedAt: Date
   _count: RideCountAggregateOutputType | null
   _avg: RideAvgAggregateOutputType | null
   _sum: RideSumAggregateOutputType | null
@@ -263,35 +321,51 @@ export type RideWhereInput = {
   NOT?: Prisma.RideWhereInput | Prisma.RideWhereInput[]
   rideId?: Prisma.UuidFilter<"Ride"> | string
   driverId?: Prisma.UuidFilter<"Ride"> | string
+  vehicleId?: Prisma.UuidFilter<"Ride"> | string
   communityId?: Prisma.UuidFilter<"Ride"> | string
   source?: Prisma.StringFilter<"Ride"> | string
   destination?: Prisma.StringFilter<"Ride"> | string
   departureTime?: Prisma.DateTimeFilter<"Ride"> | Date | string
+  sourceLatitude?: Prisma.DecimalNullableFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.DecimalNullableFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.DecimalNullableFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.DecimalNullableFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFilter<"Ride"> | number
   availableSeats?: Prisma.IntFilter<"Ride"> | number
   farePerSeat?: Prisma.DecimalFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFilter<"Ride"> | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFilter<"Ride"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Ride"> | Date | string
   driver?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
+  vehicle?: Prisma.XOR<Prisma.VehicleScalarRelationFilter, Prisma.VehicleWhereInput>
   community?: Prisma.XOR<Prisma.CommunityScalarRelationFilter, Prisma.CommunityWhereInput>
   bookings?: Prisma.BookingListRelationFilter
+  sosAlerts?: Prisma.SOSAlertListRelationFilter
 }
 
 export type RideOrderByWithRelationInput = {
   rideId?: Prisma.SortOrder
   driverId?: Prisma.SortOrder
+  vehicleId?: Prisma.SortOrder
   communityId?: Prisma.SortOrder
   source?: Prisma.SortOrder
   destination?: Prisma.SortOrder
   departureTime?: Prisma.SortOrder
+  sourceLatitude?: Prisma.SortOrderInput | Prisma.SortOrder
+  sourceLongitude?: Prisma.SortOrderInput | Prisma.SortOrder
+  destinationLatitude?: Prisma.SortOrderInput | Prisma.SortOrder
+  destinationLongitude?: Prisma.SortOrderInput | Prisma.SortOrder
   totalSeats?: Prisma.SortOrder
   availableSeats?: Prisma.SortOrder
   farePerSeat?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   driver?: Prisma.UserOrderByWithRelationInput
+  vehicle?: Prisma.VehicleOrderByWithRelationInput
   community?: Prisma.CommunityOrderByWithRelationInput
   bookings?: Prisma.BookingOrderByRelationAggregateInput
+  sosAlerts?: Prisma.SOSAlertOrderByRelationAggregateInput
 }
 
 export type RideWhereUniqueInput = Prisma.AtLeast<{
@@ -300,32 +374,46 @@ export type RideWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.RideWhereInput[]
   NOT?: Prisma.RideWhereInput | Prisma.RideWhereInput[]
   driverId?: Prisma.UuidFilter<"Ride"> | string
+  vehicleId?: Prisma.UuidFilter<"Ride"> | string
   communityId?: Prisma.UuidFilter<"Ride"> | string
   source?: Prisma.StringFilter<"Ride"> | string
   destination?: Prisma.StringFilter<"Ride"> | string
   departureTime?: Prisma.DateTimeFilter<"Ride"> | Date | string
+  sourceLatitude?: Prisma.DecimalNullableFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.DecimalNullableFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.DecimalNullableFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.DecimalNullableFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFilter<"Ride"> | number
   availableSeats?: Prisma.IntFilter<"Ride"> | number
   farePerSeat?: Prisma.DecimalFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFilter<"Ride"> | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFilter<"Ride"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Ride"> | Date | string
   driver?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
+  vehicle?: Prisma.XOR<Prisma.VehicleScalarRelationFilter, Prisma.VehicleWhereInput>
   community?: Prisma.XOR<Prisma.CommunityScalarRelationFilter, Prisma.CommunityWhereInput>
   bookings?: Prisma.BookingListRelationFilter
+  sosAlerts?: Prisma.SOSAlertListRelationFilter
 }, "rideId">
 
 export type RideOrderByWithAggregationInput = {
   rideId?: Prisma.SortOrder
   driverId?: Prisma.SortOrder
+  vehicleId?: Prisma.SortOrder
   communityId?: Prisma.SortOrder
   source?: Prisma.SortOrder
   destination?: Prisma.SortOrder
   departureTime?: Prisma.SortOrder
+  sourceLatitude?: Prisma.SortOrderInput | Prisma.SortOrder
+  sourceLongitude?: Prisma.SortOrderInput | Prisma.SortOrder
+  destinationLatitude?: Prisma.SortOrderInput | Prisma.SortOrder
+  destinationLongitude?: Prisma.SortOrderInput | Prisma.SortOrder
   totalSeats?: Prisma.SortOrder
   availableSeats?: Prisma.SortOrder
   farePerSeat?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
   _count?: Prisma.RideCountOrderByAggregateInput
   _avg?: Prisma.RideAvgOrderByAggregateInput
   _max?: Prisma.RideMaxOrderByAggregateInput
@@ -339,15 +427,21 @@ export type RideScalarWhereWithAggregatesInput = {
   NOT?: Prisma.RideScalarWhereWithAggregatesInput | Prisma.RideScalarWhereWithAggregatesInput[]
   rideId?: Prisma.UuidWithAggregatesFilter<"Ride"> | string
   driverId?: Prisma.UuidWithAggregatesFilter<"Ride"> | string
+  vehicleId?: Prisma.UuidWithAggregatesFilter<"Ride"> | string
   communityId?: Prisma.UuidWithAggregatesFilter<"Ride"> | string
   source?: Prisma.StringWithAggregatesFilter<"Ride"> | string
   destination?: Prisma.StringWithAggregatesFilter<"Ride"> | string
   departureTime?: Prisma.DateTimeWithAggregatesFilter<"Ride"> | Date | string
+  sourceLatitude?: Prisma.DecimalNullableWithAggregatesFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.DecimalNullableWithAggregatesFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.DecimalNullableWithAggregatesFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.DecimalNullableWithAggregatesFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntWithAggregatesFilter<"Ride"> | number
   availableSeats?: Prisma.IntWithAggregatesFilter<"Ride"> | number
   farePerSeat?: Prisma.DecimalWithAggregatesFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusWithAggregatesFilter<"Ride"> | $Enums.RideStatus
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Ride"> | Date | string
+  updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Ride"> | Date | string
 }
 
 export type RideCreateInput = {
@@ -355,29 +449,43 @@ export type RideCreateInput = {
   source: string
   destination: string
   departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats: number
   availableSeats: number
   farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: $Enums.RideStatus
   createdAt?: Date | string
+  updatedAt?: Date | string
   driver: Prisma.UserCreateNestedOneWithoutRidesInput
+  vehicle: Prisma.VehicleCreateNestedOneWithoutRidesInput
   community: Prisma.CommunityCreateNestedOneWithoutRidesInput
   bookings?: Prisma.BookingCreateNestedManyWithoutRideInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutRideInput
 }
 
 export type RideUncheckedCreateInput = {
   rideId?: string
   driverId: string
+  vehicleId: string
   communityId: string
   source: string
   destination: string
   departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats: number
   availableSeats: number
   farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: $Enums.RideStatus
   createdAt?: Date | string
+  updatedAt?: Date | string
   bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRideInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutRideInput
 }
 
 export type RideUpdateInput = {
@@ -385,43 +493,63 @@ export type RideUpdateInput = {
   source?: Prisma.StringFieldUpdateOperationsInput | string
   destination?: Prisma.StringFieldUpdateOperationsInput | string
   departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
   availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
   farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   driver?: Prisma.UserUpdateOneRequiredWithoutRidesNestedInput
+  vehicle?: Prisma.VehicleUpdateOneRequiredWithoutRidesNestedInput
   community?: Prisma.CommunityUpdateOneRequiredWithoutRidesNestedInput
   bookings?: Prisma.BookingUpdateManyWithoutRideNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutRideNestedInput
 }
 
 export type RideUncheckedUpdateInput = {
   rideId?: Prisma.StringFieldUpdateOperationsInput | string
   driverId?: Prisma.StringFieldUpdateOperationsInput | string
+  vehicleId?: Prisma.StringFieldUpdateOperationsInput | string
   communityId?: Prisma.StringFieldUpdateOperationsInput | string
   source?: Prisma.StringFieldUpdateOperationsInput | string
   destination?: Prisma.StringFieldUpdateOperationsInput | string
   departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
   availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
   farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bookings?: Prisma.BookingUncheckedUpdateManyWithoutRideNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutRideNestedInput
 }
 
 export type RideCreateManyInput = {
   rideId?: string
   driverId: string
+  vehicleId: string
   communityId: string
   source: string
   destination: string
   departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats: number
   availableSeats: number
   farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: $Enums.RideStatus
   createdAt?: Date | string
+  updatedAt?: Date | string
 }
 
 export type RideUpdateManyMutationInput = {
@@ -429,25 +557,36 @@ export type RideUpdateManyMutationInput = {
   source?: Prisma.StringFieldUpdateOperationsInput | string
   destination?: Prisma.StringFieldUpdateOperationsInput | string
   departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
   availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
   farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type RideUncheckedUpdateManyInput = {
   rideId?: Prisma.StringFieldUpdateOperationsInput | string
   driverId?: Prisma.StringFieldUpdateOperationsInput | string
+  vehicleId?: Prisma.StringFieldUpdateOperationsInput | string
   communityId?: Prisma.StringFieldUpdateOperationsInput | string
   source?: Prisma.StringFieldUpdateOperationsInput | string
   destination?: Prisma.StringFieldUpdateOperationsInput | string
   departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
   availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
   farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type RideListRelationFilter = {
@@ -463,18 +602,28 @@ export type RideOrderByRelationAggregateInput = {
 export type RideCountOrderByAggregateInput = {
   rideId?: Prisma.SortOrder
   driverId?: Prisma.SortOrder
+  vehicleId?: Prisma.SortOrder
   communityId?: Prisma.SortOrder
   source?: Prisma.SortOrder
   destination?: Prisma.SortOrder
   departureTime?: Prisma.SortOrder
+  sourceLatitude?: Prisma.SortOrder
+  sourceLongitude?: Prisma.SortOrder
+  destinationLatitude?: Prisma.SortOrder
+  destinationLongitude?: Prisma.SortOrder
   totalSeats?: Prisma.SortOrder
   availableSeats?: Prisma.SortOrder
   farePerSeat?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
 }
 
 export type RideAvgOrderByAggregateInput = {
+  sourceLatitude?: Prisma.SortOrder
+  sourceLongitude?: Prisma.SortOrder
+  destinationLatitude?: Prisma.SortOrder
+  destinationLongitude?: Prisma.SortOrder
   totalSeats?: Prisma.SortOrder
   availableSeats?: Prisma.SortOrder
   farePerSeat?: Prisma.SortOrder
@@ -483,32 +632,48 @@ export type RideAvgOrderByAggregateInput = {
 export type RideMaxOrderByAggregateInput = {
   rideId?: Prisma.SortOrder
   driverId?: Prisma.SortOrder
+  vehicleId?: Prisma.SortOrder
   communityId?: Prisma.SortOrder
   source?: Prisma.SortOrder
   destination?: Prisma.SortOrder
   departureTime?: Prisma.SortOrder
+  sourceLatitude?: Prisma.SortOrder
+  sourceLongitude?: Prisma.SortOrder
+  destinationLatitude?: Prisma.SortOrder
+  destinationLongitude?: Prisma.SortOrder
   totalSeats?: Prisma.SortOrder
   availableSeats?: Prisma.SortOrder
   farePerSeat?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
 }
 
 export type RideMinOrderByAggregateInput = {
   rideId?: Prisma.SortOrder
   driverId?: Prisma.SortOrder
+  vehicleId?: Prisma.SortOrder
   communityId?: Prisma.SortOrder
   source?: Prisma.SortOrder
   destination?: Prisma.SortOrder
   departureTime?: Prisma.SortOrder
+  sourceLatitude?: Prisma.SortOrder
+  sourceLongitude?: Prisma.SortOrder
+  destinationLatitude?: Prisma.SortOrder
+  destinationLongitude?: Prisma.SortOrder
   totalSeats?: Prisma.SortOrder
   availableSeats?: Prisma.SortOrder
   farePerSeat?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
 }
 
 export type RideSumOrderByAggregateInput = {
+  sourceLatitude?: Prisma.SortOrder
+  sourceLongitude?: Prisma.SortOrder
+  destinationLatitude?: Prisma.SortOrder
+  destinationLongitude?: Prisma.SortOrder
   totalSeats?: Prisma.SortOrder
   availableSeats?: Prisma.SortOrder
   farePerSeat?: Prisma.SortOrder
@@ -517,6 +682,11 @@ export type RideSumOrderByAggregateInput = {
 export type RideScalarRelationFilter = {
   is?: Prisma.RideWhereInput
   isNot?: Prisma.RideWhereInput
+}
+
+export type RideNullableScalarRelationFilter = {
+  is?: Prisma.RideWhereInput | null
+  isNot?: Prisma.RideWhereInput | null
 }
 
 export type RideCreateNestedManyWithoutDriverInput = {
@@ -603,16 +773,50 @@ export type RideUncheckedUpdateManyWithoutCommunityNestedInput = {
   deleteMany?: Prisma.RideScalarWhereInput | Prisma.RideScalarWhereInput[]
 }
 
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
+export type RideCreateNestedManyWithoutVehicleInput = {
+  create?: Prisma.XOR<Prisma.RideCreateWithoutVehicleInput, Prisma.RideUncheckedCreateWithoutVehicleInput> | Prisma.RideCreateWithoutVehicleInput[] | Prisma.RideUncheckedCreateWithoutVehicleInput[]
+  connectOrCreate?: Prisma.RideCreateOrConnectWithoutVehicleInput | Prisma.RideCreateOrConnectWithoutVehicleInput[]
+  createMany?: Prisma.RideCreateManyVehicleInputEnvelope
+  connect?: Prisma.RideWhereUniqueInput | Prisma.RideWhereUniqueInput[]
 }
 
-export type DecimalFieldUpdateOperationsInput = {
-  set?: runtime.Decimal | runtime.DecimalJsLike | number | string
+export type RideUncheckedCreateNestedManyWithoutVehicleInput = {
+  create?: Prisma.XOR<Prisma.RideCreateWithoutVehicleInput, Prisma.RideUncheckedCreateWithoutVehicleInput> | Prisma.RideCreateWithoutVehicleInput[] | Prisma.RideUncheckedCreateWithoutVehicleInput[]
+  connectOrCreate?: Prisma.RideCreateOrConnectWithoutVehicleInput | Prisma.RideCreateOrConnectWithoutVehicleInput[]
+  createMany?: Prisma.RideCreateManyVehicleInputEnvelope
+  connect?: Prisma.RideWhereUniqueInput | Prisma.RideWhereUniqueInput[]
+}
+
+export type RideUpdateManyWithoutVehicleNestedInput = {
+  create?: Prisma.XOR<Prisma.RideCreateWithoutVehicleInput, Prisma.RideUncheckedCreateWithoutVehicleInput> | Prisma.RideCreateWithoutVehicleInput[] | Prisma.RideUncheckedCreateWithoutVehicleInput[]
+  connectOrCreate?: Prisma.RideCreateOrConnectWithoutVehicleInput | Prisma.RideCreateOrConnectWithoutVehicleInput[]
+  upsert?: Prisma.RideUpsertWithWhereUniqueWithoutVehicleInput | Prisma.RideUpsertWithWhereUniqueWithoutVehicleInput[]
+  createMany?: Prisma.RideCreateManyVehicleInputEnvelope
+  set?: Prisma.RideWhereUniqueInput | Prisma.RideWhereUniqueInput[]
+  disconnect?: Prisma.RideWhereUniqueInput | Prisma.RideWhereUniqueInput[]
+  delete?: Prisma.RideWhereUniqueInput | Prisma.RideWhereUniqueInput[]
+  connect?: Prisma.RideWhereUniqueInput | Prisma.RideWhereUniqueInput[]
+  update?: Prisma.RideUpdateWithWhereUniqueWithoutVehicleInput | Prisma.RideUpdateWithWhereUniqueWithoutVehicleInput[]
+  updateMany?: Prisma.RideUpdateManyWithWhereWithoutVehicleInput | Prisma.RideUpdateManyWithWhereWithoutVehicleInput[]
+  deleteMany?: Prisma.RideScalarWhereInput | Prisma.RideScalarWhereInput[]
+}
+
+export type RideUncheckedUpdateManyWithoutVehicleNestedInput = {
+  create?: Prisma.XOR<Prisma.RideCreateWithoutVehicleInput, Prisma.RideUncheckedCreateWithoutVehicleInput> | Prisma.RideCreateWithoutVehicleInput[] | Prisma.RideUncheckedCreateWithoutVehicleInput[]
+  connectOrCreate?: Prisma.RideCreateOrConnectWithoutVehicleInput | Prisma.RideCreateOrConnectWithoutVehicleInput[]
+  upsert?: Prisma.RideUpsertWithWhereUniqueWithoutVehicleInput | Prisma.RideUpsertWithWhereUniqueWithoutVehicleInput[]
+  createMany?: Prisma.RideCreateManyVehicleInputEnvelope
+  set?: Prisma.RideWhereUniqueInput | Prisma.RideWhereUniqueInput[]
+  disconnect?: Prisma.RideWhereUniqueInput | Prisma.RideWhereUniqueInput[]
+  delete?: Prisma.RideWhereUniqueInput | Prisma.RideWhereUniqueInput[]
+  connect?: Prisma.RideWhereUniqueInput | Prisma.RideWhereUniqueInput[]
+  update?: Prisma.RideUpdateWithWhereUniqueWithoutVehicleInput | Prisma.RideUpdateWithWhereUniqueWithoutVehicleInput[]
+  updateMany?: Prisma.RideUpdateManyWithWhereWithoutVehicleInput | Prisma.RideUpdateManyWithWhereWithoutVehicleInput[]
+  deleteMany?: Prisma.RideScalarWhereInput | Prisma.RideScalarWhereInput[]
+}
+
+export type NullableDecimalFieldUpdateOperationsInput = {
+  set?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   increment?: runtime.Decimal | runtime.DecimalJsLike | number | string
   decrement?: runtime.Decimal | runtime.DecimalJsLike | number | string
   multiply?: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -637,32 +841,62 @@ export type RideUpdateOneRequiredWithoutBookingsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.RideUpdateToOneWithWhereWithoutBookingsInput, Prisma.RideUpdateWithoutBookingsInput>, Prisma.RideUncheckedUpdateWithoutBookingsInput>
 }
 
+export type RideCreateNestedOneWithoutSosAlertsInput = {
+  create?: Prisma.XOR<Prisma.RideCreateWithoutSosAlertsInput, Prisma.RideUncheckedCreateWithoutSosAlertsInput>
+  connectOrCreate?: Prisma.RideCreateOrConnectWithoutSosAlertsInput
+  connect?: Prisma.RideWhereUniqueInput
+}
+
+export type RideUpdateOneWithoutSosAlertsNestedInput = {
+  create?: Prisma.XOR<Prisma.RideCreateWithoutSosAlertsInput, Prisma.RideUncheckedCreateWithoutSosAlertsInput>
+  connectOrCreate?: Prisma.RideCreateOrConnectWithoutSosAlertsInput
+  upsert?: Prisma.RideUpsertWithoutSosAlertsInput
+  disconnect?: Prisma.RideWhereInput | boolean
+  delete?: Prisma.RideWhereInput | boolean
+  connect?: Prisma.RideWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.RideUpdateToOneWithWhereWithoutSosAlertsInput, Prisma.RideUpdateWithoutSosAlertsInput>, Prisma.RideUncheckedUpdateWithoutSosAlertsInput>
+}
+
 export type RideCreateWithoutDriverInput = {
   rideId?: string
   source: string
   destination: string
   departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats: number
   availableSeats: number
   farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: $Enums.RideStatus
   createdAt?: Date | string
+  updatedAt?: Date | string
+  vehicle: Prisma.VehicleCreateNestedOneWithoutRidesInput
   community: Prisma.CommunityCreateNestedOneWithoutRidesInput
   bookings?: Prisma.BookingCreateNestedManyWithoutRideInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutRideInput
 }
 
 export type RideUncheckedCreateWithoutDriverInput = {
   rideId?: string
+  vehicleId: string
   communityId: string
   source: string
   destination: string
   departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats: number
   availableSeats: number
   farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: $Enums.RideStatus
   createdAt?: Date | string
+  updatedAt?: Date | string
   bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRideInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutRideInput
 }
 
 export type RideCreateOrConnectWithoutDriverInput = {
@@ -697,15 +931,21 @@ export type RideScalarWhereInput = {
   NOT?: Prisma.RideScalarWhereInput | Prisma.RideScalarWhereInput[]
   rideId?: Prisma.UuidFilter<"Ride"> | string
   driverId?: Prisma.UuidFilter<"Ride"> | string
+  vehicleId?: Prisma.UuidFilter<"Ride"> | string
   communityId?: Prisma.UuidFilter<"Ride"> | string
   source?: Prisma.StringFilter<"Ride"> | string
   destination?: Prisma.StringFilter<"Ride"> | string
   departureTime?: Prisma.DateTimeFilter<"Ride"> | Date | string
+  sourceLatitude?: Prisma.DecimalNullableFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.DecimalNullableFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.DecimalNullableFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.DecimalNullableFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFilter<"Ride"> | number
   availableSeats?: Prisma.IntFilter<"Ride"> | number
   farePerSeat?: Prisma.DecimalFilter<"Ride"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFilter<"Ride"> | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFilter<"Ride"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Ride"> | Date | string
 }
 
 export type RideCreateWithoutCommunityInput = {
@@ -713,27 +953,41 @@ export type RideCreateWithoutCommunityInput = {
   source: string
   destination: string
   departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats: number
   availableSeats: number
   farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: $Enums.RideStatus
   createdAt?: Date | string
+  updatedAt?: Date | string
   driver: Prisma.UserCreateNestedOneWithoutRidesInput
+  vehicle: Prisma.VehicleCreateNestedOneWithoutRidesInput
   bookings?: Prisma.BookingCreateNestedManyWithoutRideInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutRideInput
 }
 
 export type RideUncheckedCreateWithoutCommunityInput = {
   rideId?: string
   driverId: string
+  vehicleId: string
   source: string
   destination: string
   departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats: number
   availableSeats: number
   farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: $Enums.RideStatus
   createdAt?: Date | string
+  updatedAt?: Date | string
   bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRideInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutRideInput
 }
 
 export type RideCreateOrConnectWithoutCommunityInput = {
@@ -762,32 +1016,114 @@ export type RideUpdateManyWithWhereWithoutCommunityInput = {
   data: Prisma.XOR<Prisma.RideUpdateManyMutationInput, Prisma.RideUncheckedUpdateManyWithoutCommunityInput>
 }
 
-export type RideCreateWithoutBookingsInput = {
+export type RideCreateWithoutVehicleInput = {
   rideId?: string
   source: string
   destination: string
   departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats: number
   availableSeats: number
   farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: $Enums.RideStatus
   createdAt?: Date | string
+  updatedAt?: Date | string
   driver: Prisma.UserCreateNestedOneWithoutRidesInput
   community: Prisma.CommunityCreateNestedOneWithoutRidesInput
+  bookings?: Prisma.BookingCreateNestedManyWithoutRideInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutRideInput
 }
 
-export type RideUncheckedCreateWithoutBookingsInput = {
+export type RideUncheckedCreateWithoutVehicleInput = {
   rideId?: string
   driverId: string
   communityId: string
   source: string
   destination: string
   departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats: number
   availableSeats: number
   farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: $Enums.RideStatus
   createdAt?: Date | string
+  updatedAt?: Date | string
+  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRideInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutRideInput
+}
+
+export type RideCreateOrConnectWithoutVehicleInput = {
+  where: Prisma.RideWhereUniqueInput
+  create: Prisma.XOR<Prisma.RideCreateWithoutVehicleInput, Prisma.RideUncheckedCreateWithoutVehicleInput>
+}
+
+export type RideCreateManyVehicleInputEnvelope = {
+  data: Prisma.RideCreateManyVehicleInput | Prisma.RideCreateManyVehicleInput[]
+  skipDuplicates?: boolean
+}
+
+export type RideUpsertWithWhereUniqueWithoutVehicleInput = {
+  where: Prisma.RideWhereUniqueInput
+  update: Prisma.XOR<Prisma.RideUpdateWithoutVehicleInput, Prisma.RideUncheckedUpdateWithoutVehicleInput>
+  create: Prisma.XOR<Prisma.RideCreateWithoutVehicleInput, Prisma.RideUncheckedCreateWithoutVehicleInput>
+}
+
+export type RideUpdateWithWhereUniqueWithoutVehicleInput = {
+  where: Prisma.RideWhereUniqueInput
+  data: Prisma.XOR<Prisma.RideUpdateWithoutVehicleInput, Prisma.RideUncheckedUpdateWithoutVehicleInput>
+}
+
+export type RideUpdateManyWithWhereWithoutVehicleInput = {
+  where: Prisma.RideScalarWhereInput
+  data: Prisma.XOR<Prisma.RideUpdateManyMutationInput, Prisma.RideUncheckedUpdateManyWithoutVehicleInput>
+}
+
+export type RideCreateWithoutBookingsInput = {
+  rideId?: string
+  source: string
+  destination: string
+  departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  totalSeats: number
+  availableSeats: number
+  farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.RideStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  driver: Prisma.UserCreateNestedOneWithoutRidesInput
+  vehicle: Prisma.VehicleCreateNestedOneWithoutRidesInput
+  community: Prisma.CommunityCreateNestedOneWithoutRidesInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutRideInput
+}
+
+export type RideUncheckedCreateWithoutBookingsInput = {
+  rideId?: string
+  driverId: string
+  vehicleId: string
+  communityId: string
+  source: string
+  destination: string
+  departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  totalSeats: number
+  availableSeats: number
+  farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.RideStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutRideInput
 }
 
 export type RideCreateOrConnectWithoutBookingsInput = {
@@ -811,40 +1147,160 @@ export type RideUpdateWithoutBookingsInput = {
   source?: Prisma.StringFieldUpdateOperationsInput | string
   destination?: Prisma.StringFieldUpdateOperationsInput | string
   departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
   availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
   farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   driver?: Prisma.UserUpdateOneRequiredWithoutRidesNestedInput
+  vehicle?: Prisma.VehicleUpdateOneRequiredWithoutRidesNestedInput
   community?: Prisma.CommunityUpdateOneRequiredWithoutRidesNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutRideNestedInput
 }
 
 export type RideUncheckedUpdateWithoutBookingsInput = {
   rideId?: Prisma.StringFieldUpdateOperationsInput | string
   driverId?: Prisma.StringFieldUpdateOperationsInput | string
+  vehicleId?: Prisma.StringFieldUpdateOperationsInput | string
   communityId?: Prisma.StringFieldUpdateOperationsInput | string
   source?: Prisma.StringFieldUpdateOperationsInput | string
   destination?: Prisma.StringFieldUpdateOperationsInput | string
   departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
   availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
   farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutRideNestedInput
 }
 
-export type RideCreateManyDriverInput = {
+export type RideCreateWithoutSosAlertsInput = {
   rideId?: string
-  communityId: string
   source: string
   destination: string
   departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats: number
   availableSeats: number
   farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: $Enums.RideStatus
   createdAt?: Date | string
+  updatedAt?: Date | string
+  driver: Prisma.UserCreateNestedOneWithoutRidesInput
+  vehicle: Prisma.VehicleCreateNestedOneWithoutRidesInput
+  community: Prisma.CommunityCreateNestedOneWithoutRidesInput
+  bookings?: Prisma.BookingCreateNestedManyWithoutRideInput
+}
+
+export type RideUncheckedCreateWithoutSosAlertsInput = {
+  rideId?: string
+  driverId: string
+  vehicleId: string
+  communityId: string
+  source: string
+  destination: string
+  departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  totalSeats: number
+  availableSeats: number
+  farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.RideStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRideInput
+}
+
+export type RideCreateOrConnectWithoutSosAlertsInput = {
+  where: Prisma.RideWhereUniqueInput
+  create: Prisma.XOR<Prisma.RideCreateWithoutSosAlertsInput, Prisma.RideUncheckedCreateWithoutSosAlertsInput>
+}
+
+export type RideUpsertWithoutSosAlertsInput = {
+  update: Prisma.XOR<Prisma.RideUpdateWithoutSosAlertsInput, Prisma.RideUncheckedUpdateWithoutSosAlertsInput>
+  create: Prisma.XOR<Prisma.RideCreateWithoutSosAlertsInput, Prisma.RideUncheckedCreateWithoutSosAlertsInput>
+  where?: Prisma.RideWhereInput
+}
+
+export type RideUpdateToOneWithWhereWithoutSosAlertsInput = {
+  where?: Prisma.RideWhereInput
+  data: Prisma.XOR<Prisma.RideUpdateWithoutSosAlertsInput, Prisma.RideUncheckedUpdateWithoutSosAlertsInput>
+}
+
+export type RideUpdateWithoutSosAlertsInput = {
+  rideId?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  destination?: Prisma.StringFieldUpdateOperationsInput | string
+  departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
+  availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
+  farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  driver?: Prisma.UserUpdateOneRequiredWithoutRidesNestedInput
+  vehicle?: Prisma.VehicleUpdateOneRequiredWithoutRidesNestedInput
+  community?: Prisma.CommunityUpdateOneRequiredWithoutRidesNestedInput
+  bookings?: Prisma.BookingUpdateManyWithoutRideNestedInput
+}
+
+export type RideUncheckedUpdateWithoutSosAlertsInput = {
+  rideId?: Prisma.StringFieldUpdateOperationsInput | string
+  driverId?: Prisma.StringFieldUpdateOperationsInput | string
+  vehicleId?: Prisma.StringFieldUpdateOperationsInput | string
+  communityId?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  destination?: Prisma.StringFieldUpdateOperationsInput | string
+  departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
+  availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
+  farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bookings?: Prisma.BookingUncheckedUpdateManyWithoutRideNestedInput
+}
+
+export type RideCreateManyDriverInput = {
+  rideId?: string
+  vehicleId: string
+  communityId: string
+  source: string
+  destination: string
+  departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  totalSeats: number
+  availableSeats: number
+  farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.RideStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
 }
 
 export type RideUpdateWithoutDriverInput = {
@@ -852,53 +1308,79 @@ export type RideUpdateWithoutDriverInput = {
   source?: Prisma.StringFieldUpdateOperationsInput | string
   destination?: Prisma.StringFieldUpdateOperationsInput | string
   departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
   availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
   farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  vehicle?: Prisma.VehicleUpdateOneRequiredWithoutRidesNestedInput
   community?: Prisma.CommunityUpdateOneRequiredWithoutRidesNestedInput
   bookings?: Prisma.BookingUpdateManyWithoutRideNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutRideNestedInput
 }
 
 export type RideUncheckedUpdateWithoutDriverInput = {
   rideId?: Prisma.StringFieldUpdateOperationsInput | string
+  vehicleId?: Prisma.StringFieldUpdateOperationsInput | string
   communityId?: Prisma.StringFieldUpdateOperationsInput | string
   source?: Prisma.StringFieldUpdateOperationsInput | string
   destination?: Prisma.StringFieldUpdateOperationsInput | string
   departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
   availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
   farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bookings?: Prisma.BookingUncheckedUpdateManyWithoutRideNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutRideNestedInput
 }
 
 export type RideUncheckedUpdateManyWithoutDriverInput = {
   rideId?: Prisma.StringFieldUpdateOperationsInput | string
+  vehicleId?: Prisma.StringFieldUpdateOperationsInput | string
   communityId?: Prisma.StringFieldUpdateOperationsInput | string
   source?: Prisma.StringFieldUpdateOperationsInput | string
   destination?: Prisma.StringFieldUpdateOperationsInput | string
   departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
   availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
   farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type RideCreateManyCommunityInput = {
   rideId?: string
   driverId: string
+  vehicleId: string
   source: string
   destination: string
   departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats: number
   availableSeats: number
   farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: $Enums.RideStatus
   createdAt?: Date | string
+  updatedAt?: Date | string
 }
 
 export type RideUpdateWithoutCommunityInput = {
@@ -906,40 +1388,140 @@ export type RideUpdateWithoutCommunityInput = {
   source?: Prisma.StringFieldUpdateOperationsInput | string
   destination?: Prisma.StringFieldUpdateOperationsInput | string
   departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
   availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
   farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   driver?: Prisma.UserUpdateOneRequiredWithoutRidesNestedInput
+  vehicle?: Prisma.VehicleUpdateOneRequiredWithoutRidesNestedInput
   bookings?: Prisma.BookingUpdateManyWithoutRideNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutRideNestedInput
 }
 
 export type RideUncheckedUpdateWithoutCommunityInput = {
   rideId?: Prisma.StringFieldUpdateOperationsInput | string
   driverId?: Prisma.StringFieldUpdateOperationsInput | string
+  vehicleId?: Prisma.StringFieldUpdateOperationsInput | string
   source?: Prisma.StringFieldUpdateOperationsInput | string
   destination?: Prisma.StringFieldUpdateOperationsInput | string
   departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
   availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
   farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bookings?: Prisma.BookingUncheckedUpdateManyWithoutRideNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutRideNestedInput
 }
 
 export type RideUncheckedUpdateManyWithoutCommunityInput = {
   rideId?: Prisma.StringFieldUpdateOperationsInput | string
   driverId?: Prisma.StringFieldUpdateOperationsInput | string
+  vehicleId?: Prisma.StringFieldUpdateOperationsInput | string
   source?: Prisma.StringFieldUpdateOperationsInput | string
   destination?: Prisma.StringFieldUpdateOperationsInput | string
   departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
   availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
   farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type RideCreateManyVehicleInput = {
+  rideId?: string
+  driverId: string
+  communityId: string
+  source: string
+  destination: string
+  departureTime: Date | string
+  sourceLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  totalSeats: number
+  availableSeats: number
+  farePerSeat: runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: $Enums.RideStatus
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type RideUpdateWithoutVehicleInput = {
+  rideId?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  destination?: Prisma.StringFieldUpdateOperationsInput | string
+  departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
+  availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
+  farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  driver?: Prisma.UserUpdateOneRequiredWithoutRidesNestedInput
+  community?: Prisma.CommunityUpdateOneRequiredWithoutRidesNestedInput
+  bookings?: Prisma.BookingUpdateManyWithoutRideNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutRideNestedInput
+}
+
+export type RideUncheckedUpdateWithoutVehicleInput = {
+  rideId?: Prisma.StringFieldUpdateOperationsInput | string
+  driverId?: Prisma.StringFieldUpdateOperationsInput | string
+  communityId?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  destination?: Prisma.StringFieldUpdateOperationsInput | string
+  departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
+  availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
+  farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bookings?: Prisma.BookingUncheckedUpdateManyWithoutRideNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutRideNestedInput
+}
+
+export type RideUncheckedUpdateManyWithoutVehicleInput = {
+  rideId?: Prisma.StringFieldUpdateOperationsInput | string
+  driverId?: Prisma.StringFieldUpdateOperationsInput | string
+  communityId?: Prisma.StringFieldUpdateOperationsInput | string
+  source?: Prisma.StringFieldUpdateOperationsInput | string
+  destination?: Prisma.StringFieldUpdateOperationsInput | string
+  departureTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  sourceLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  sourceLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLatitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  destinationLongitude?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  totalSeats?: Prisma.IntFieldUpdateOperationsInput | number
+  availableSeats?: Prisma.IntFieldUpdateOperationsInput | number
+  farePerSeat?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  status?: Prisma.EnumRideStatusFieldUpdateOperationsInput | $Enums.RideStatus
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 
@@ -949,10 +1531,12 @@ export type RideUncheckedUpdateManyWithoutCommunityInput = {
 
 export type RideCountOutputType = {
   bookings: number
+  sosAlerts: number
 }
 
 export type RideCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   bookings?: boolean | RideCountOutputTypeCountBookingsArgs
+  sosAlerts?: boolean | RideCountOutputTypeCountSosAlertsArgs
 }
 
 /**
@@ -972,84 +1556,123 @@ export type RideCountOutputTypeCountBookingsArgs<ExtArgs extends runtime.Types.E
   where?: Prisma.BookingWhereInput
 }
 
+/**
+ * RideCountOutputType without action
+ */
+export type RideCountOutputTypeCountSosAlertsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SOSAlertWhereInput
+}
+
 
 export type RideSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   rideId?: boolean
   driverId?: boolean
+  vehicleId?: boolean
   communityId?: boolean
   source?: boolean
   destination?: boolean
   departureTime?: boolean
+  sourceLatitude?: boolean
+  sourceLongitude?: boolean
+  destinationLatitude?: boolean
+  destinationLongitude?: boolean
   totalSeats?: boolean
   availableSeats?: boolean
   farePerSeat?: boolean
   status?: boolean
   createdAt?: boolean
+  updatedAt?: boolean
   driver?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  vehicle?: boolean | Prisma.VehicleDefaultArgs<ExtArgs>
   community?: boolean | Prisma.CommunityDefaultArgs<ExtArgs>
   bookings?: boolean | Prisma.Ride$bookingsArgs<ExtArgs>
+  sosAlerts?: boolean | Prisma.Ride$sosAlertsArgs<ExtArgs>
   _count?: boolean | Prisma.RideCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["ride"]>
 
 export type RideSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   rideId?: boolean
   driverId?: boolean
+  vehicleId?: boolean
   communityId?: boolean
   source?: boolean
   destination?: boolean
   departureTime?: boolean
+  sourceLatitude?: boolean
+  sourceLongitude?: boolean
+  destinationLatitude?: boolean
+  destinationLongitude?: boolean
   totalSeats?: boolean
   availableSeats?: boolean
   farePerSeat?: boolean
   status?: boolean
   createdAt?: boolean
+  updatedAt?: boolean
   driver?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  vehicle?: boolean | Prisma.VehicleDefaultArgs<ExtArgs>
   community?: boolean | Prisma.CommunityDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["ride"]>
 
 export type RideSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   rideId?: boolean
   driverId?: boolean
+  vehicleId?: boolean
   communityId?: boolean
   source?: boolean
   destination?: boolean
   departureTime?: boolean
+  sourceLatitude?: boolean
+  sourceLongitude?: boolean
+  destinationLatitude?: boolean
+  destinationLongitude?: boolean
   totalSeats?: boolean
   availableSeats?: boolean
   farePerSeat?: boolean
   status?: boolean
   createdAt?: boolean
+  updatedAt?: boolean
   driver?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  vehicle?: boolean | Prisma.VehicleDefaultArgs<ExtArgs>
   community?: boolean | Prisma.CommunityDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["ride"]>
 
 export type RideSelectScalar = {
   rideId?: boolean
   driverId?: boolean
+  vehicleId?: boolean
   communityId?: boolean
   source?: boolean
   destination?: boolean
   departureTime?: boolean
+  sourceLatitude?: boolean
+  sourceLongitude?: boolean
+  destinationLatitude?: boolean
+  destinationLongitude?: boolean
   totalSeats?: boolean
   availableSeats?: boolean
   farePerSeat?: boolean
   status?: boolean
   createdAt?: boolean
+  updatedAt?: boolean
 }
 
-export type RideOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"rideId" | "driverId" | "communityId" | "source" | "destination" | "departureTime" | "totalSeats" | "availableSeats" | "farePerSeat" | "status" | "createdAt", ExtArgs["result"]["ride"]>
+export type RideOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"rideId" | "driverId" | "vehicleId" | "communityId" | "source" | "destination" | "departureTime" | "sourceLatitude" | "sourceLongitude" | "destinationLatitude" | "destinationLongitude" | "totalSeats" | "availableSeats" | "farePerSeat" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["ride"]>
 export type RideInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   driver?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  vehicle?: boolean | Prisma.VehicleDefaultArgs<ExtArgs>
   community?: boolean | Prisma.CommunityDefaultArgs<ExtArgs>
   bookings?: boolean | Prisma.Ride$bookingsArgs<ExtArgs>
+  sosAlerts?: boolean | Prisma.Ride$sosAlertsArgs<ExtArgs>
   _count?: boolean | Prisma.RideCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type RideIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   driver?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  vehicle?: boolean | Prisma.VehicleDefaultArgs<ExtArgs>
   community?: boolean | Prisma.CommunityDefaultArgs<ExtArgs>
 }
 export type RideIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   driver?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  vehicle?: boolean | Prisma.VehicleDefaultArgs<ExtArgs>
   community?: boolean | Prisma.CommunityDefaultArgs<ExtArgs>
 }
 
@@ -1057,21 +1680,29 @@ export type $RidePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   name: "Ride"
   objects: {
     driver: Prisma.$UserPayload<ExtArgs>
+    vehicle: Prisma.$VehiclePayload<ExtArgs>
     community: Prisma.$CommunityPayload<ExtArgs>
     bookings: Prisma.$BookingPayload<ExtArgs>[]
+    sosAlerts: Prisma.$SOSAlertPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     rideId: string
     driverId: string
+    vehicleId: string
     communityId: string
     source: string
     destination: string
     departureTime: Date
+    sourceLatitude: runtime.Decimal | null
+    sourceLongitude: runtime.Decimal | null
+    destinationLatitude: runtime.Decimal | null
+    destinationLongitude: runtime.Decimal | null
     totalSeats: number
     availableSeats: number
     farePerSeat: runtime.Decimal
     status: $Enums.RideStatus
     createdAt: Date
+    updatedAt: Date
   }, ExtArgs["result"]["ride"]>
   composites: {}
 }
@@ -1467,8 +2098,10 @@ readonly fields: RideFieldRefs;
 export interface Prisma__RideClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   driver<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  vehicle<T extends Prisma.VehicleDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.VehicleDefaultArgs<ExtArgs>>): Prisma.Prisma__VehicleClient<runtime.Types.Result.GetResult<Prisma.$VehiclePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   community<T extends Prisma.CommunityDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CommunityDefaultArgs<ExtArgs>>): Prisma.Prisma__CommunityClient<runtime.Types.Result.GetResult<Prisma.$CommunityPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   bookings<T extends Prisma.Ride$bookingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Ride$bookingsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BookingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  sosAlerts<T extends Prisma.Ride$sosAlertsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Ride$sosAlertsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SOSAlertPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1500,15 +2133,21 @@ export interface Prisma__RideClient<T, Null = never, ExtArgs extends runtime.Typ
 export interface RideFieldRefs {
   readonly rideId: Prisma.FieldRef<"Ride", 'String'>
   readonly driverId: Prisma.FieldRef<"Ride", 'String'>
+  readonly vehicleId: Prisma.FieldRef<"Ride", 'String'>
   readonly communityId: Prisma.FieldRef<"Ride", 'String'>
   readonly source: Prisma.FieldRef<"Ride", 'String'>
   readonly destination: Prisma.FieldRef<"Ride", 'String'>
   readonly departureTime: Prisma.FieldRef<"Ride", 'DateTime'>
+  readonly sourceLatitude: Prisma.FieldRef<"Ride", 'Decimal'>
+  readonly sourceLongitude: Prisma.FieldRef<"Ride", 'Decimal'>
+  readonly destinationLatitude: Prisma.FieldRef<"Ride", 'Decimal'>
+  readonly destinationLongitude: Prisma.FieldRef<"Ride", 'Decimal'>
   readonly totalSeats: Prisma.FieldRef<"Ride", 'Int'>
   readonly availableSeats: Prisma.FieldRef<"Ride", 'Int'>
   readonly farePerSeat: Prisma.FieldRef<"Ride", 'Decimal'>
   readonly status: Prisma.FieldRef<"Ride", 'RideStatus'>
   readonly createdAt: Prisma.FieldRef<"Ride", 'DateTime'>
+  readonly updatedAt: Prisma.FieldRef<"Ride", 'DateTime'>
 }
     
 
@@ -1931,6 +2570,30 @@ export type Ride$bookingsArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   take?: number
   skip?: number
   distinct?: Prisma.BookingScalarFieldEnum | Prisma.BookingScalarFieldEnum[]
+}
+
+/**
+ * Ride.sosAlerts
+ */
+export type Ride$sosAlertsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SOSAlert
+   */
+  select?: Prisma.SOSAlertSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SOSAlert
+   */
+  omit?: Prisma.SOSAlertOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SOSAlertInclude<ExtArgs> | null
+  where?: Prisma.SOSAlertWhereInput
+  orderBy?: Prisma.SOSAlertOrderByWithRelationInput | Prisma.SOSAlertOrderByWithRelationInput[]
+  cursor?: Prisma.SOSAlertWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SOSAlertScalarFieldEnum | Prisma.SOSAlertScalarFieldEnum[]
 }
 
 /**

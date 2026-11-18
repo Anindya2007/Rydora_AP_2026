@@ -37,28 +37,55 @@ export type TransactionSumAggregateOutputType = {
 export type TransactionMinAggregateOutputType = {
   transactionId: string | null
   bookingId: string | null
+  senderId: string | null
+  receiverId: string | null
   amount: runtime.Decimal | null
+  currency: string | null
   type: $Enums.TransactionType | null
   status: $Enums.TransactionStatus | null
+  paymentMethod: string | null
+  providerReference: string | null
+  referenceTransactionId: string | null
+  description: string | null
   createdAt: Date | null
+  updatedAt: Date | null
+  completedAt: Date | null
 }
 
 export type TransactionMaxAggregateOutputType = {
   transactionId: string | null
   bookingId: string | null
+  senderId: string | null
+  receiverId: string | null
   amount: runtime.Decimal | null
+  currency: string | null
   type: $Enums.TransactionType | null
   status: $Enums.TransactionStatus | null
+  paymentMethod: string | null
+  providerReference: string | null
+  referenceTransactionId: string | null
+  description: string | null
   createdAt: Date | null
+  updatedAt: Date | null
+  completedAt: Date | null
 }
 
 export type TransactionCountAggregateOutputType = {
   transactionId: number
   bookingId: number
+  senderId: number
+  receiverId: number
   amount: number
+  currency: number
   type: number
   status: number
+  paymentMethod: number
+  providerReference: number
+  referenceTransactionId: number
+  description: number
   createdAt: number
+  updatedAt: number
+  completedAt: number
   _all: number
 }
 
@@ -74,28 +101,55 @@ export type TransactionSumAggregateInputType = {
 export type TransactionMinAggregateInputType = {
   transactionId?: true
   bookingId?: true
+  senderId?: true
+  receiverId?: true
   amount?: true
+  currency?: true
   type?: true
   status?: true
+  paymentMethod?: true
+  providerReference?: true
+  referenceTransactionId?: true
+  description?: true
   createdAt?: true
+  updatedAt?: true
+  completedAt?: true
 }
 
 export type TransactionMaxAggregateInputType = {
   transactionId?: true
   bookingId?: true
+  senderId?: true
+  receiverId?: true
   amount?: true
+  currency?: true
   type?: true
   status?: true
+  paymentMethod?: true
+  providerReference?: true
+  referenceTransactionId?: true
+  description?: true
   createdAt?: true
+  updatedAt?: true
+  completedAt?: true
 }
 
 export type TransactionCountAggregateInputType = {
   transactionId?: true
   bookingId?: true
+  senderId?: true
+  receiverId?: true
   amount?: true
+  currency?: true
   type?: true
   status?: true
+  paymentMethod?: true
+  providerReference?: true
+  referenceTransactionId?: true
+  description?: true
   createdAt?: true
+  updatedAt?: true
+  completedAt?: true
   _all?: true
 }
 
@@ -188,10 +242,19 @@ export type TransactionGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inte
 export type TransactionGroupByOutputType = {
   transactionId: string
   bookingId: string
+  senderId: string | null
+  receiverId: string | null
   amount: runtime.Decimal
+  currency: string
   type: $Enums.TransactionType
   status: $Enums.TransactionStatus
+  paymentMethod: string | null
+  providerReference: string | null
+  referenceTransactionId: string | null
+  description: string | null
   createdAt: Date
+  updatedAt: Date
+  completedAt: Date | null
   _count: TransactionCountAggregateOutputType | null
   _avg: TransactionAvgAggregateOutputType | null
   _sum: TransactionSumAggregateOutputType | null
@@ -220,43 +283,94 @@ export type TransactionWhereInput = {
   NOT?: Prisma.TransactionWhereInput | Prisma.TransactionWhereInput[]
   transactionId?: Prisma.UuidFilter<"Transaction"> | string
   bookingId?: Prisma.UuidFilter<"Transaction"> | string
+  senderId?: Prisma.UuidNullableFilter<"Transaction"> | string | null
+  receiverId?: Prisma.UuidNullableFilter<"Transaction"> | string | null
   amount?: Prisma.DecimalFilter<"Transaction"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFilter<"Transaction"> | string
   type?: Prisma.EnumTransactionTypeFilter<"Transaction"> | $Enums.TransactionType
   status?: Prisma.EnumTransactionStatusFilter<"Transaction"> | $Enums.TransactionStatus
+  paymentMethod?: Prisma.StringNullableFilter<"Transaction"> | string | null
+  providerReference?: Prisma.StringNullableFilter<"Transaction"> | string | null
+  referenceTransactionId?: Prisma.UuidNullableFilter<"Transaction"> | string | null
+  description?: Prisma.StringNullableFilter<"Transaction"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Transaction"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Transaction"> | Date | string
+  completedAt?: Prisma.DateTimeNullableFilter<"Transaction"> | Date | string | null
   booking?: Prisma.XOR<Prisma.BookingScalarRelationFilter, Prisma.BookingWhereInput>
+  sender?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+  receiver?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+  referenceTransaction?: Prisma.XOR<Prisma.TransactionNullableScalarRelationFilter, Prisma.TransactionWhereInput> | null
+  relatedTransactions?: Prisma.TransactionListRelationFilter
+  driverPayoutEarning?: Prisma.XOR<Prisma.DriverEarningNullableScalarRelationFilter, Prisma.DriverEarningWhereInput> | null
 }
 
 export type TransactionOrderByWithRelationInput = {
   transactionId?: Prisma.SortOrder
   bookingId?: Prisma.SortOrder
+  senderId?: Prisma.SortOrderInput | Prisma.SortOrder
+  receiverId?: Prisma.SortOrderInput | Prisma.SortOrder
   amount?: Prisma.SortOrder
+  currency?: Prisma.SortOrder
   type?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  paymentMethod?: Prisma.SortOrderInput | Prisma.SortOrder
+  providerReference?: Prisma.SortOrderInput | Prisma.SortOrder
+  referenceTransactionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  description?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
+  completedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   booking?: Prisma.BookingOrderByWithRelationInput
+  sender?: Prisma.UserOrderByWithRelationInput
+  receiver?: Prisma.UserOrderByWithRelationInput
+  referenceTransaction?: Prisma.TransactionOrderByWithRelationInput
+  relatedTransactions?: Prisma.TransactionOrderByRelationAggregateInput
+  driverPayoutEarning?: Prisma.DriverEarningOrderByWithRelationInput
 }
 
 export type TransactionWhereUniqueInput = Prisma.AtLeast<{
   transactionId?: string
+  providerReference?: string
   AND?: Prisma.TransactionWhereInput | Prisma.TransactionWhereInput[]
   OR?: Prisma.TransactionWhereInput[]
   NOT?: Prisma.TransactionWhereInput | Prisma.TransactionWhereInput[]
   bookingId?: Prisma.UuidFilter<"Transaction"> | string
+  senderId?: Prisma.UuidNullableFilter<"Transaction"> | string | null
+  receiverId?: Prisma.UuidNullableFilter<"Transaction"> | string | null
   amount?: Prisma.DecimalFilter<"Transaction"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFilter<"Transaction"> | string
   type?: Prisma.EnumTransactionTypeFilter<"Transaction"> | $Enums.TransactionType
   status?: Prisma.EnumTransactionStatusFilter<"Transaction"> | $Enums.TransactionStatus
+  paymentMethod?: Prisma.StringNullableFilter<"Transaction"> | string | null
+  referenceTransactionId?: Prisma.UuidNullableFilter<"Transaction"> | string | null
+  description?: Prisma.StringNullableFilter<"Transaction"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Transaction"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Transaction"> | Date | string
+  completedAt?: Prisma.DateTimeNullableFilter<"Transaction"> | Date | string | null
   booking?: Prisma.XOR<Prisma.BookingScalarRelationFilter, Prisma.BookingWhereInput>
-}, "transactionId">
+  sender?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+  receiver?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+  referenceTransaction?: Prisma.XOR<Prisma.TransactionNullableScalarRelationFilter, Prisma.TransactionWhereInput> | null
+  relatedTransactions?: Prisma.TransactionListRelationFilter
+  driverPayoutEarning?: Prisma.XOR<Prisma.DriverEarningNullableScalarRelationFilter, Prisma.DriverEarningWhereInput> | null
+}, "transactionId" | "providerReference">
 
 export type TransactionOrderByWithAggregationInput = {
   transactionId?: Prisma.SortOrder
   bookingId?: Prisma.SortOrder
+  senderId?: Prisma.SortOrderInput | Prisma.SortOrder
+  receiverId?: Prisma.SortOrderInput | Prisma.SortOrder
   amount?: Prisma.SortOrder
+  currency?: Prisma.SortOrder
   type?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  paymentMethod?: Prisma.SortOrderInput | Prisma.SortOrder
+  providerReference?: Prisma.SortOrderInput | Prisma.SortOrder
+  referenceTransactionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  description?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
+  completedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.TransactionCountOrderByAggregateInput
   _avg?: Prisma.TransactionAvgOrderByAggregateInput
   _max?: Prisma.TransactionMaxOrderByAggregateInput
@@ -270,72 +384,149 @@ export type TransactionScalarWhereWithAggregatesInput = {
   NOT?: Prisma.TransactionScalarWhereWithAggregatesInput | Prisma.TransactionScalarWhereWithAggregatesInput[]
   transactionId?: Prisma.UuidWithAggregatesFilter<"Transaction"> | string
   bookingId?: Prisma.UuidWithAggregatesFilter<"Transaction"> | string
+  senderId?: Prisma.UuidNullableWithAggregatesFilter<"Transaction"> | string | null
+  receiverId?: Prisma.UuidNullableWithAggregatesFilter<"Transaction"> | string | null
   amount?: Prisma.DecimalWithAggregatesFilter<"Transaction"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringWithAggregatesFilter<"Transaction"> | string
   type?: Prisma.EnumTransactionTypeWithAggregatesFilter<"Transaction"> | $Enums.TransactionType
   status?: Prisma.EnumTransactionStatusWithAggregatesFilter<"Transaction"> | $Enums.TransactionStatus
+  paymentMethod?: Prisma.StringNullableWithAggregatesFilter<"Transaction"> | string | null
+  providerReference?: Prisma.StringNullableWithAggregatesFilter<"Transaction"> | string | null
+  referenceTransactionId?: Prisma.UuidNullableWithAggregatesFilter<"Transaction"> | string | null
+  description?: Prisma.StringNullableWithAggregatesFilter<"Transaction"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Transaction"> | Date | string
+  updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Transaction"> | Date | string
+  completedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Transaction"> | Date | string | null
 }
 
 export type TransactionCreateInput = {
   transactionId?: string
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
   type: $Enums.TransactionType
   status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  description?: string | null
   createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
   booking: Prisma.BookingCreateNestedOneWithoutTransactionsInput
+  sender?: Prisma.UserCreateNestedOneWithoutSentTransactionsInput
+  receiver?: Prisma.UserCreateNestedOneWithoutReceivedTransactionsInput
+  referenceTransaction?: Prisma.TransactionCreateNestedOneWithoutRelatedTransactionsInput
+  relatedTransactions?: Prisma.TransactionCreateNestedManyWithoutReferenceTransactionInput
+  driverPayoutEarning?: Prisma.DriverEarningCreateNestedOneWithoutPayoutTransactionInput
 }
 
 export type TransactionUncheckedCreateInput = {
   transactionId?: string
   bookingId: string
+  senderId?: string | null
+  receiverId?: string | null
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
   type: $Enums.TransactionType
   status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  referenceTransactionId?: string | null
+  description?: string | null
   createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+  relatedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReferenceTransactionInput
+  driverPayoutEarning?: Prisma.DriverEarningUncheckedCreateNestedOneWithoutPayoutTransactionInput
 }
 
 export type TransactionUpdateInput = {
   transactionId?: Prisma.StringFieldUpdateOperationsInput | string
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   booking?: Prisma.BookingUpdateOneRequiredWithoutTransactionsNestedInput
+  sender?: Prisma.UserUpdateOneWithoutSentTransactionsNestedInput
+  receiver?: Prisma.UserUpdateOneWithoutReceivedTransactionsNestedInput
+  referenceTransaction?: Prisma.TransactionUpdateOneWithoutRelatedTransactionsNestedInput
+  relatedTransactions?: Prisma.TransactionUpdateManyWithoutReferenceTransactionNestedInput
+  driverPayoutEarning?: Prisma.DriverEarningUpdateOneWithoutPayoutTransactionNestedInput
 }
 
 export type TransactionUncheckedUpdateInput = {
   transactionId?: Prisma.StringFieldUpdateOperationsInput | string
   bookingId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receiverId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  referenceTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  relatedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReferenceTransactionNestedInput
+  driverPayoutEarning?: Prisma.DriverEarningUncheckedUpdateOneWithoutPayoutTransactionNestedInput
 }
 
 export type TransactionCreateManyInput = {
   transactionId?: string
   bookingId: string
+  senderId?: string | null
+  receiverId?: string | null
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
   type: $Enums.TransactionType
   status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  referenceTransactionId?: string | null
+  description?: string | null
   createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
 }
 
 export type TransactionUpdateManyMutationInput = {
   transactionId?: Prisma.StringFieldUpdateOperationsInput | string
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type TransactionUncheckedUpdateManyInput = {
   transactionId?: Prisma.StringFieldUpdateOperationsInput | string
   bookingId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receiverId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  referenceTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type TransactionListRelationFilter = {
@@ -348,13 +539,27 @@ export type TransactionOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type TransactionNullableScalarRelationFilter = {
+  is?: Prisma.TransactionWhereInput | null
+  isNot?: Prisma.TransactionWhereInput | null
+}
+
 export type TransactionCountOrderByAggregateInput = {
   transactionId?: Prisma.SortOrder
   bookingId?: Prisma.SortOrder
+  senderId?: Prisma.SortOrder
+  receiverId?: Prisma.SortOrder
   amount?: Prisma.SortOrder
+  currency?: Prisma.SortOrder
   type?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  paymentMethod?: Prisma.SortOrder
+  providerReference?: Prisma.SortOrder
+  referenceTransactionId?: Prisma.SortOrder
+  description?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
+  completedAt?: Prisma.SortOrder
 }
 
 export type TransactionAvgOrderByAggregateInput = {
@@ -364,23 +569,125 @@ export type TransactionAvgOrderByAggregateInput = {
 export type TransactionMaxOrderByAggregateInput = {
   transactionId?: Prisma.SortOrder
   bookingId?: Prisma.SortOrder
+  senderId?: Prisma.SortOrder
+  receiverId?: Prisma.SortOrder
   amount?: Prisma.SortOrder
+  currency?: Prisma.SortOrder
   type?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  paymentMethod?: Prisma.SortOrder
+  providerReference?: Prisma.SortOrder
+  referenceTransactionId?: Prisma.SortOrder
+  description?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
+  completedAt?: Prisma.SortOrder
 }
 
 export type TransactionMinOrderByAggregateInput = {
   transactionId?: Prisma.SortOrder
   bookingId?: Prisma.SortOrder
+  senderId?: Prisma.SortOrder
+  receiverId?: Prisma.SortOrder
   amount?: Prisma.SortOrder
+  currency?: Prisma.SortOrder
   type?: Prisma.SortOrder
   status?: Prisma.SortOrder
+  paymentMethod?: Prisma.SortOrder
+  providerReference?: Prisma.SortOrder
+  referenceTransactionId?: Prisma.SortOrder
+  description?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  updatedAt?: Prisma.SortOrder
+  completedAt?: Prisma.SortOrder
 }
 
 export type TransactionSumOrderByAggregateInput = {
   amount?: Prisma.SortOrder
+}
+
+export type TransactionCreateNestedManyWithoutSenderInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutSenderInput, Prisma.TransactionUncheckedCreateWithoutSenderInput> | Prisma.TransactionCreateWithoutSenderInput[] | Prisma.TransactionUncheckedCreateWithoutSenderInput[]
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutSenderInput | Prisma.TransactionCreateOrConnectWithoutSenderInput[]
+  createMany?: Prisma.TransactionCreateManySenderInputEnvelope
+  connect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+}
+
+export type TransactionCreateNestedManyWithoutReceiverInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutReceiverInput, Prisma.TransactionUncheckedCreateWithoutReceiverInput> | Prisma.TransactionCreateWithoutReceiverInput[] | Prisma.TransactionUncheckedCreateWithoutReceiverInput[]
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutReceiverInput | Prisma.TransactionCreateOrConnectWithoutReceiverInput[]
+  createMany?: Prisma.TransactionCreateManyReceiverInputEnvelope
+  connect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+}
+
+export type TransactionUncheckedCreateNestedManyWithoutSenderInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutSenderInput, Prisma.TransactionUncheckedCreateWithoutSenderInput> | Prisma.TransactionCreateWithoutSenderInput[] | Prisma.TransactionUncheckedCreateWithoutSenderInput[]
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutSenderInput | Prisma.TransactionCreateOrConnectWithoutSenderInput[]
+  createMany?: Prisma.TransactionCreateManySenderInputEnvelope
+  connect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+}
+
+export type TransactionUncheckedCreateNestedManyWithoutReceiverInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutReceiverInput, Prisma.TransactionUncheckedCreateWithoutReceiverInput> | Prisma.TransactionCreateWithoutReceiverInput[] | Prisma.TransactionUncheckedCreateWithoutReceiverInput[]
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutReceiverInput | Prisma.TransactionCreateOrConnectWithoutReceiverInput[]
+  createMany?: Prisma.TransactionCreateManyReceiverInputEnvelope
+  connect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+}
+
+export type TransactionUpdateManyWithoutSenderNestedInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutSenderInput, Prisma.TransactionUncheckedCreateWithoutSenderInput> | Prisma.TransactionCreateWithoutSenderInput[] | Prisma.TransactionUncheckedCreateWithoutSenderInput[]
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutSenderInput | Prisma.TransactionCreateOrConnectWithoutSenderInput[]
+  upsert?: Prisma.TransactionUpsertWithWhereUniqueWithoutSenderInput | Prisma.TransactionUpsertWithWhereUniqueWithoutSenderInput[]
+  createMany?: Prisma.TransactionCreateManySenderInputEnvelope
+  set?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  disconnect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  delete?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  connect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  update?: Prisma.TransactionUpdateWithWhereUniqueWithoutSenderInput | Prisma.TransactionUpdateWithWhereUniqueWithoutSenderInput[]
+  updateMany?: Prisma.TransactionUpdateManyWithWhereWithoutSenderInput | Prisma.TransactionUpdateManyWithWhereWithoutSenderInput[]
+  deleteMany?: Prisma.TransactionScalarWhereInput | Prisma.TransactionScalarWhereInput[]
+}
+
+export type TransactionUpdateManyWithoutReceiverNestedInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutReceiverInput, Prisma.TransactionUncheckedCreateWithoutReceiverInput> | Prisma.TransactionCreateWithoutReceiverInput[] | Prisma.TransactionUncheckedCreateWithoutReceiverInput[]
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutReceiverInput | Prisma.TransactionCreateOrConnectWithoutReceiverInput[]
+  upsert?: Prisma.TransactionUpsertWithWhereUniqueWithoutReceiverInput | Prisma.TransactionUpsertWithWhereUniqueWithoutReceiverInput[]
+  createMany?: Prisma.TransactionCreateManyReceiverInputEnvelope
+  set?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  disconnect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  delete?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  connect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  update?: Prisma.TransactionUpdateWithWhereUniqueWithoutReceiverInput | Prisma.TransactionUpdateWithWhereUniqueWithoutReceiverInput[]
+  updateMany?: Prisma.TransactionUpdateManyWithWhereWithoutReceiverInput | Prisma.TransactionUpdateManyWithWhereWithoutReceiverInput[]
+  deleteMany?: Prisma.TransactionScalarWhereInput | Prisma.TransactionScalarWhereInput[]
+}
+
+export type TransactionUncheckedUpdateManyWithoutSenderNestedInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutSenderInput, Prisma.TransactionUncheckedCreateWithoutSenderInput> | Prisma.TransactionCreateWithoutSenderInput[] | Prisma.TransactionUncheckedCreateWithoutSenderInput[]
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutSenderInput | Prisma.TransactionCreateOrConnectWithoutSenderInput[]
+  upsert?: Prisma.TransactionUpsertWithWhereUniqueWithoutSenderInput | Prisma.TransactionUpsertWithWhereUniqueWithoutSenderInput[]
+  createMany?: Prisma.TransactionCreateManySenderInputEnvelope
+  set?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  disconnect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  delete?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  connect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  update?: Prisma.TransactionUpdateWithWhereUniqueWithoutSenderInput | Prisma.TransactionUpdateWithWhereUniqueWithoutSenderInput[]
+  updateMany?: Prisma.TransactionUpdateManyWithWhereWithoutSenderInput | Prisma.TransactionUpdateManyWithWhereWithoutSenderInput[]
+  deleteMany?: Prisma.TransactionScalarWhereInput | Prisma.TransactionScalarWhereInput[]
+}
+
+export type TransactionUncheckedUpdateManyWithoutReceiverNestedInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutReceiverInput, Prisma.TransactionUncheckedCreateWithoutReceiverInput> | Prisma.TransactionCreateWithoutReceiverInput[] | Prisma.TransactionUncheckedCreateWithoutReceiverInput[]
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutReceiverInput | Prisma.TransactionCreateOrConnectWithoutReceiverInput[]
+  upsert?: Prisma.TransactionUpsertWithWhereUniqueWithoutReceiverInput | Prisma.TransactionUpsertWithWhereUniqueWithoutReceiverInput[]
+  createMany?: Prisma.TransactionCreateManyReceiverInputEnvelope
+  set?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  disconnect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  delete?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  connect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  update?: Prisma.TransactionUpdateWithWhereUniqueWithoutReceiverInput | Prisma.TransactionUpdateWithWhereUniqueWithoutReceiverInput[]
+  updateMany?: Prisma.TransactionUpdateManyWithWhereWithoutReceiverInput | Prisma.TransactionUpdateManyWithWhereWithoutReceiverInput[]
+  deleteMany?: Prisma.TransactionScalarWhereInput | Prisma.TransactionScalarWhereInput[]
 }
 
 export type TransactionCreateNestedManyWithoutBookingInput = {
@@ -425,6 +732,26 @@ export type TransactionUncheckedUpdateManyWithoutBookingNestedInput = {
   deleteMany?: Prisma.TransactionScalarWhereInput | Prisma.TransactionScalarWhereInput[]
 }
 
+export type TransactionCreateNestedOneWithoutRelatedTransactionsInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutRelatedTransactionsInput, Prisma.TransactionUncheckedCreateWithoutRelatedTransactionsInput>
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutRelatedTransactionsInput
+  connect?: Prisma.TransactionWhereUniqueInput
+}
+
+export type TransactionCreateNestedManyWithoutReferenceTransactionInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutReferenceTransactionInput, Prisma.TransactionUncheckedCreateWithoutReferenceTransactionInput> | Prisma.TransactionCreateWithoutReferenceTransactionInput[] | Prisma.TransactionUncheckedCreateWithoutReferenceTransactionInput[]
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutReferenceTransactionInput | Prisma.TransactionCreateOrConnectWithoutReferenceTransactionInput[]
+  createMany?: Prisma.TransactionCreateManyReferenceTransactionInputEnvelope
+  connect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+}
+
+export type TransactionUncheckedCreateNestedManyWithoutReferenceTransactionInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutReferenceTransactionInput, Prisma.TransactionUncheckedCreateWithoutReferenceTransactionInput> | Prisma.TransactionCreateWithoutReferenceTransactionInput[] | Prisma.TransactionUncheckedCreateWithoutReferenceTransactionInput[]
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutReferenceTransactionInput | Prisma.TransactionCreateOrConnectWithoutReferenceTransactionInput[]
+  createMany?: Prisma.TransactionCreateManyReferenceTransactionInputEnvelope
+  connect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+}
+
 export type EnumTransactionTypeFieldUpdateOperationsInput = {
   set?: $Enums.TransactionType
 }
@@ -433,20 +760,245 @@ export type EnumTransactionStatusFieldUpdateOperationsInput = {
   set?: $Enums.TransactionStatus
 }
 
+export type TransactionUpdateOneWithoutRelatedTransactionsNestedInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutRelatedTransactionsInput, Prisma.TransactionUncheckedCreateWithoutRelatedTransactionsInput>
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutRelatedTransactionsInput
+  upsert?: Prisma.TransactionUpsertWithoutRelatedTransactionsInput
+  disconnect?: Prisma.TransactionWhereInput | boolean
+  delete?: Prisma.TransactionWhereInput | boolean
+  connect?: Prisma.TransactionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.TransactionUpdateToOneWithWhereWithoutRelatedTransactionsInput, Prisma.TransactionUpdateWithoutRelatedTransactionsInput>, Prisma.TransactionUncheckedUpdateWithoutRelatedTransactionsInput>
+}
+
+export type TransactionUpdateManyWithoutReferenceTransactionNestedInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutReferenceTransactionInput, Prisma.TransactionUncheckedCreateWithoutReferenceTransactionInput> | Prisma.TransactionCreateWithoutReferenceTransactionInput[] | Prisma.TransactionUncheckedCreateWithoutReferenceTransactionInput[]
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutReferenceTransactionInput | Prisma.TransactionCreateOrConnectWithoutReferenceTransactionInput[]
+  upsert?: Prisma.TransactionUpsertWithWhereUniqueWithoutReferenceTransactionInput | Prisma.TransactionUpsertWithWhereUniqueWithoutReferenceTransactionInput[]
+  createMany?: Prisma.TransactionCreateManyReferenceTransactionInputEnvelope
+  set?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  disconnect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  delete?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  connect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  update?: Prisma.TransactionUpdateWithWhereUniqueWithoutReferenceTransactionInput | Prisma.TransactionUpdateWithWhereUniqueWithoutReferenceTransactionInput[]
+  updateMany?: Prisma.TransactionUpdateManyWithWhereWithoutReferenceTransactionInput | Prisma.TransactionUpdateManyWithWhereWithoutReferenceTransactionInput[]
+  deleteMany?: Prisma.TransactionScalarWhereInput | Prisma.TransactionScalarWhereInput[]
+}
+
+export type TransactionUncheckedUpdateManyWithoutReferenceTransactionNestedInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutReferenceTransactionInput, Prisma.TransactionUncheckedCreateWithoutReferenceTransactionInput> | Prisma.TransactionCreateWithoutReferenceTransactionInput[] | Prisma.TransactionUncheckedCreateWithoutReferenceTransactionInput[]
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutReferenceTransactionInput | Prisma.TransactionCreateOrConnectWithoutReferenceTransactionInput[]
+  upsert?: Prisma.TransactionUpsertWithWhereUniqueWithoutReferenceTransactionInput | Prisma.TransactionUpsertWithWhereUniqueWithoutReferenceTransactionInput[]
+  createMany?: Prisma.TransactionCreateManyReferenceTransactionInputEnvelope
+  set?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  disconnect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  delete?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  connect?: Prisma.TransactionWhereUniqueInput | Prisma.TransactionWhereUniqueInput[]
+  update?: Prisma.TransactionUpdateWithWhereUniqueWithoutReferenceTransactionInput | Prisma.TransactionUpdateWithWhereUniqueWithoutReferenceTransactionInput[]
+  updateMany?: Prisma.TransactionUpdateManyWithWhereWithoutReferenceTransactionInput | Prisma.TransactionUpdateManyWithWhereWithoutReferenceTransactionInput[]
+  deleteMany?: Prisma.TransactionScalarWhereInput | Prisma.TransactionScalarWhereInput[]
+}
+
+export type TransactionCreateNestedOneWithoutDriverPayoutEarningInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutDriverPayoutEarningInput, Prisma.TransactionUncheckedCreateWithoutDriverPayoutEarningInput>
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutDriverPayoutEarningInput
+  connect?: Prisma.TransactionWhereUniqueInput
+}
+
+export type TransactionUpdateOneWithoutDriverPayoutEarningNestedInput = {
+  create?: Prisma.XOR<Prisma.TransactionCreateWithoutDriverPayoutEarningInput, Prisma.TransactionUncheckedCreateWithoutDriverPayoutEarningInput>
+  connectOrCreate?: Prisma.TransactionCreateOrConnectWithoutDriverPayoutEarningInput
+  upsert?: Prisma.TransactionUpsertWithoutDriverPayoutEarningInput
+  disconnect?: Prisma.TransactionWhereInput | boolean
+  delete?: Prisma.TransactionWhereInput | boolean
+  connect?: Prisma.TransactionWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.TransactionUpdateToOneWithWhereWithoutDriverPayoutEarningInput, Prisma.TransactionUpdateWithoutDriverPayoutEarningInput>, Prisma.TransactionUncheckedUpdateWithoutDriverPayoutEarningInput>
+}
+
+export type TransactionCreateWithoutSenderInput = {
+  transactionId?: string
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  type: $Enums.TransactionType
+  status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+  booking: Prisma.BookingCreateNestedOneWithoutTransactionsInput
+  receiver?: Prisma.UserCreateNestedOneWithoutReceivedTransactionsInput
+  referenceTransaction?: Prisma.TransactionCreateNestedOneWithoutRelatedTransactionsInput
+  relatedTransactions?: Prisma.TransactionCreateNestedManyWithoutReferenceTransactionInput
+  driverPayoutEarning?: Prisma.DriverEarningCreateNestedOneWithoutPayoutTransactionInput
+}
+
+export type TransactionUncheckedCreateWithoutSenderInput = {
+  transactionId?: string
+  bookingId: string
+  receiverId?: string | null
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  type: $Enums.TransactionType
+  status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  referenceTransactionId?: string | null
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+  relatedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReferenceTransactionInput
+  driverPayoutEarning?: Prisma.DriverEarningUncheckedCreateNestedOneWithoutPayoutTransactionInput
+}
+
+export type TransactionCreateOrConnectWithoutSenderInput = {
+  where: Prisma.TransactionWhereUniqueInput
+  create: Prisma.XOR<Prisma.TransactionCreateWithoutSenderInput, Prisma.TransactionUncheckedCreateWithoutSenderInput>
+}
+
+export type TransactionCreateManySenderInputEnvelope = {
+  data: Prisma.TransactionCreateManySenderInput | Prisma.TransactionCreateManySenderInput[]
+  skipDuplicates?: boolean
+}
+
+export type TransactionCreateWithoutReceiverInput = {
+  transactionId?: string
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  type: $Enums.TransactionType
+  status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+  booking: Prisma.BookingCreateNestedOneWithoutTransactionsInput
+  sender?: Prisma.UserCreateNestedOneWithoutSentTransactionsInput
+  referenceTransaction?: Prisma.TransactionCreateNestedOneWithoutRelatedTransactionsInput
+  relatedTransactions?: Prisma.TransactionCreateNestedManyWithoutReferenceTransactionInput
+  driverPayoutEarning?: Prisma.DriverEarningCreateNestedOneWithoutPayoutTransactionInput
+}
+
+export type TransactionUncheckedCreateWithoutReceiverInput = {
+  transactionId?: string
+  bookingId: string
+  senderId?: string | null
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  type: $Enums.TransactionType
+  status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  referenceTransactionId?: string | null
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+  relatedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReferenceTransactionInput
+  driverPayoutEarning?: Prisma.DriverEarningUncheckedCreateNestedOneWithoutPayoutTransactionInput
+}
+
+export type TransactionCreateOrConnectWithoutReceiverInput = {
+  where: Prisma.TransactionWhereUniqueInput
+  create: Prisma.XOR<Prisma.TransactionCreateWithoutReceiverInput, Prisma.TransactionUncheckedCreateWithoutReceiverInput>
+}
+
+export type TransactionCreateManyReceiverInputEnvelope = {
+  data: Prisma.TransactionCreateManyReceiverInput | Prisma.TransactionCreateManyReceiverInput[]
+  skipDuplicates?: boolean
+}
+
+export type TransactionUpsertWithWhereUniqueWithoutSenderInput = {
+  where: Prisma.TransactionWhereUniqueInput
+  update: Prisma.XOR<Prisma.TransactionUpdateWithoutSenderInput, Prisma.TransactionUncheckedUpdateWithoutSenderInput>
+  create: Prisma.XOR<Prisma.TransactionCreateWithoutSenderInput, Prisma.TransactionUncheckedCreateWithoutSenderInput>
+}
+
+export type TransactionUpdateWithWhereUniqueWithoutSenderInput = {
+  where: Prisma.TransactionWhereUniqueInput
+  data: Prisma.XOR<Prisma.TransactionUpdateWithoutSenderInput, Prisma.TransactionUncheckedUpdateWithoutSenderInput>
+}
+
+export type TransactionUpdateManyWithWhereWithoutSenderInput = {
+  where: Prisma.TransactionScalarWhereInput
+  data: Prisma.XOR<Prisma.TransactionUpdateManyMutationInput, Prisma.TransactionUncheckedUpdateManyWithoutSenderInput>
+}
+
+export type TransactionScalarWhereInput = {
+  AND?: Prisma.TransactionScalarWhereInput | Prisma.TransactionScalarWhereInput[]
+  OR?: Prisma.TransactionScalarWhereInput[]
+  NOT?: Prisma.TransactionScalarWhereInput | Prisma.TransactionScalarWhereInput[]
+  transactionId?: Prisma.UuidFilter<"Transaction"> | string
+  bookingId?: Prisma.UuidFilter<"Transaction"> | string
+  senderId?: Prisma.UuidNullableFilter<"Transaction"> | string | null
+  receiverId?: Prisma.UuidNullableFilter<"Transaction"> | string | null
+  amount?: Prisma.DecimalFilter<"Transaction"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFilter<"Transaction"> | string
+  type?: Prisma.EnumTransactionTypeFilter<"Transaction"> | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFilter<"Transaction"> | $Enums.TransactionStatus
+  paymentMethod?: Prisma.StringNullableFilter<"Transaction"> | string | null
+  providerReference?: Prisma.StringNullableFilter<"Transaction"> | string | null
+  referenceTransactionId?: Prisma.UuidNullableFilter<"Transaction"> | string | null
+  description?: Prisma.StringNullableFilter<"Transaction"> | string | null
+  createdAt?: Prisma.DateTimeFilter<"Transaction"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"Transaction"> | Date | string
+  completedAt?: Prisma.DateTimeNullableFilter<"Transaction"> | Date | string | null
+}
+
+export type TransactionUpsertWithWhereUniqueWithoutReceiverInput = {
+  where: Prisma.TransactionWhereUniqueInput
+  update: Prisma.XOR<Prisma.TransactionUpdateWithoutReceiverInput, Prisma.TransactionUncheckedUpdateWithoutReceiverInput>
+  create: Prisma.XOR<Prisma.TransactionCreateWithoutReceiverInput, Prisma.TransactionUncheckedCreateWithoutReceiverInput>
+}
+
+export type TransactionUpdateWithWhereUniqueWithoutReceiverInput = {
+  where: Prisma.TransactionWhereUniqueInput
+  data: Prisma.XOR<Prisma.TransactionUpdateWithoutReceiverInput, Prisma.TransactionUncheckedUpdateWithoutReceiverInput>
+}
+
+export type TransactionUpdateManyWithWhereWithoutReceiverInput = {
+  where: Prisma.TransactionScalarWhereInput
+  data: Prisma.XOR<Prisma.TransactionUpdateManyMutationInput, Prisma.TransactionUncheckedUpdateManyWithoutReceiverInput>
+}
+
 export type TransactionCreateWithoutBookingInput = {
   transactionId?: string
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
   type: $Enums.TransactionType
   status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  description?: string | null
   createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+  sender?: Prisma.UserCreateNestedOneWithoutSentTransactionsInput
+  receiver?: Prisma.UserCreateNestedOneWithoutReceivedTransactionsInput
+  referenceTransaction?: Prisma.TransactionCreateNestedOneWithoutRelatedTransactionsInput
+  relatedTransactions?: Prisma.TransactionCreateNestedManyWithoutReferenceTransactionInput
+  driverPayoutEarning?: Prisma.DriverEarningCreateNestedOneWithoutPayoutTransactionInput
 }
 
 export type TransactionUncheckedCreateWithoutBookingInput = {
   transactionId?: string
+  senderId?: string | null
+  receiverId?: string | null
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
   type: $Enums.TransactionType
   status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  referenceTransactionId?: string | null
+  description?: string | null
   createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+  relatedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReferenceTransactionInput
+  driverPayoutEarning?: Prisma.DriverEarningUncheckedCreateNestedOneWithoutPayoutTransactionInput
 }
 
 export type TransactionCreateOrConnectWithoutBookingInput = {
@@ -475,114 +1027,709 @@ export type TransactionUpdateManyWithWhereWithoutBookingInput = {
   data: Prisma.XOR<Prisma.TransactionUpdateManyMutationInput, Prisma.TransactionUncheckedUpdateManyWithoutBookingInput>
 }
 
-export type TransactionScalarWhereInput = {
-  AND?: Prisma.TransactionScalarWhereInput | Prisma.TransactionScalarWhereInput[]
-  OR?: Prisma.TransactionScalarWhereInput[]
-  NOT?: Prisma.TransactionScalarWhereInput | Prisma.TransactionScalarWhereInput[]
-  transactionId?: Prisma.UuidFilter<"Transaction"> | string
-  bookingId?: Prisma.UuidFilter<"Transaction"> | string
-  amount?: Prisma.DecimalFilter<"Transaction"> | runtime.Decimal | runtime.DecimalJsLike | number | string
-  type?: Prisma.EnumTransactionTypeFilter<"Transaction"> | $Enums.TransactionType
-  status?: Prisma.EnumTransactionStatusFilter<"Transaction"> | $Enums.TransactionStatus
-  createdAt?: Prisma.DateTimeFilter<"Transaction"> | Date | string
+export type TransactionCreateWithoutRelatedTransactionsInput = {
+  transactionId?: string
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  type: $Enums.TransactionType
+  status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+  booking: Prisma.BookingCreateNestedOneWithoutTransactionsInput
+  sender?: Prisma.UserCreateNestedOneWithoutSentTransactionsInput
+  receiver?: Prisma.UserCreateNestedOneWithoutReceivedTransactionsInput
+  referenceTransaction?: Prisma.TransactionCreateNestedOneWithoutRelatedTransactionsInput
+  driverPayoutEarning?: Prisma.DriverEarningCreateNestedOneWithoutPayoutTransactionInput
+}
+
+export type TransactionUncheckedCreateWithoutRelatedTransactionsInput = {
+  transactionId?: string
+  bookingId: string
+  senderId?: string | null
+  receiverId?: string | null
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  type: $Enums.TransactionType
+  status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  referenceTransactionId?: string | null
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+  driverPayoutEarning?: Prisma.DriverEarningUncheckedCreateNestedOneWithoutPayoutTransactionInput
+}
+
+export type TransactionCreateOrConnectWithoutRelatedTransactionsInput = {
+  where: Prisma.TransactionWhereUniqueInput
+  create: Prisma.XOR<Prisma.TransactionCreateWithoutRelatedTransactionsInput, Prisma.TransactionUncheckedCreateWithoutRelatedTransactionsInput>
+}
+
+export type TransactionCreateWithoutReferenceTransactionInput = {
+  transactionId?: string
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  type: $Enums.TransactionType
+  status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+  booking: Prisma.BookingCreateNestedOneWithoutTransactionsInput
+  sender?: Prisma.UserCreateNestedOneWithoutSentTransactionsInput
+  receiver?: Prisma.UserCreateNestedOneWithoutReceivedTransactionsInput
+  relatedTransactions?: Prisma.TransactionCreateNestedManyWithoutReferenceTransactionInput
+  driverPayoutEarning?: Prisma.DriverEarningCreateNestedOneWithoutPayoutTransactionInput
+}
+
+export type TransactionUncheckedCreateWithoutReferenceTransactionInput = {
+  transactionId?: string
+  bookingId: string
+  senderId?: string | null
+  receiverId?: string | null
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  type: $Enums.TransactionType
+  status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+  relatedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReferenceTransactionInput
+  driverPayoutEarning?: Prisma.DriverEarningUncheckedCreateNestedOneWithoutPayoutTransactionInput
+}
+
+export type TransactionCreateOrConnectWithoutReferenceTransactionInput = {
+  where: Prisma.TransactionWhereUniqueInput
+  create: Prisma.XOR<Prisma.TransactionCreateWithoutReferenceTransactionInput, Prisma.TransactionUncheckedCreateWithoutReferenceTransactionInput>
+}
+
+export type TransactionCreateManyReferenceTransactionInputEnvelope = {
+  data: Prisma.TransactionCreateManyReferenceTransactionInput | Prisma.TransactionCreateManyReferenceTransactionInput[]
+  skipDuplicates?: boolean
+}
+
+export type TransactionUpsertWithoutRelatedTransactionsInput = {
+  update: Prisma.XOR<Prisma.TransactionUpdateWithoutRelatedTransactionsInput, Prisma.TransactionUncheckedUpdateWithoutRelatedTransactionsInput>
+  create: Prisma.XOR<Prisma.TransactionCreateWithoutRelatedTransactionsInput, Prisma.TransactionUncheckedCreateWithoutRelatedTransactionsInput>
+  where?: Prisma.TransactionWhereInput
+}
+
+export type TransactionUpdateToOneWithWhereWithoutRelatedTransactionsInput = {
+  where?: Prisma.TransactionWhereInput
+  data: Prisma.XOR<Prisma.TransactionUpdateWithoutRelatedTransactionsInput, Prisma.TransactionUncheckedUpdateWithoutRelatedTransactionsInput>
+}
+
+export type TransactionUpdateWithoutRelatedTransactionsInput = {
+  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  booking?: Prisma.BookingUpdateOneRequiredWithoutTransactionsNestedInput
+  sender?: Prisma.UserUpdateOneWithoutSentTransactionsNestedInput
+  receiver?: Prisma.UserUpdateOneWithoutReceivedTransactionsNestedInput
+  referenceTransaction?: Prisma.TransactionUpdateOneWithoutRelatedTransactionsNestedInput
+  driverPayoutEarning?: Prisma.DriverEarningUpdateOneWithoutPayoutTransactionNestedInput
+}
+
+export type TransactionUncheckedUpdateWithoutRelatedTransactionsInput = {
+  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  bookingId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receiverId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  referenceTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverPayoutEarning?: Prisma.DriverEarningUncheckedUpdateOneWithoutPayoutTransactionNestedInput
+}
+
+export type TransactionUpsertWithWhereUniqueWithoutReferenceTransactionInput = {
+  where: Prisma.TransactionWhereUniqueInput
+  update: Prisma.XOR<Prisma.TransactionUpdateWithoutReferenceTransactionInput, Prisma.TransactionUncheckedUpdateWithoutReferenceTransactionInput>
+  create: Prisma.XOR<Prisma.TransactionCreateWithoutReferenceTransactionInput, Prisma.TransactionUncheckedCreateWithoutReferenceTransactionInput>
+}
+
+export type TransactionUpdateWithWhereUniqueWithoutReferenceTransactionInput = {
+  where: Prisma.TransactionWhereUniqueInput
+  data: Prisma.XOR<Prisma.TransactionUpdateWithoutReferenceTransactionInput, Prisma.TransactionUncheckedUpdateWithoutReferenceTransactionInput>
+}
+
+export type TransactionUpdateManyWithWhereWithoutReferenceTransactionInput = {
+  where: Prisma.TransactionScalarWhereInput
+  data: Prisma.XOR<Prisma.TransactionUpdateManyMutationInput, Prisma.TransactionUncheckedUpdateManyWithoutReferenceTransactionInput>
+}
+
+export type TransactionCreateWithoutDriverPayoutEarningInput = {
+  transactionId?: string
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  type: $Enums.TransactionType
+  status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+  booking: Prisma.BookingCreateNestedOneWithoutTransactionsInput
+  sender?: Prisma.UserCreateNestedOneWithoutSentTransactionsInput
+  receiver?: Prisma.UserCreateNestedOneWithoutReceivedTransactionsInput
+  referenceTransaction?: Prisma.TransactionCreateNestedOneWithoutRelatedTransactionsInput
+  relatedTransactions?: Prisma.TransactionCreateNestedManyWithoutReferenceTransactionInput
+}
+
+export type TransactionUncheckedCreateWithoutDriverPayoutEarningInput = {
+  transactionId?: string
+  bookingId: string
+  senderId?: string | null
+  receiverId?: string | null
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  type: $Enums.TransactionType
+  status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  referenceTransactionId?: string | null
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+  relatedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReferenceTransactionInput
+}
+
+export type TransactionCreateOrConnectWithoutDriverPayoutEarningInput = {
+  where: Prisma.TransactionWhereUniqueInput
+  create: Prisma.XOR<Prisma.TransactionCreateWithoutDriverPayoutEarningInput, Prisma.TransactionUncheckedCreateWithoutDriverPayoutEarningInput>
+}
+
+export type TransactionUpsertWithoutDriverPayoutEarningInput = {
+  update: Prisma.XOR<Prisma.TransactionUpdateWithoutDriverPayoutEarningInput, Prisma.TransactionUncheckedUpdateWithoutDriverPayoutEarningInput>
+  create: Prisma.XOR<Prisma.TransactionCreateWithoutDriverPayoutEarningInput, Prisma.TransactionUncheckedCreateWithoutDriverPayoutEarningInput>
+  where?: Prisma.TransactionWhereInput
+}
+
+export type TransactionUpdateToOneWithWhereWithoutDriverPayoutEarningInput = {
+  where?: Prisma.TransactionWhereInput
+  data: Prisma.XOR<Prisma.TransactionUpdateWithoutDriverPayoutEarningInput, Prisma.TransactionUncheckedUpdateWithoutDriverPayoutEarningInput>
+}
+
+export type TransactionUpdateWithoutDriverPayoutEarningInput = {
+  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  booking?: Prisma.BookingUpdateOneRequiredWithoutTransactionsNestedInput
+  sender?: Prisma.UserUpdateOneWithoutSentTransactionsNestedInput
+  receiver?: Prisma.UserUpdateOneWithoutReceivedTransactionsNestedInput
+  referenceTransaction?: Prisma.TransactionUpdateOneWithoutRelatedTransactionsNestedInput
+  relatedTransactions?: Prisma.TransactionUpdateManyWithoutReferenceTransactionNestedInput
+}
+
+export type TransactionUncheckedUpdateWithoutDriverPayoutEarningInput = {
+  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  bookingId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receiverId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  referenceTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  relatedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReferenceTransactionNestedInput
+}
+
+export type TransactionCreateManySenderInput = {
+  transactionId?: string
+  bookingId: string
+  receiverId?: string | null
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  type: $Enums.TransactionType
+  status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  referenceTransactionId?: string | null
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+}
+
+export type TransactionCreateManyReceiverInput = {
+  transactionId?: string
+  bookingId: string
+  senderId?: string | null
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  type: $Enums.TransactionType
+  status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  referenceTransactionId?: string | null
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+}
+
+export type TransactionUpdateWithoutSenderInput = {
+  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  booking?: Prisma.BookingUpdateOneRequiredWithoutTransactionsNestedInput
+  receiver?: Prisma.UserUpdateOneWithoutReceivedTransactionsNestedInput
+  referenceTransaction?: Prisma.TransactionUpdateOneWithoutRelatedTransactionsNestedInput
+  relatedTransactions?: Prisma.TransactionUpdateManyWithoutReferenceTransactionNestedInput
+  driverPayoutEarning?: Prisma.DriverEarningUpdateOneWithoutPayoutTransactionNestedInput
+}
+
+export type TransactionUncheckedUpdateWithoutSenderInput = {
+  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  bookingId?: Prisma.StringFieldUpdateOperationsInput | string
+  receiverId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  referenceTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  relatedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReferenceTransactionNestedInput
+  driverPayoutEarning?: Prisma.DriverEarningUncheckedUpdateOneWithoutPayoutTransactionNestedInput
+}
+
+export type TransactionUncheckedUpdateManyWithoutSenderInput = {
+  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  bookingId?: Prisma.StringFieldUpdateOperationsInput | string
+  receiverId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  referenceTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+export type TransactionUpdateWithoutReceiverInput = {
+  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  booking?: Prisma.BookingUpdateOneRequiredWithoutTransactionsNestedInput
+  sender?: Prisma.UserUpdateOneWithoutSentTransactionsNestedInput
+  referenceTransaction?: Prisma.TransactionUpdateOneWithoutRelatedTransactionsNestedInput
+  relatedTransactions?: Prisma.TransactionUpdateManyWithoutReferenceTransactionNestedInput
+  driverPayoutEarning?: Prisma.DriverEarningUpdateOneWithoutPayoutTransactionNestedInput
+}
+
+export type TransactionUncheckedUpdateWithoutReceiverInput = {
+  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  bookingId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  referenceTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  relatedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReferenceTransactionNestedInput
+  driverPayoutEarning?: Prisma.DriverEarningUncheckedUpdateOneWithoutPayoutTransactionNestedInput
+}
+
+export type TransactionUncheckedUpdateManyWithoutReceiverInput = {
+  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  bookingId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  referenceTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type TransactionCreateManyBookingInput = {
   transactionId?: string
+  senderId?: string | null
+  receiverId?: string | null
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
   type: $Enums.TransactionType
   status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  referenceTransactionId?: string | null
+  description?: string | null
   createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
 }
 
 export type TransactionUpdateWithoutBookingInput = {
   transactionId?: Prisma.StringFieldUpdateOperationsInput | string
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  sender?: Prisma.UserUpdateOneWithoutSentTransactionsNestedInput
+  receiver?: Prisma.UserUpdateOneWithoutReceivedTransactionsNestedInput
+  referenceTransaction?: Prisma.TransactionUpdateOneWithoutRelatedTransactionsNestedInput
+  relatedTransactions?: Prisma.TransactionUpdateManyWithoutReferenceTransactionNestedInput
+  driverPayoutEarning?: Prisma.DriverEarningUpdateOneWithoutPayoutTransactionNestedInput
 }
 
 export type TransactionUncheckedUpdateWithoutBookingInput = {
   transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receiverId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  referenceTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  relatedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReferenceTransactionNestedInput
+  driverPayoutEarning?: Prisma.DriverEarningUncheckedUpdateOneWithoutPayoutTransactionNestedInput
 }
 
 export type TransactionUncheckedUpdateManyWithoutBookingInput = {
   transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receiverId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
   type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
   status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  referenceTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
+export type TransactionCreateManyReferenceTransactionInput = {
+  transactionId?: string
+  bookingId: string
+  senderId?: string | null
+  receiverId?: string | null
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: string
+  type: $Enums.TransactionType
+  status?: $Enums.TransactionStatus
+  paymentMethod?: string | null
+  providerReference?: string | null
+  description?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  completedAt?: Date | string | null
+}
+
+export type TransactionUpdateWithoutReferenceTransactionInput = {
+  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  booking?: Prisma.BookingUpdateOneRequiredWithoutTransactionsNestedInput
+  sender?: Prisma.UserUpdateOneWithoutSentTransactionsNestedInput
+  receiver?: Prisma.UserUpdateOneWithoutReceivedTransactionsNestedInput
+  relatedTransactions?: Prisma.TransactionUpdateManyWithoutReferenceTransactionNestedInput
+  driverPayoutEarning?: Prisma.DriverEarningUpdateOneWithoutPayoutTransactionNestedInput
+}
+
+export type TransactionUncheckedUpdateWithoutReferenceTransactionInput = {
+  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  bookingId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receiverId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  relatedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReferenceTransactionNestedInput
+  driverPayoutEarning?: Prisma.DriverEarningUncheckedUpdateOneWithoutPayoutTransactionNestedInput
+}
+
+export type TransactionUncheckedUpdateManyWithoutReferenceTransactionInput = {
+  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  bookingId?: Prisma.StringFieldUpdateOperationsInput | string
+  senderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  receiverId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  type?: Prisma.EnumTransactionTypeFieldUpdateOperationsInput | $Enums.TransactionType
+  status?: Prisma.EnumTransactionStatusFieldUpdateOperationsInput | $Enums.TransactionStatus
+  paymentMethod?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+
+/**
+ * Count Type TransactionCountOutputType
+ */
+
+export type TransactionCountOutputType = {
+  relatedTransactions: number
+}
+
+export type TransactionCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  relatedTransactions?: boolean | TransactionCountOutputTypeCountRelatedTransactionsArgs
+}
+
+/**
+ * TransactionCountOutputType without action
+ */
+export type TransactionCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the TransactionCountOutputType
+   */
+  select?: Prisma.TransactionCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * TransactionCountOutputType without action
+ */
+export type TransactionCountOutputTypeCountRelatedTransactionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TransactionWhereInput
+}
 
 
 export type TransactionSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   transactionId?: boolean
   bookingId?: boolean
+  senderId?: boolean
+  receiverId?: boolean
   amount?: boolean
+  currency?: boolean
   type?: boolean
   status?: boolean
+  paymentMethod?: boolean
+  providerReference?: boolean
+  referenceTransactionId?: boolean
+  description?: boolean
   createdAt?: boolean
+  updatedAt?: boolean
+  completedAt?: boolean
   booking?: boolean | Prisma.BookingDefaultArgs<ExtArgs>
+  sender?: boolean | Prisma.Transaction$senderArgs<ExtArgs>
+  receiver?: boolean | Prisma.Transaction$receiverArgs<ExtArgs>
+  referenceTransaction?: boolean | Prisma.Transaction$referenceTransactionArgs<ExtArgs>
+  relatedTransactions?: boolean | Prisma.Transaction$relatedTransactionsArgs<ExtArgs>
+  driverPayoutEarning?: boolean | Prisma.Transaction$driverPayoutEarningArgs<ExtArgs>
+  _count?: boolean | Prisma.TransactionCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["transaction"]>
 
 export type TransactionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   transactionId?: boolean
   bookingId?: boolean
+  senderId?: boolean
+  receiverId?: boolean
   amount?: boolean
+  currency?: boolean
   type?: boolean
   status?: boolean
+  paymentMethod?: boolean
+  providerReference?: boolean
+  referenceTransactionId?: boolean
+  description?: boolean
   createdAt?: boolean
+  updatedAt?: boolean
+  completedAt?: boolean
   booking?: boolean | Prisma.BookingDefaultArgs<ExtArgs>
+  sender?: boolean | Prisma.Transaction$senderArgs<ExtArgs>
+  receiver?: boolean | Prisma.Transaction$receiverArgs<ExtArgs>
+  referenceTransaction?: boolean | Prisma.Transaction$referenceTransactionArgs<ExtArgs>
 }, ExtArgs["result"]["transaction"]>
 
 export type TransactionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   transactionId?: boolean
   bookingId?: boolean
+  senderId?: boolean
+  receiverId?: boolean
   amount?: boolean
+  currency?: boolean
   type?: boolean
   status?: boolean
+  paymentMethod?: boolean
+  providerReference?: boolean
+  referenceTransactionId?: boolean
+  description?: boolean
   createdAt?: boolean
+  updatedAt?: boolean
+  completedAt?: boolean
   booking?: boolean | Prisma.BookingDefaultArgs<ExtArgs>
+  sender?: boolean | Prisma.Transaction$senderArgs<ExtArgs>
+  receiver?: boolean | Prisma.Transaction$receiverArgs<ExtArgs>
+  referenceTransaction?: boolean | Prisma.Transaction$referenceTransactionArgs<ExtArgs>
 }, ExtArgs["result"]["transaction"]>
 
 export type TransactionSelectScalar = {
   transactionId?: boolean
   bookingId?: boolean
+  senderId?: boolean
+  receiverId?: boolean
   amount?: boolean
+  currency?: boolean
   type?: boolean
   status?: boolean
+  paymentMethod?: boolean
+  providerReference?: boolean
+  referenceTransactionId?: boolean
+  description?: boolean
   createdAt?: boolean
+  updatedAt?: boolean
+  completedAt?: boolean
 }
 
-export type TransactionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"transactionId" | "bookingId" | "amount" | "type" | "status" | "createdAt", ExtArgs["result"]["transaction"]>
+export type TransactionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"transactionId" | "bookingId" | "senderId" | "receiverId" | "amount" | "currency" | "type" | "status" | "paymentMethod" | "providerReference" | "referenceTransactionId" | "description" | "createdAt" | "updatedAt" | "completedAt", ExtArgs["result"]["transaction"]>
 export type TransactionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   booking?: boolean | Prisma.BookingDefaultArgs<ExtArgs>
+  sender?: boolean | Prisma.Transaction$senderArgs<ExtArgs>
+  receiver?: boolean | Prisma.Transaction$receiverArgs<ExtArgs>
+  referenceTransaction?: boolean | Prisma.Transaction$referenceTransactionArgs<ExtArgs>
+  relatedTransactions?: boolean | Prisma.Transaction$relatedTransactionsArgs<ExtArgs>
+  driverPayoutEarning?: boolean | Prisma.Transaction$driverPayoutEarningArgs<ExtArgs>
+  _count?: boolean | Prisma.TransactionCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type TransactionIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   booking?: boolean | Prisma.BookingDefaultArgs<ExtArgs>
+  sender?: boolean | Prisma.Transaction$senderArgs<ExtArgs>
+  receiver?: boolean | Prisma.Transaction$receiverArgs<ExtArgs>
+  referenceTransaction?: boolean | Prisma.Transaction$referenceTransactionArgs<ExtArgs>
 }
 export type TransactionIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   booking?: boolean | Prisma.BookingDefaultArgs<ExtArgs>
+  sender?: boolean | Prisma.Transaction$senderArgs<ExtArgs>
+  receiver?: boolean | Prisma.Transaction$receiverArgs<ExtArgs>
+  referenceTransaction?: boolean | Prisma.Transaction$referenceTransactionArgs<ExtArgs>
 }
 
 export type $TransactionPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Transaction"
   objects: {
     booking: Prisma.$BookingPayload<ExtArgs>
+    sender: Prisma.$UserPayload<ExtArgs> | null
+    receiver: Prisma.$UserPayload<ExtArgs> | null
+    referenceTransaction: Prisma.$TransactionPayload<ExtArgs> | null
+    relatedTransactions: Prisma.$TransactionPayload<ExtArgs>[]
+    driverPayoutEarning: Prisma.$DriverEarningPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     transactionId: string
     bookingId: string
+    senderId: string | null
+    receiverId: string | null
     amount: runtime.Decimal
+    currency: string
     type: $Enums.TransactionType
     status: $Enums.TransactionStatus
+    paymentMethod: string | null
+    providerReference: string | null
+    referenceTransactionId: string | null
+    description: string | null
     createdAt: Date
+    updatedAt: Date
+    completedAt: Date | null
   }, ExtArgs["result"]["transaction"]>
   composites: {}
 }
@@ -978,6 +2125,11 @@ readonly fields: TransactionFieldRefs;
 export interface Prisma__TransactionClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   booking<T extends Prisma.BookingDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.BookingDefaultArgs<ExtArgs>>): Prisma.Prisma__BookingClient<runtime.Types.Result.GetResult<Prisma.$BookingPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  sender<T extends Prisma.Transaction$senderArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Transaction$senderArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  receiver<T extends Prisma.Transaction$receiverArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Transaction$receiverArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  referenceTransaction<T extends Prisma.Transaction$referenceTransactionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Transaction$referenceTransactionArgs<ExtArgs>>): Prisma.Prisma__TransactionClient<runtime.Types.Result.GetResult<Prisma.$TransactionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  relatedTransactions<T extends Prisma.Transaction$relatedTransactionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Transaction$relatedTransactionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TransactionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  driverPayoutEarning<T extends Prisma.Transaction$driverPayoutEarningArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Transaction$driverPayoutEarningArgs<ExtArgs>>): Prisma.Prisma__DriverEarningClient<runtime.Types.Result.GetResult<Prisma.$DriverEarningPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1009,10 +2161,19 @@ export interface Prisma__TransactionClient<T, Null = never, ExtArgs extends runt
 export interface TransactionFieldRefs {
   readonly transactionId: Prisma.FieldRef<"Transaction", 'String'>
   readonly bookingId: Prisma.FieldRef<"Transaction", 'String'>
+  readonly senderId: Prisma.FieldRef<"Transaction", 'String'>
+  readonly receiverId: Prisma.FieldRef<"Transaction", 'String'>
   readonly amount: Prisma.FieldRef<"Transaction", 'Decimal'>
+  readonly currency: Prisma.FieldRef<"Transaction", 'String'>
   readonly type: Prisma.FieldRef<"Transaction", 'TransactionType'>
   readonly status: Prisma.FieldRef<"Transaction", 'TransactionStatus'>
+  readonly paymentMethod: Prisma.FieldRef<"Transaction", 'String'>
+  readonly providerReference: Prisma.FieldRef<"Transaction", 'String'>
+  readonly referenceTransactionId: Prisma.FieldRef<"Transaction", 'String'>
+  readonly description: Prisma.FieldRef<"Transaction", 'String'>
   readonly createdAt: Prisma.FieldRef<"Transaction", 'DateTime'>
+  readonly updatedAt: Prisma.FieldRef<"Transaction", 'DateTime'>
+  readonly completedAt: Prisma.FieldRef<"Transaction", 'DateTime'>
 }
     
 
@@ -1411,6 +2572,106 @@ export type TransactionDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Limit how many Transactions to delete.
    */
   limit?: number
+}
+
+/**
+ * Transaction.sender
+ */
+export type Transaction$senderArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the User
+   */
+  select?: Prisma.UserSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the User
+   */
+  omit?: Prisma.UserOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInclude<ExtArgs> | null
+  where?: Prisma.UserWhereInput
+}
+
+/**
+ * Transaction.receiver
+ */
+export type Transaction$receiverArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the User
+   */
+  select?: Prisma.UserSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the User
+   */
+  omit?: Prisma.UserOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInclude<ExtArgs> | null
+  where?: Prisma.UserWhereInput
+}
+
+/**
+ * Transaction.referenceTransaction
+ */
+export type Transaction$referenceTransactionArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Transaction
+   */
+  select?: Prisma.TransactionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Transaction
+   */
+  omit?: Prisma.TransactionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TransactionInclude<ExtArgs> | null
+  where?: Prisma.TransactionWhereInput
+}
+
+/**
+ * Transaction.relatedTransactions
+ */
+export type Transaction$relatedTransactionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Transaction
+   */
+  select?: Prisma.TransactionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Transaction
+   */
+  omit?: Prisma.TransactionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TransactionInclude<ExtArgs> | null
+  where?: Prisma.TransactionWhereInput
+  orderBy?: Prisma.TransactionOrderByWithRelationInput | Prisma.TransactionOrderByWithRelationInput[]
+  cursor?: Prisma.TransactionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TransactionScalarFieldEnum | Prisma.TransactionScalarFieldEnum[]
+}
+
+/**
+ * Transaction.driverPayoutEarning
+ */
+export type Transaction$driverPayoutEarningArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DriverEarning
+   */
+  select?: Prisma.DriverEarningSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DriverEarning
+   */
+  omit?: Prisma.DriverEarningOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DriverEarningInclude<ExtArgs> | null
+  where?: Prisma.DriverEarningWhereInput
 }
 
 /**

@@ -20,15 +20,37 @@ export type UserModel = runtime.Types.Result.DefaultSelection<Prisma.$UserPayloa
 
 export type AggregateUser = {
   _count: UserCountAggregateOutputType | null
+  _avg: UserAvgAggregateOutputType | null
+  _sum: UserSumAggregateOutputType | null
   _min: UserMinAggregateOutputType | null
   _max: UserMaxAggregateOutputType | null
+}
+
+export type UserAvgAggregateOutputType = {
+  walletBalance: runtime.Decimal | null
+  averageRating: runtime.Decimal | null
+  ratingCount: number | null
+}
+
+export type UserSumAggregateOutputType = {
+  walletBalance: runtime.Decimal | null
+  averageRating: runtime.Decimal | null
+  ratingCount: number | null
 }
 
 export type UserMinAggregateOutputType = {
   userId: string | null
   name: string | null
   email: string | null
+  phone: string | null
   passwordHash: string | null
+  profileImage: string | null
+  licenseNumber: string | null
+  licenseExpiry: Date | null
+  driverVerified: boolean | null
+  walletBalance: runtime.Decimal | null
+  averageRating: runtime.Decimal | null
+  ratingCount: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -37,7 +59,15 @@ export type UserMaxAggregateOutputType = {
   userId: string | null
   name: string | null
   email: string | null
+  phone: string | null
   passwordHash: string | null
+  profileImage: string | null
+  licenseNumber: string | null
+  licenseExpiry: Date | null
+  driverVerified: boolean | null
+  walletBalance: runtime.Decimal | null
+  averageRating: runtime.Decimal | null
+  ratingCount: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -46,19 +76,47 @@ export type UserCountAggregateOutputType = {
   userId: number
   name: number
   email: number
+  phone: number
   passwordHash: number
+  profileImage: number
   roles: number
+  licenseNumber: number
+  licenseExpiry: number
+  driverVerified: number
+  walletBalance: number
+  averageRating: number
+  ratingCount: number
   createdAt: number
   updatedAt: number
   _all: number
 }
 
 
+export type UserAvgAggregateInputType = {
+  walletBalance?: true
+  averageRating?: true
+  ratingCount?: true
+}
+
+export type UserSumAggregateInputType = {
+  walletBalance?: true
+  averageRating?: true
+  ratingCount?: true
+}
+
 export type UserMinAggregateInputType = {
   userId?: true
   name?: true
   email?: true
+  phone?: true
   passwordHash?: true
+  profileImage?: true
+  licenseNumber?: true
+  licenseExpiry?: true
+  driverVerified?: true
+  walletBalance?: true
+  averageRating?: true
+  ratingCount?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -67,7 +125,15 @@ export type UserMaxAggregateInputType = {
   userId?: true
   name?: true
   email?: true
+  phone?: true
   passwordHash?: true
+  profileImage?: true
+  licenseNumber?: true
+  licenseExpiry?: true
+  driverVerified?: true
+  walletBalance?: true
+  averageRating?: true
+  ratingCount?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -76,8 +142,16 @@ export type UserCountAggregateInputType = {
   userId?: true
   name?: true
   email?: true
+  phone?: true
   passwordHash?: true
+  profileImage?: true
   roles?: true
+  licenseNumber?: true
+  licenseExpiry?: true
+  driverVerified?: true
+  walletBalance?: true
+  averageRating?: true
+  ratingCount?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -121,6 +195,18 @@ export type UserAggregateArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: UserAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: UserSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: UserMinAggregateInputType
@@ -151,6 +237,8 @@ export type UserGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
   take?: number
   skip?: number
   _count?: UserCountAggregateInputType | true
+  _avg?: UserAvgAggregateInputType
+  _sum?: UserSumAggregateInputType
   _min?: UserMinAggregateInputType
   _max?: UserMaxAggregateInputType
 }
@@ -159,11 +247,21 @@ export type UserGroupByOutputType = {
   userId: string
   name: string
   email: string
+  phone: string | null
   passwordHash: string
+  profileImage: string | null
   roles: $Enums.UserRole[]
+  licenseNumber: string | null
+  licenseExpiry: Date | null
+  driverVerified: boolean
+  walletBalance: runtime.Decimal
+  averageRating: runtime.Decimal
+  ratingCount: number
   createdAt: Date
   updatedAt: Date
   _count: UserCountAggregateOutputType | null
+  _avg: UserAvgAggregateOutputType | null
+  _sum: UserSumAggregateOutputType | null
   _min: UserMinAggregateOutputType | null
   _max: UserMaxAggregateOutputType | null
 }
@@ -190,55 +288,113 @@ export type UserWhereInput = {
   userId?: Prisma.UuidFilter<"User"> | string
   name?: Prisma.StringFilter<"User"> | string
   email?: Prisma.StringFilter<"User"> | string
+  phone?: Prisma.StringNullableFilter<"User"> | string | null
   passwordHash?: Prisma.StringFilter<"User"> | string
+  profileImage?: Prisma.StringNullableFilter<"User"> | string | null
   roles?: Prisma.EnumUserRoleNullableListFilter<"User">
+  licenseNumber?: Prisma.StringNullableFilter<"User"> | string | null
+  licenseExpiry?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  driverVerified?: Prisma.BoolFilter<"User"> | boolean
+  walletBalance?: Prisma.DecimalFilter<"User"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFilter<"User"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFilter<"User"> | number
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
-  communities?: Prisma.CommunityListRelationFilter
+  createdCommunities?: Prisma.CommunityListRelationFilter
+  communityMemberships?: Prisma.CommunityMembershipListRelationFilter
+  vehicles?: Prisma.VehicleListRelationFilter
   rides?: Prisma.RideListRelationFilter
   bookings?: Prisma.BookingListRelationFilter
+  cancelledBookings?: Prisma.BookingListRelationFilter
+  emergencyContacts?: Prisma.EmergencyContactListRelationFilter
+  sosAlerts?: Prisma.SOSAlertListRelationFilter
+  sentTransactions?: Prisma.TransactionListRelationFilter
+  receivedTransactions?: Prisma.TransactionListRelationFilter
+  driverEarnings?: Prisma.DriverEarningListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
   userId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
+  phone?: Prisma.SortOrderInput | Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
+  profileImage?: Prisma.SortOrderInput | Prisma.SortOrder
   roles?: Prisma.SortOrder
+  licenseNumber?: Prisma.SortOrderInput | Prisma.SortOrder
+  licenseExpiry?: Prisma.SortOrderInput | Prisma.SortOrder
+  driverVerified?: Prisma.SortOrder
+  walletBalance?: Prisma.SortOrder
+  averageRating?: Prisma.SortOrder
+  ratingCount?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  communities?: Prisma.CommunityOrderByRelationAggregateInput
+  createdCommunities?: Prisma.CommunityOrderByRelationAggregateInput
+  communityMemberships?: Prisma.CommunityMembershipOrderByRelationAggregateInput
+  vehicles?: Prisma.VehicleOrderByRelationAggregateInput
   rides?: Prisma.RideOrderByRelationAggregateInput
   bookings?: Prisma.BookingOrderByRelationAggregateInput
+  cancelledBookings?: Prisma.BookingOrderByRelationAggregateInput
+  emergencyContacts?: Prisma.EmergencyContactOrderByRelationAggregateInput
+  sosAlerts?: Prisma.SOSAlertOrderByRelationAggregateInput
+  sentTransactions?: Prisma.TransactionOrderByRelationAggregateInput
+  receivedTransactions?: Prisma.TransactionOrderByRelationAggregateInput
+  driverEarnings?: Prisma.DriverEarningOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
   userId?: string
   email?: string
+  phone?: string
+  licenseNumber?: string
   AND?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
   OR?: Prisma.UserWhereInput[]
   NOT?: Prisma.UserWhereInput | Prisma.UserWhereInput[]
   name?: Prisma.StringFilter<"User"> | string
   passwordHash?: Prisma.StringFilter<"User"> | string
+  profileImage?: Prisma.StringNullableFilter<"User"> | string | null
   roles?: Prisma.EnumUserRoleNullableListFilter<"User">
+  licenseExpiry?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  driverVerified?: Prisma.BoolFilter<"User"> | boolean
+  walletBalance?: Prisma.DecimalFilter<"User"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFilter<"User"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFilter<"User"> | number
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
-  communities?: Prisma.CommunityListRelationFilter
+  createdCommunities?: Prisma.CommunityListRelationFilter
+  communityMemberships?: Prisma.CommunityMembershipListRelationFilter
+  vehicles?: Prisma.VehicleListRelationFilter
   rides?: Prisma.RideListRelationFilter
   bookings?: Prisma.BookingListRelationFilter
-}, "userId" | "email">
+  cancelledBookings?: Prisma.BookingListRelationFilter
+  emergencyContacts?: Prisma.EmergencyContactListRelationFilter
+  sosAlerts?: Prisma.SOSAlertListRelationFilter
+  sentTransactions?: Prisma.TransactionListRelationFilter
+  receivedTransactions?: Prisma.TransactionListRelationFilter
+  driverEarnings?: Prisma.DriverEarningListRelationFilter
+}, "userId" | "email" | "phone" | "licenseNumber">
 
 export type UserOrderByWithAggregationInput = {
   userId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
+  phone?: Prisma.SortOrderInput | Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
+  profileImage?: Prisma.SortOrderInput | Prisma.SortOrder
   roles?: Prisma.SortOrder
+  licenseNumber?: Prisma.SortOrderInput | Prisma.SortOrder
+  licenseExpiry?: Prisma.SortOrderInput | Prisma.SortOrder
+  driverVerified?: Prisma.SortOrder
+  walletBalance?: Prisma.SortOrder
+  averageRating?: Prisma.SortOrder
+  ratingCount?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
+  _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
   _min?: Prisma.UserMinOrderByAggregateInput
+  _sum?: Prisma.UserSumOrderByAggregateInput
 }
 
 export type UserScalarWhereWithAggregatesInput = {
@@ -248,8 +404,16 @@ export type UserScalarWhereWithAggregatesInput = {
   userId?: Prisma.UuidWithAggregatesFilter<"User"> | string
   name?: Prisma.StringWithAggregatesFilter<"User"> | string
   email?: Prisma.StringWithAggregatesFilter<"User"> | string
+  phone?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   passwordHash?: Prisma.StringWithAggregatesFilter<"User"> | string
+  profileImage?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   roles?: Prisma.EnumUserRoleNullableListFilter<"User">
+  licenseNumber?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  licenseExpiry?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
+  driverVerified?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
+  walletBalance?: Prisma.DecimalWithAggregatesFilter<"User"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalWithAggregatesFilter<"User"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntWithAggregatesFilter<"User"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
 }
@@ -258,60 +422,132 @@ export type UserCreateInput = {
   userId?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
+  profileImage?: string | null
   roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
-  communities?: Prisma.CommunityCreateNestedManyWithoutUserInput
+  createdCommunities?: Prisma.CommunityCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleCreateNestedManyWithoutDriverInput
   rides?: Prisma.RideCreateNestedManyWithoutDriverInput
-  bookings?: Prisma.BookingCreateNestedManyWithoutUserInput
+  bookings?: Prisma.BookingCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningCreateNestedManyWithoutDriverInput
 }
 
 export type UserUncheckedCreateInput = {
   userId?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
+  profileImage?: string | null
   roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
-  communities?: Prisma.CommunityUncheckedCreateNestedManyWithoutUserInput
+  createdCommunities?: Prisma.CommunityUncheckedCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleUncheckedCreateNestedManyWithoutDriverInput
   rides?: Prisma.RideUncheckedCreateNestedManyWithoutDriverInput
-  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutUserInput
+  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingUncheckedCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningUncheckedCreateNestedManyWithoutDriverInput
 }
 
 export type UserUpdateInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  communities?: Prisma.CommunityUpdateManyWithoutUserNestedInput
+  createdCommunities?: Prisma.CommunityUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUpdateManyWithoutDriverNestedInput
   rides?: Prisma.RideUpdateManyWithoutDriverNestedInput
-  bookings?: Prisma.BookingUpdateManyWithoutUserNestedInput
+  bookings?: Prisma.BookingUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUpdateManyWithoutDriverNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  communities?: Prisma.CommunityUncheckedUpdateManyWithoutUserNestedInput
+  createdCommunities?: Prisma.CommunityUncheckedUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUncheckedUpdateManyWithoutDriverNestedInput
   rides?: Prisma.RideUncheckedUpdateManyWithoutDriverNestedInput
-  bookings?: Prisma.BookingUncheckedUpdateManyWithoutUserNestedInput
+  bookings?: Prisma.BookingUncheckedUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUncheckedUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUncheckedUpdateManyWithoutDriverNestedInput
 }
 
 export type UserCreateManyInput = {
   userId?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
+  profileImage?: string | null
   roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -320,8 +556,16 @@ export type UserUpdateManyMutationInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -330,8 +574,16 @@ export type UserUncheckedUpdateManyInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -348,17 +600,39 @@ export type UserCountOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
+  phone?: Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
+  profileImage?: Prisma.SortOrder
   roles?: Prisma.SortOrder
+  licenseNumber?: Prisma.SortOrder
+  licenseExpiry?: Prisma.SortOrder
+  driverVerified?: Prisma.SortOrder
+  walletBalance?: Prisma.SortOrder
+  averageRating?: Prisma.SortOrder
+  ratingCount?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type UserAvgOrderByAggregateInput = {
+  walletBalance?: Prisma.SortOrder
+  averageRating?: Prisma.SortOrder
+  ratingCount?: Prisma.SortOrder
 }
 
 export type UserMaxOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
+  phone?: Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
+  profileImage?: Prisma.SortOrder
+  licenseNumber?: Prisma.SortOrder
+  licenseExpiry?: Prisma.SortOrder
+  driverVerified?: Prisma.SortOrder
+  walletBalance?: Prisma.SortOrder
+  averageRating?: Prisma.SortOrder
+  ratingCount?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -367,14 +641,33 @@ export type UserMinOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   email?: Prisma.SortOrder
+  phone?: Prisma.SortOrder
   passwordHash?: Prisma.SortOrder
+  profileImage?: Prisma.SortOrder
+  licenseNumber?: Prisma.SortOrder
+  licenseExpiry?: Prisma.SortOrder
+  driverVerified?: Prisma.SortOrder
+  walletBalance?: Prisma.SortOrder
+  averageRating?: Prisma.SortOrder
+  ratingCount?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type UserSumOrderByAggregateInput = {
+  walletBalance?: Prisma.SortOrder
+  averageRating?: Prisma.SortOrder
+  ratingCount?: Prisma.SortOrder
 }
 
 export type UserScalarRelationFilter = {
   is?: Prisma.UserWhereInput
   isNot?: Prisma.UserWhereInput
+}
+
+export type UserNullableScalarRelationFilter = {
+  is?: Prisma.UserWhereInput | null
+  isNot?: Prisma.UserWhereInput | null
 }
 
 export type UserCreaterolesInput = {
@@ -385,27 +678,83 @@ export type StringFieldUpdateOperationsInput = {
   set?: string
 }
 
+export type NullableStringFieldUpdateOperationsInput = {
+  set?: string | null
+}
+
 export type UserUpdaterolesInput = {
   set?: $Enums.UserRole[]
   push?: $Enums.UserRole | $Enums.UserRole[]
+}
+
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
+}
+
+export type BoolFieldUpdateOperationsInput = {
+  set?: boolean
+}
+
+export type DecimalFieldUpdateOperationsInput = {
+  set?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  increment?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  decrement?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  multiply?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  divide?: runtime.Decimal | runtime.DecimalJsLike | number | string
+}
+
+export type IntFieldUpdateOperationsInput = {
+  set?: number
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
 }
 
 export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
 }
 
-export type UserCreateNestedOneWithoutCommunitiesInput = {
-  create?: Prisma.XOR<Prisma.UserCreateWithoutCommunitiesInput, Prisma.UserUncheckedCreateWithoutCommunitiesInput>
-  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCommunitiesInput
+export type UserCreateNestedOneWithoutCreatedCommunitiesInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCreatedCommunitiesInput, Prisma.UserUncheckedCreateWithoutCreatedCommunitiesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCreatedCommunitiesInput
   connect?: Prisma.UserWhereUniqueInput
 }
 
-export type UserUpdateOneRequiredWithoutCommunitiesNestedInput = {
-  create?: Prisma.XOR<Prisma.UserCreateWithoutCommunitiesInput, Prisma.UserUncheckedCreateWithoutCommunitiesInput>
-  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCommunitiesInput
-  upsert?: Prisma.UserUpsertWithoutCommunitiesInput
+export type UserUpdateOneRequiredWithoutCreatedCommunitiesNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCreatedCommunitiesInput, Prisma.UserUncheckedCreateWithoutCreatedCommunitiesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCreatedCommunitiesInput
+  upsert?: Prisma.UserUpsertWithoutCreatedCommunitiesInput
   connect?: Prisma.UserWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutCommunitiesInput, Prisma.UserUpdateWithoutCommunitiesInput>, Prisma.UserUncheckedUpdateWithoutCommunitiesInput>
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutCreatedCommunitiesInput, Prisma.UserUpdateWithoutCreatedCommunitiesInput>, Prisma.UserUncheckedUpdateWithoutCreatedCommunitiesInput>
+}
+
+export type UserCreateNestedOneWithoutCommunityMembershipsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCommunityMembershipsInput, Prisma.UserUncheckedCreateWithoutCommunityMembershipsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCommunityMembershipsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutCommunityMembershipsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCommunityMembershipsInput, Prisma.UserUncheckedCreateWithoutCommunityMembershipsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCommunityMembershipsInput
+  upsert?: Prisma.UserUpsertWithoutCommunityMembershipsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutCommunityMembershipsInput, Prisma.UserUpdateWithoutCommunityMembershipsInput>, Prisma.UserUncheckedUpdateWithoutCommunityMembershipsInput>
+}
+
+export type UserCreateNestedOneWithoutVehiclesInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutVehiclesInput, Prisma.UserUncheckedCreateWithoutVehiclesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutVehiclesInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutVehiclesNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutVehiclesInput, Prisma.UserUncheckedCreateWithoutVehiclesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutVehiclesInput
+  upsert?: Prisma.UserUpsertWithoutVehiclesInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutVehiclesInput, Prisma.UserUpdateWithoutVehiclesInput>, Prisma.UserUncheckedUpdateWithoutVehiclesInput>
 }
 
 export type UserCreateNestedOneWithoutRidesInput = {
@@ -428,6 +777,12 @@ export type UserCreateNestedOneWithoutBookingsInput = {
   connect?: Prisma.UserWhereUniqueInput
 }
 
+export type UserCreateNestedOneWithoutCancelledBookingsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCancelledBookingsInput, Prisma.UserUncheckedCreateWithoutCancelledBookingsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCancelledBookingsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
 export type UserUpdateOneRequiredWithoutBookingsNestedInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutBookingsInput, Prisma.UserUncheckedCreateWithoutBookingsInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutBookingsInput
@@ -436,92 +791,528 @@ export type UserUpdateOneRequiredWithoutBookingsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutBookingsInput, Prisma.UserUpdateWithoutBookingsInput>, Prisma.UserUncheckedUpdateWithoutBookingsInput>
 }
 
-export type UserCreateWithoutCommunitiesInput = {
+export type UserUpdateOneWithoutCancelledBookingsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCancelledBookingsInput, Prisma.UserUncheckedCreateWithoutCancelledBookingsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCancelledBookingsInput
+  upsert?: Prisma.UserUpsertWithoutCancelledBookingsInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutCancelledBookingsInput, Prisma.UserUpdateWithoutCancelledBookingsInput>, Prisma.UserUncheckedUpdateWithoutCancelledBookingsInput>
+}
+
+export type UserCreateNestedOneWithoutEmergencyContactsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutEmergencyContactsInput, Prisma.UserUncheckedCreateWithoutEmergencyContactsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutEmergencyContactsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutEmergencyContactsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutEmergencyContactsInput, Prisma.UserUncheckedCreateWithoutEmergencyContactsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutEmergencyContactsInput
+  upsert?: Prisma.UserUpsertWithoutEmergencyContactsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutEmergencyContactsInput, Prisma.UserUpdateWithoutEmergencyContactsInput>, Prisma.UserUncheckedUpdateWithoutEmergencyContactsInput>
+}
+
+export type UserCreateNestedOneWithoutSosAlertsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutSosAlertsInput, Prisma.UserUncheckedCreateWithoutSosAlertsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutSosAlertsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutSosAlertsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutSosAlertsInput, Prisma.UserUncheckedCreateWithoutSosAlertsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutSosAlertsInput
+  upsert?: Prisma.UserUpsertWithoutSosAlertsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutSosAlertsInput, Prisma.UserUpdateWithoutSosAlertsInput>, Prisma.UserUncheckedUpdateWithoutSosAlertsInput>
+}
+
+export type UserCreateNestedOneWithoutSentTransactionsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutSentTransactionsInput, Prisma.UserUncheckedCreateWithoutSentTransactionsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutSentTransactionsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserCreateNestedOneWithoutReceivedTransactionsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutReceivedTransactionsInput, Prisma.UserUncheckedCreateWithoutReceivedTransactionsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutReceivedTransactionsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneWithoutSentTransactionsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutSentTransactionsInput, Prisma.UserUncheckedCreateWithoutSentTransactionsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutSentTransactionsInput
+  upsert?: Prisma.UserUpsertWithoutSentTransactionsInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutSentTransactionsInput, Prisma.UserUpdateWithoutSentTransactionsInput>, Prisma.UserUncheckedUpdateWithoutSentTransactionsInput>
+}
+
+export type UserUpdateOneWithoutReceivedTransactionsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutReceivedTransactionsInput, Prisma.UserUncheckedCreateWithoutReceivedTransactionsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutReceivedTransactionsInput
+  upsert?: Prisma.UserUpsertWithoutReceivedTransactionsInput
+  disconnect?: Prisma.UserWhereInput | boolean
+  delete?: Prisma.UserWhereInput | boolean
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutReceivedTransactionsInput, Prisma.UserUpdateWithoutReceivedTransactionsInput>, Prisma.UserUncheckedUpdateWithoutReceivedTransactionsInput>
+}
+
+export type UserCreateNestedOneWithoutDriverEarningsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutDriverEarningsInput, Prisma.UserUncheckedCreateWithoutDriverEarningsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutDriverEarningsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutDriverEarningsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutDriverEarningsInput, Prisma.UserUncheckedCreateWithoutDriverEarningsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutDriverEarningsInput
+  upsert?: Prisma.UserUpsertWithoutDriverEarningsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutDriverEarningsInput, Prisma.UserUpdateWithoutDriverEarningsInput>, Prisma.UserUncheckedUpdateWithoutDriverEarningsInput>
+}
+
+export type UserCreateWithoutCreatedCommunitiesInput = {
   userId?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
+  profileImage?: string | null
   roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  communityMemberships?: Prisma.CommunityMembershipCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleCreateNestedManyWithoutDriverInput
   rides?: Prisma.RideCreateNestedManyWithoutDriverInput
-  bookings?: Prisma.BookingCreateNestedManyWithoutUserInput
+  bookings?: Prisma.BookingCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningCreateNestedManyWithoutDriverInput
 }
 
-export type UserUncheckedCreateWithoutCommunitiesInput = {
+export type UserUncheckedCreateWithoutCreatedCommunitiesInput = {
   userId?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
+  profileImage?: string | null
   roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  communityMemberships?: Prisma.CommunityMembershipUncheckedCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleUncheckedCreateNestedManyWithoutDriverInput
   rides?: Prisma.RideUncheckedCreateNestedManyWithoutDriverInput
-  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutUserInput
+  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingUncheckedCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningUncheckedCreateNestedManyWithoutDriverInput
 }
 
-export type UserCreateOrConnectWithoutCommunitiesInput = {
+export type UserCreateOrConnectWithoutCreatedCommunitiesInput = {
   where: Prisma.UserWhereUniqueInput
-  create: Prisma.XOR<Prisma.UserCreateWithoutCommunitiesInput, Prisma.UserUncheckedCreateWithoutCommunitiesInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutCreatedCommunitiesInput, Prisma.UserUncheckedCreateWithoutCreatedCommunitiesInput>
 }
 
-export type UserUpsertWithoutCommunitiesInput = {
-  update: Prisma.XOR<Prisma.UserUpdateWithoutCommunitiesInput, Prisma.UserUncheckedUpdateWithoutCommunitiesInput>
-  create: Prisma.XOR<Prisma.UserCreateWithoutCommunitiesInput, Prisma.UserUncheckedCreateWithoutCommunitiesInput>
+export type UserUpsertWithoutCreatedCommunitiesInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutCreatedCommunitiesInput, Prisma.UserUncheckedUpdateWithoutCreatedCommunitiesInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutCreatedCommunitiesInput, Prisma.UserUncheckedCreateWithoutCreatedCommunitiesInput>
   where?: Prisma.UserWhereInput
 }
 
-export type UserUpdateToOneWithWhereWithoutCommunitiesInput = {
+export type UserUpdateToOneWithWhereWithoutCreatedCommunitiesInput = {
   where?: Prisma.UserWhereInput
-  data: Prisma.XOR<Prisma.UserUpdateWithoutCommunitiesInput, Prisma.UserUncheckedUpdateWithoutCommunitiesInput>
+  data: Prisma.XOR<Prisma.UserUpdateWithoutCreatedCommunitiesInput, Prisma.UserUncheckedUpdateWithoutCreatedCommunitiesInput>
 }
 
-export type UserUpdateWithoutCommunitiesInput = {
+export type UserUpdateWithoutCreatedCommunitiesInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  communityMemberships?: Prisma.CommunityMembershipUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUpdateManyWithoutDriverNestedInput
   rides?: Prisma.RideUpdateManyWithoutDriverNestedInput
-  bookings?: Prisma.BookingUpdateManyWithoutUserNestedInput
+  bookings?: Prisma.BookingUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUpdateManyWithoutDriverNestedInput
 }
 
-export type UserUncheckedUpdateWithoutCommunitiesInput = {
+export type UserUncheckedUpdateWithoutCreatedCommunitiesInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  communityMemberships?: Prisma.CommunityMembershipUncheckedUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUncheckedUpdateManyWithoutDriverNestedInput
   rides?: Prisma.RideUncheckedUpdateManyWithoutDriverNestedInput
-  bookings?: Prisma.BookingUncheckedUpdateManyWithoutUserNestedInput
+  bookings?: Prisma.BookingUncheckedUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUncheckedUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUncheckedUpdateManyWithoutDriverNestedInput
+}
+
+export type UserCreateWithoutCommunityMembershipsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityCreateNestedManyWithoutCreatedByInput
+  vehicles?: Prisma.VehicleCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningCreateNestedManyWithoutDriverInput
+}
+
+export type UserUncheckedCreateWithoutCommunityMembershipsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityUncheckedCreateNestedManyWithoutCreatedByInput
+  vehicles?: Prisma.VehicleUncheckedCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideUncheckedCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingUncheckedCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningUncheckedCreateNestedManyWithoutDriverInput
+}
+
+export type UserCreateOrConnectWithoutCommunityMembershipsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutCommunityMembershipsInput, Prisma.UserUncheckedCreateWithoutCommunityMembershipsInput>
+}
+
+export type UserUpsertWithoutCommunityMembershipsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutCommunityMembershipsInput, Prisma.UserUncheckedUpdateWithoutCommunityMembershipsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutCommunityMembershipsInput, Prisma.UserUncheckedCreateWithoutCommunityMembershipsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutCommunityMembershipsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutCommunityMembershipsInput, Prisma.UserUncheckedUpdateWithoutCommunityMembershipsInput>
+}
+
+export type UserUpdateWithoutCommunityMembershipsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUpdateManyWithoutCreatedByNestedInput
+  vehicles?: Prisma.VehicleUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUpdateManyWithoutDriverNestedInput
+}
+
+export type UserUncheckedUpdateWithoutCommunityMembershipsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUncheckedUpdateManyWithoutCreatedByNestedInput
+  vehicles?: Prisma.VehicleUncheckedUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUncheckedUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUncheckedUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUncheckedUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUncheckedUpdateManyWithoutDriverNestedInput
+}
+
+export type UserCreateWithoutVehiclesInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipCreateNestedManyWithoutUserInput
+  rides?: Prisma.RideCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningCreateNestedManyWithoutDriverInput
+}
+
+export type UserUncheckedCreateWithoutVehiclesInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityUncheckedCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedCreateNestedManyWithoutUserInput
+  rides?: Prisma.RideUncheckedCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingUncheckedCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningUncheckedCreateNestedManyWithoutDriverInput
+}
+
+export type UserCreateOrConnectWithoutVehiclesInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutVehiclesInput, Prisma.UserUncheckedCreateWithoutVehiclesInput>
+}
+
+export type UserUpsertWithoutVehiclesInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutVehiclesInput, Prisma.UserUncheckedUpdateWithoutVehiclesInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutVehiclesInput, Prisma.UserUncheckedCreateWithoutVehiclesInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutVehiclesInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutVehiclesInput, Prisma.UserUncheckedUpdateWithoutVehiclesInput>
+}
+
+export type UserUpdateWithoutVehiclesInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUpdateManyWithoutUserNestedInput
+  rides?: Prisma.RideUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUpdateManyWithoutDriverNestedInput
+}
+
+export type UserUncheckedUpdateWithoutVehiclesInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUncheckedUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedUpdateManyWithoutUserNestedInput
+  rides?: Prisma.RideUncheckedUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUncheckedUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUncheckedUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUncheckedUpdateManyWithoutDriverNestedInput
 }
 
 export type UserCreateWithoutRidesInput = {
   userId?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
+  profileImage?: string | null
   roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
-  communities?: Prisma.CommunityCreateNestedManyWithoutUserInput
-  bookings?: Prisma.BookingCreateNestedManyWithoutUserInput
+  createdCommunities?: Prisma.CommunityCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningCreateNestedManyWithoutDriverInput
 }
 
 export type UserUncheckedCreateWithoutRidesInput = {
   userId?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
+  profileImage?: string | null
   roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
-  communities?: Prisma.CommunityUncheckedCreateNestedManyWithoutUserInput
-  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutUserInput
+  createdCommunities?: Prisma.CommunityUncheckedCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleUncheckedCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingUncheckedCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningUncheckedCreateNestedManyWithoutDriverInput
 }
 
 export type UserCreateOrConnectWithoutRidesInput = {
@@ -544,53 +1335,178 @@ export type UserUpdateWithoutRidesInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  communities?: Prisma.CommunityUpdateManyWithoutUserNestedInput
-  bookings?: Prisma.BookingUpdateManyWithoutUserNestedInput
+  createdCommunities?: Prisma.CommunityUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUpdateManyWithoutDriverNestedInput
 }
 
 export type UserUncheckedUpdateWithoutRidesInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  communities?: Prisma.CommunityUncheckedUpdateManyWithoutUserNestedInput
-  bookings?: Prisma.BookingUncheckedUpdateManyWithoutUserNestedInput
+  createdCommunities?: Prisma.CommunityUncheckedUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUncheckedUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUncheckedUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUncheckedUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUncheckedUpdateManyWithoutDriverNestedInput
 }
 
 export type UserCreateWithoutBookingsInput = {
   userId?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
+  profileImage?: string | null
   roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
-  communities?: Prisma.CommunityCreateNestedManyWithoutUserInput
+  createdCommunities?: Prisma.CommunityCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleCreateNestedManyWithoutDriverInput
   rides?: Prisma.RideCreateNestedManyWithoutDriverInput
+  cancelledBookings?: Prisma.BookingCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningCreateNestedManyWithoutDriverInput
 }
 
 export type UserUncheckedCreateWithoutBookingsInput = {
   userId?: string
   name: string
   email: string
+  phone?: string | null
   passwordHash: string
+  profileImage?: string | null
   roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
   createdAt?: Date | string
   updatedAt?: Date | string
-  communities?: Prisma.CommunityUncheckedCreateNestedManyWithoutUserInput
+  createdCommunities?: Prisma.CommunityUncheckedCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleUncheckedCreateNestedManyWithoutDriverInput
   rides?: Prisma.RideUncheckedCreateNestedManyWithoutDriverInput
+  cancelledBookings?: Prisma.BookingUncheckedCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningUncheckedCreateNestedManyWithoutDriverInput
 }
 
 export type UserCreateOrConnectWithoutBookingsInput = {
   where: Prisma.UserWhereUniqueInput
   create: Prisma.XOR<Prisma.UserCreateWithoutBookingsInput, Prisma.UserUncheckedCreateWithoutBookingsInput>
+}
+
+export type UserCreateWithoutCancelledBookingsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingCreateNestedManyWithoutRiderInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningCreateNestedManyWithoutDriverInput
+}
+
+export type UserUncheckedCreateWithoutCancelledBookingsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityUncheckedCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleUncheckedCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideUncheckedCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRiderInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningUncheckedCreateNestedManyWithoutDriverInput
+}
+
+export type UserCreateOrConnectWithoutCancelledBookingsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutCancelledBookingsInput, Prisma.UserUncheckedCreateWithoutCancelledBookingsInput>
 }
 
 export type UserUpsertWithoutBookingsInput = {
@@ -608,24 +1524,763 @@ export type UserUpdateWithoutBookingsInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  communities?: Prisma.CommunityUpdateManyWithoutUserNestedInput
+  createdCommunities?: Prisma.CommunityUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUpdateManyWithoutDriverNestedInput
   rides?: Prisma.RideUpdateManyWithoutDriverNestedInput
+  cancelledBookings?: Prisma.BookingUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUpdateManyWithoutDriverNestedInput
 }
 
 export type UserUncheckedUpdateWithoutBookingsInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  communities?: Prisma.CommunityUncheckedUpdateManyWithoutUserNestedInput
+  createdCommunities?: Prisma.CommunityUncheckedUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUncheckedUpdateManyWithoutDriverNestedInput
   rides?: Prisma.RideUncheckedUpdateManyWithoutDriverNestedInput
+  cancelledBookings?: Prisma.BookingUncheckedUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUncheckedUpdateManyWithoutDriverNestedInput
+}
+
+export type UserUpsertWithoutCancelledBookingsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutCancelledBookingsInput, Prisma.UserUncheckedUpdateWithoutCancelledBookingsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutCancelledBookingsInput, Prisma.UserUncheckedCreateWithoutCancelledBookingsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutCancelledBookingsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutCancelledBookingsInput, Prisma.UserUncheckedUpdateWithoutCancelledBookingsInput>
+}
+
+export type UserUpdateWithoutCancelledBookingsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUpdateManyWithoutRiderNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUpdateManyWithoutDriverNestedInput
+}
+
+export type UserUncheckedUpdateWithoutCancelledBookingsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUncheckedUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUncheckedUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUncheckedUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUncheckedUpdateManyWithoutRiderNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUncheckedUpdateManyWithoutDriverNestedInput
+}
+
+export type UserCreateWithoutEmergencyContactsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingCreateNestedManyWithoutCancelledByInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningCreateNestedManyWithoutDriverInput
+}
+
+export type UserUncheckedCreateWithoutEmergencyContactsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityUncheckedCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleUncheckedCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideUncheckedCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingUncheckedCreateNestedManyWithoutCancelledByInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningUncheckedCreateNestedManyWithoutDriverInput
+}
+
+export type UserCreateOrConnectWithoutEmergencyContactsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutEmergencyContactsInput, Prisma.UserUncheckedCreateWithoutEmergencyContactsInput>
+}
+
+export type UserUpsertWithoutEmergencyContactsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutEmergencyContactsInput, Prisma.UserUncheckedUpdateWithoutEmergencyContactsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutEmergencyContactsInput, Prisma.UserUncheckedCreateWithoutEmergencyContactsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutEmergencyContactsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutEmergencyContactsInput, Prisma.UserUncheckedUpdateWithoutEmergencyContactsInput>
+}
+
+export type UserUpdateWithoutEmergencyContactsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUpdateManyWithoutCancelledByNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUpdateManyWithoutDriverNestedInput
+}
+
+export type UserUncheckedUpdateWithoutEmergencyContactsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUncheckedUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUncheckedUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUncheckedUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUncheckedUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUncheckedUpdateManyWithoutCancelledByNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUncheckedUpdateManyWithoutDriverNestedInput
+}
+
+export type UserCreateWithoutSosAlertsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningCreateNestedManyWithoutDriverInput
+}
+
+export type UserUncheckedCreateWithoutSosAlertsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityUncheckedCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleUncheckedCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideUncheckedCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingUncheckedCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningUncheckedCreateNestedManyWithoutDriverInput
+}
+
+export type UserCreateOrConnectWithoutSosAlertsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutSosAlertsInput, Prisma.UserUncheckedCreateWithoutSosAlertsInput>
+}
+
+export type UserUpsertWithoutSosAlertsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutSosAlertsInput, Prisma.UserUncheckedUpdateWithoutSosAlertsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutSosAlertsInput, Prisma.UserUncheckedCreateWithoutSosAlertsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutSosAlertsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutSosAlertsInput, Prisma.UserUncheckedUpdateWithoutSosAlertsInput>
+}
+
+export type UserUpdateWithoutSosAlertsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUpdateManyWithoutDriverNestedInput
+}
+
+export type UserUncheckedUpdateWithoutSosAlertsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUncheckedUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUncheckedUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUncheckedUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUncheckedUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUncheckedUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUncheckedUpdateManyWithoutDriverNestedInput
+}
+
+export type UserCreateWithoutSentTransactionsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutUserInput
+  receivedTransactions?: Prisma.TransactionCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningCreateNestedManyWithoutDriverInput
+}
+
+export type UserUncheckedCreateWithoutSentTransactionsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityUncheckedCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleUncheckedCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideUncheckedCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingUncheckedCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutUserInput
+  receivedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReceiverInput
+  driverEarnings?: Prisma.DriverEarningUncheckedCreateNestedManyWithoutDriverInput
+}
+
+export type UserCreateOrConnectWithoutSentTransactionsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutSentTransactionsInput, Prisma.UserUncheckedCreateWithoutSentTransactionsInput>
+}
+
+export type UserCreateWithoutReceivedTransactionsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionCreateNestedManyWithoutSenderInput
+  driverEarnings?: Prisma.DriverEarningCreateNestedManyWithoutDriverInput
+}
+
+export type UserUncheckedCreateWithoutReceivedTransactionsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityUncheckedCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleUncheckedCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideUncheckedCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingUncheckedCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutSenderInput
+  driverEarnings?: Prisma.DriverEarningUncheckedCreateNestedManyWithoutDriverInput
+}
+
+export type UserCreateOrConnectWithoutReceivedTransactionsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutReceivedTransactionsInput, Prisma.UserUncheckedCreateWithoutReceivedTransactionsInput>
+}
+
+export type UserUpsertWithoutSentTransactionsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutSentTransactionsInput, Prisma.UserUncheckedUpdateWithoutSentTransactionsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutSentTransactionsInput, Prisma.UserUncheckedCreateWithoutSentTransactionsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutSentTransactionsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutSentTransactionsInput, Prisma.UserUncheckedUpdateWithoutSentTransactionsInput>
+}
+
+export type UserUpdateWithoutSentTransactionsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutUserNestedInput
+  receivedTransactions?: Prisma.TransactionUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUpdateManyWithoutDriverNestedInput
+}
+
+export type UserUncheckedUpdateWithoutSentTransactionsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUncheckedUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUncheckedUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUncheckedUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUncheckedUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUncheckedUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutUserNestedInput
+  receivedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReceiverNestedInput
+  driverEarnings?: Prisma.DriverEarningUncheckedUpdateManyWithoutDriverNestedInput
+}
+
+export type UserUpsertWithoutReceivedTransactionsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutReceivedTransactionsInput, Prisma.UserUncheckedUpdateWithoutReceivedTransactionsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutReceivedTransactionsInput, Prisma.UserUncheckedCreateWithoutReceivedTransactionsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutReceivedTransactionsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutReceivedTransactionsInput, Prisma.UserUncheckedUpdateWithoutReceivedTransactionsInput>
+}
+
+export type UserUpdateWithoutReceivedTransactionsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUpdateManyWithoutSenderNestedInput
+  driverEarnings?: Prisma.DriverEarningUpdateManyWithoutDriverNestedInput
+}
+
+export type UserUncheckedUpdateWithoutReceivedTransactionsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUncheckedUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUncheckedUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUncheckedUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUncheckedUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUncheckedUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutSenderNestedInput
+  driverEarnings?: Prisma.DriverEarningUncheckedUpdateManyWithoutDriverNestedInput
+}
+
+export type UserCreateWithoutDriverEarningsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionCreateNestedManyWithoutReceiverInput
+}
+
+export type UserUncheckedCreateWithoutDriverEarningsInput = {
+  userId?: string
+  name: string
+  email: string
+  phone?: string | null
+  passwordHash: string
+  profileImage?: string | null
+  roles?: Prisma.UserCreaterolesInput | $Enums.UserRole[]
+  licenseNumber?: string | null
+  licenseExpiry?: Date | string | null
+  driverVerified?: boolean
+  walletBalance?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  createdCommunities?: Prisma.CommunityUncheckedCreateNestedManyWithoutCreatedByInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedCreateNestedManyWithoutUserInput
+  vehicles?: Prisma.VehicleUncheckedCreateNestedManyWithoutDriverInput
+  rides?: Prisma.RideUncheckedCreateNestedManyWithoutDriverInput
+  bookings?: Prisma.BookingUncheckedCreateNestedManyWithoutRiderInput
+  cancelledBookings?: Prisma.BookingUncheckedCreateNestedManyWithoutCancelledByInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  sosAlerts?: Prisma.SOSAlertUncheckedCreateNestedManyWithoutUserInput
+  sentTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutSenderInput
+  receivedTransactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutReceiverInput
+}
+
+export type UserCreateOrConnectWithoutDriverEarningsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutDriverEarningsInput, Prisma.UserUncheckedCreateWithoutDriverEarningsInput>
+}
+
+export type UserUpsertWithoutDriverEarningsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutDriverEarningsInput, Prisma.UserUncheckedUpdateWithoutDriverEarningsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutDriverEarningsInput, Prisma.UserUncheckedCreateWithoutDriverEarningsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutDriverEarningsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutDriverEarningsInput, Prisma.UserUncheckedUpdateWithoutDriverEarningsInput>
+}
+
+export type UserUpdateWithoutDriverEarningsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUpdateManyWithoutReceiverNestedInput
+}
+
+export type UserUncheckedUpdateWithoutDriverEarningsInput = {
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  profileImage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  roles?: Prisma.UserUpdaterolesInput | $Enums.UserRole[]
+  licenseNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  licenseExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  driverVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  walletBalance?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  averageRating?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  ratingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  createdCommunities?: Prisma.CommunityUncheckedUpdateManyWithoutCreatedByNestedInput
+  communityMemberships?: Prisma.CommunityMembershipUncheckedUpdateManyWithoutUserNestedInput
+  vehicles?: Prisma.VehicleUncheckedUpdateManyWithoutDriverNestedInput
+  rides?: Prisma.RideUncheckedUpdateManyWithoutDriverNestedInput
+  bookings?: Prisma.BookingUncheckedUpdateManyWithoutRiderNestedInput
+  cancelledBookings?: Prisma.BookingUncheckedUpdateManyWithoutCancelledByNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  sosAlerts?: Prisma.SOSAlertUncheckedUpdateManyWithoutUserNestedInput
+  sentTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutSenderNestedInput
+  receivedTransactions?: Prisma.TransactionUncheckedUpdateManyWithoutReceiverNestedInput
 }
 
 
@@ -634,15 +2289,31 @@ export type UserUncheckedUpdateWithoutBookingsInput = {
  */
 
 export type UserCountOutputType = {
-  communities: number
+  createdCommunities: number
+  communityMemberships: number
+  vehicles: number
   rides: number
   bookings: number
+  cancelledBookings: number
+  emergencyContacts: number
+  sosAlerts: number
+  sentTransactions: number
+  receivedTransactions: number
+  driverEarnings: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  communities?: boolean | UserCountOutputTypeCountCommunitiesArgs
+  createdCommunities?: boolean | UserCountOutputTypeCountCreatedCommunitiesArgs
+  communityMemberships?: boolean | UserCountOutputTypeCountCommunityMembershipsArgs
+  vehicles?: boolean | UserCountOutputTypeCountVehiclesArgs
   rides?: boolean | UserCountOutputTypeCountRidesArgs
   bookings?: boolean | UserCountOutputTypeCountBookingsArgs
+  cancelledBookings?: boolean | UserCountOutputTypeCountCancelledBookingsArgs
+  emergencyContacts?: boolean | UserCountOutputTypeCountEmergencyContactsArgs
+  sosAlerts?: boolean | UserCountOutputTypeCountSosAlertsArgs
+  sentTransactions?: boolean | UserCountOutputTypeCountSentTransactionsArgs
+  receivedTransactions?: boolean | UserCountOutputTypeCountReceivedTransactionsArgs
+  driverEarnings?: boolean | UserCountOutputTypeCountDriverEarningsArgs
 }
 
 /**
@@ -658,8 +2329,22 @@ export type UserCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensi
 /**
  * UserCountOutputType without action
  */
-export type UserCountOutputTypeCountCommunitiesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+export type UserCountOutputTypeCountCreatedCommunitiesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.CommunityWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountCommunityMembershipsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CommunityMembershipWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountVehiclesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.VehicleWhereInput
 }
 
 /**
@@ -676,18 +2361,76 @@ export type UserCountOutputTypeCountBookingsArgs<ExtArgs extends runtime.Types.E
   where?: Prisma.BookingWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountCancelledBookingsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.BookingWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountEmergencyContactsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.EmergencyContactWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountSosAlertsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.SOSAlertWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountSentTransactionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TransactionWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountReceivedTransactionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TransactionWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountDriverEarningsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.DriverEarningWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   userId?: boolean
   name?: boolean
   email?: boolean
+  phone?: boolean
   passwordHash?: boolean
+  profileImage?: boolean
   roles?: boolean
+  licenseNumber?: boolean
+  licenseExpiry?: boolean
+  driverVerified?: boolean
+  walletBalance?: boolean
+  averageRating?: boolean
+  ratingCount?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  communities?: boolean | Prisma.User$communitiesArgs<ExtArgs>
+  createdCommunities?: boolean | Prisma.User$createdCommunitiesArgs<ExtArgs>
+  communityMemberships?: boolean | Prisma.User$communityMembershipsArgs<ExtArgs>
+  vehicles?: boolean | Prisma.User$vehiclesArgs<ExtArgs>
   rides?: boolean | Prisma.User$ridesArgs<ExtArgs>
   bookings?: boolean | Prisma.User$bookingsArgs<ExtArgs>
+  cancelledBookings?: boolean | Prisma.User$cancelledBookingsArgs<ExtArgs>
+  emergencyContacts?: boolean | Prisma.User$emergencyContactsArgs<ExtArgs>
+  sosAlerts?: boolean | Prisma.User$sosAlertsArgs<ExtArgs>
+  sentTransactions?: boolean | Prisma.User$sentTransactionsArgs<ExtArgs>
+  receivedTransactions?: boolean | Prisma.User$receivedTransactionsArgs<ExtArgs>
+  driverEarnings?: boolean | Prisma.User$driverEarningsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -695,8 +2438,16 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   userId?: boolean
   name?: boolean
   email?: boolean
+  phone?: boolean
   passwordHash?: boolean
+  profileImage?: boolean
   roles?: boolean
+  licenseNumber?: boolean
+  licenseExpiry?: boolean
+  driverVerified?: boolean
+  walletBalance?: boolean
+  averageRating?: boolean
+  ratingCount?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -705,8 +2456,16 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   userId?: boolean
   name?: boolean
   email?: boolean
+  phone?: boolean
   passwordHash?: boolean
+  profileImage?: boolean
   roles?: boolean
+  licenseNumber?: boolean
+  licenseExpiry?: boolean
+  driverVerified?: boolean
+  walletBalance?: boolean
+  averageRating?: boolean
+  ratingCount?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -715,17 +2474,33 @@ export type UserSelectScalar = {
   userId?: boolean
   name?: boolean
   email?: boolean
+  phone?: boolean
   passwordHash?: boolean
+  profileImage?: boolean
   roles?: boolean
+  licenseNumber?: boolean
+  licenseExpiry?: boolean
+  driverVerified?: boolean
+  walletBalance?: boolean
+  averageRating?: boolean
+  ratingCount?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"userId" | "name" | "email" | "passwordHash" | "roles" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"userId" | "name" | "email" | "phone" | "passwordHash" | "profileImage" | "roles" | "licenseNumber" | "licenseExpiry" | "driverVerified" | "walletBalance" | "averageRating" | "ratingCount" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  communities?: boolean | Prisma.User$communitiesArgs<ExtArgs>
+  createdCommunities?: boolean | Prisma.User$createdCommunitiesArgs<ExtArgs>
+  communityMemberships?: boolean | Prisma.User$communityMembershipsArgs<ExtArgs>
+  vehicles?: boolean | Prisma.User$vehiclesArgs<ExtArgs>
   rides?: boolean | Prisma.User$ridesArgs<ExtArgs>
   bookings?: boolean | Prisma.User$bookingsArgs<ExtArgs>
+  cancelledBookings?: boolean | Prisma.User$cancelledBookingsArgs<ExtArgs>
+  emergencyContacts?: boolean | Prisma.User$emergencyContactsArgs<ExtArgs>
+  sosAlerts?: boolean | Prisma.User$sosAlertsArgs<ExtArgs>
+  sentTransactions?: boolean | Prisma.User$sentTransactionsArgs<ExtArgs>
+  receivedTransactions?: boolean | Prisma.User$receivedTransactionsArgs<ExtArgs>
+  driverEarnings?: boolean | Prisma.User$driverEarningsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -734,16 +2509,32 @@ export type UserIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
 export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "User"
   objects: {
-    communities: Prisma.$CommunityPayload<ExtArgs>[]
+    createdCommunities: Prisma.$CommunityPayload<ExtArgs>[]
+    communityMemberships: Prisma.$CommunityMembershipPayload<ExtArgs>[]
+    vehicles: Prisma.$VehiclePayload<ExtArgs>[]
     rides: Prisma.$RidePayload<ExtArgs>[]
     bookings: Prisma.$BookingPayload<ExtArgs>[]
+    cancelledBookings: Prisma.$BookingPayload<ExtArgs>[]
+    emergencyContacts: Prisma.$EmergencyContactPayload<ExtArgs>[]
+    sosAlerts: Prisma.$SOSAlertPayload<ExtArgs>[]
+    sentTransactions: Prisma.$TransactionPayload<ExtArgs>[]
+    receivedTransactions: Prisma.$TransactionPayload<ExtArgs>[]
+    driverEarnings: Prisma.$DriverEarningPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     userId: string
     name: string
     email: string
+    phone: string | null
     passwordHash: string
+    profileImage: string | null
     roles: $Enums.UserRole[]
+    licenseNumber: string | null
+    licenseExpiry: Date | null
+    driverVerified: boolean
+    walletBalance: runtime.Decimal
+    averageRating: runtime.Decimal
+    ratingCount: number
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["user"]>
@@ -1140,9 +2931,17 @@ readonly fields: UserFieldRefs;
  */
 export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
-  communities<T extends Prisma.User$communitiesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$communitiesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommunityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  createdCommunities<T extends Prisma.User$createdCommunitiesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$createdCommunitiesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommunityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  communityMemberships<T extends Prisma.User$communityMembershipsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$communityMembershipsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommunityMembershipPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  vehicles<T extends Prisma.User$vehiclesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$vehiclesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$VehiclePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   rides<T extends Prisma.User$ridesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$ridesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RidePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   bookings<T extends Prisma.User$bookingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$bookingsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BookingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  cancelledBookings<T extends Prisma.User$cancelledBookingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$cancelledBookingsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BookingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  emergencyContacts<T extends Prisma.User$emergencyContactsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$emergencyContactsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EmergencyContactPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  sosAlerts<T extends Prisma.User$sosAlertsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$sosAlertsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SOSAlertPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  sentTransactions<T extends Prisma.User$sentTransactionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$sentTransactionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TransactionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  receivedTransactions<T extends Prisma.User$receivedTransactionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$receivedTransactionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TransactionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  driverEarnings<T extends Prisma.User$driverEarningsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$driverEarningsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$DriverEarningPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1175,8 +2974,16 @@ export interface UserFieldRefs {
   readonly userId: Prisma.FieldRef<"User", 'String'>
   readonly name: Prisma.FieldRef<"User", 'String'>
   readonly email: Prisma.FieldRef<"User", 'String'>
+  readonly phone: Prisma.FieldRef<"User", 'String'>
   readonly passwordHash: Prisma.FieldRef<"User", 'String'>
+  readonly profileImage: Prisma.FieldRef<"User", 'String'>
   readonly roles: Prisma.FieldRef<"User", 'UserRole[]'>
+  readonly licenseNumber: Prisma.FieldRef<"User", 'String'>
+  readonly licenseExpiry: Prisma.FieldRef<"User", 'DateTime'>
+  readonly driverVerified: Prisma.FieldRef<"User", 'Boolean'>
+  readonly walletBalance: Prisma.FieldRef<"User", 'Decimal'>
+  readonly averageRating: Prisma.FieldRef<"User", 'Decimal'>
+  readonly ratingCount: Prisma.FieldRef<"User", 'Int'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"User", 'DateTime'>
 }
@@ -1572,9 +3379,9 @@ export type UserDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Internal
 }
 
 /**
- * User.communities
+ * User.createdCommunities
  */
-export type User$communitiesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+export type User$createdCommunitiesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
    * Select specific fields to fetch from the Community
    */
@@ -1593,6 +3400,54 @@ export type User$communitiesArgs<ExtArgs extends runtime.Types.Extensions.Intern
   take?: number
   skip?: number
   distinct?: Prisma.CommunityScalarFieldEnum | Prisma.CommunityScalarFieldEnum[]
+}
+
+/**
+ * User.communityMemberships
+ */
+export type User$communityMembershipsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CommunityMembership
+   */
+  select?: Prisma.CommunityMembershipSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CommunityMembership
+   */
+  omit?: Prisma.CommunityMembershipOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CommunityMembershipInclude<ExtArgs> | null
+  where?: Prisma.CommunityMembershipWhereInput
+  orderBy?: Prisma.CommunityMembershipOrderByWithRelationInput | Prisma.CommunityMembershipOrderByWithRelationInput[]
+  cursor?: Prisma.CommunityMembershipWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CommunityMembershipScalarFieldEnum | Prisma.CommunityMembershipScalarFieldEnum[]
+}
+
+/**
+ * User.vehicles
+ */
+export type User$vehiclesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Vehicle
+   */
+  select?: Prisma.VehicleSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Vehicle
+   */
+  omit?: Prisma.VehicleOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.VehicleInclude<ExtArgs> | null
+  where?: Prisma.VehicleWhereInput
+  orderBy?: Prisma.VehicleOrderByWithRelationInput | Prisma.VehicleOrderByWithRelationInput[]
+  cursor?: Prisma.VehicleWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.VehicleScalarFieldEnum | Prisma.VehicleScalarFieldEnum[]
 }
 
 /**
@@ -1641,6 +3496,150 @@ export type User$bookingsArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   take?: number
   skip?: number
   distinct?: Prisma.BookingScalarFieldEnum | Prisma.BookingScalarFieldEnum[]
+}
+
+/**
+ * User.cancelledBookings
+ */
+export type User$cancelledBookingsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Booking
+   */
+  select?: Prisma.BookingSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Booking
+   */
+  omit?: Prisma.BookingOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BookingInclude<ExtArgs> | null
+  where?: Prisma.BookingWhereInput
+  orderBy?: Prisma.BookingOrderByWithRelationInput | Prisma.BookingOrderByWithRelationInput[]
+  cursor?: Prisma.BookingWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.BookingScalarFieldEnum | Prisma.BookingScalarFieldEnum[]
+}
+
+/**
+ * User.emergencyContacts
+ */
+export type User$emergencyContactsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the EmergencyContact
+   */
+  select?: Prisma.EmergencyContactSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the EmergencyContact
+   */
+  omit?: Prisma.EmergencyContactOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.EmergencyContactInclude<ExtArgs> | null
+  where?: Prisma.EmergencyContactWhereInput
+  orderBy?: Prisma.EmergencyContactOrderByWithRelationInput | Prisma.EmergencyContactOrderByWithRelationInput[]
+  cursor?: Prisma.EmergencyContactWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.EmergencyContactScalarFieldEnum | Prisma.EmergencyContactScalarFieldEnum[]
+}
+
+/**
+ * User.sosAlerts
+ */
+export type User$sosAlertsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the SOSAlert
+   */
+  select?: Prisma.SOSAlertSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the SOSAlert
+   */
+  omit?: Prisma.SOSAlertOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.SOSAlertInclude<ExtArgs> | null
+  where?: Prisma.SOSAlertWhereInput
+  orderBy?: Prisma.SOSAlertOrderByWithRelationInput | Prisma.SOSAlertOrderByWithRelationInput[]
+  cursor?: Prisma.SOSAlertWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.SOSAlertScalarFieldEnum | Prisma.SOSAlertScalarFieldEnum[]
+}
+
+/**
+ * User.sentTransactions
+ */
+export type User$sentTransactionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Transaction
+   */
+  select?: Prisma.TransactionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Transaction
+   */
+  omit?: Prisma.TransactionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TransactionInclude<ExtArgs> | null
+  where?: Prisma.TransactionWhereInput
+  orderBy?: Prisma.TransactionOrderByWithRelationInput | Prisma.TransactionOrderByWithRelationInput[]
+  cursor?: Prisma.TransactionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TransactionScalarFieldEnum | Prisma.TransactionScalarFieldEnum[]
+}
+
+/**
+ * User.receivedTransactions
+ */
+export type User$receivedTransactionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Transaction
+   */
+  select?: Prisma.TransactionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Transaction
+   */
+  omit?: Prisma.TransactionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TransactionInclude<ExtArgs> | null
+  where?: Prisma.TransactionWhereInput
+  orderBy?: Prisma.TransactionOrderByWithRelationInput | Prisma.TransactionOrderByWithRelationInput[]
+  cursor?: Prisma.TransactionWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TransactionScalarFieldEnum | Prisma.TransactionScalarFieldEnum[]
+}
+
+/**
+ * User.driverEarnings
+ */
+export type User$driverEarningsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the DriverEarning
+   */
+  select?: Prisma.DriverEarningSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the DriverEarning
+   */
+  omit?: Prisma.DriverEarningOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.DriverEarningInclude<ExtArgs> | null
+  where?: Prisma.DriverEarningWhereInput
+  orderBy?: Prisma.DriverEarningOrderByWithRelationInput | Prisma.DriverEarningOrderByWithRelationInput[]
+  cursor?: Prisma.DriverEarningWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.DriverEarningScalarFieldEnum | Prisma.DriverEarningScalarFieldEnum[]
 }
 
 /**

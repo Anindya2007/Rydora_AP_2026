@@ -10,7 +10,12 @@
  */
 export type * from './models/User.ts'
 export type * from './models/Community.ts'
+export type * from './models/CommunityMembership.ts'
+export type * from './models/Vehicle.ts'
 export type * from './models/Ride.ts'
 export type * from './models/Booking.ts'
+export type * from './models/EmergencyContact.ts'
+export type * from './models/SOSAlert.ts'
 export type * from './models/Transaction.ts'
+export type * from './models/DriverEarning.ts'
 export type * from './commonInputTypes.ts'

@@ -53,9 +53,14 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   User: 'User',
   Community: 'Community',
+  CommunityMembership: 'CommunityMembership',
+  Vehicle: 'Vehicle',
   Ride: 'Ride',
   Booking: 'Booking',
-  Transaction: 'Transaction'
+  EmergencyContact: 'EmergencyContact',
+  SOSAlert: 'SOSAlert',
+  Transaction: 'Transaction',
+  DriverEarning: 'DriverEarning'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -78,8 +83,16 @@ export const UserScalarFieldEnum = {
   userId: 'userId',
   name: 'name',
   email: 'email',
+  phone: 'phone',
   passwordHash: 'passwordHash',
+  profileImage: 'profileImage',
   roles: 'roles',
+  licenseNumber: 'licenseNumber',
+  licenseExpiry: 'licenseExpiry',
+  driverVerified: 'driverVerified',
+  walletBalance: 'walletBalance',
+  averageRating: 'averageRating',
+  ratingCount: 'ratingCount',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -91,25 +104,63 @@ export const CommunityScalarFieldEnum = {
   communityId: 'communityId',
   name: 'name',
   domain: 'domain',
-  userId: 'userId',
-  createdAt: 'createdAt'
+  description: 'description',
+  status: 'status',
+  createdById: 'createdById',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 } as const
 
 export type CommunityScalarFieldEnum = (typeof CommunityScalarFieldEnum)[keyof typeof CommunityScalarFieldEnum]
 
 
+export const CommunityMembershipScalarFieldEnum = {
+  membershipId: 'membershipId',
+  communityId: 'communityId',
+  userId: 'userId',
+  memberRole: 'memberRole',
+  status: 'status',
+  joinedAt: 'joinedAt'
+} as const
+
+export type CommunityMembershipScalarFieldEnum = (typeof CommunityMembershipScalarFieldEnum)[keyof typeof CommunityMembershipScalarFieldEnum]
+
+
+export const VehicleScalarFieldEnum = {
+  vehicleId: 'vehicleId',
+  driverId: 'driverId',
+  vehicleType: 'vehicleType',
+  make: 'make',
+  model: 'model',
+  registrationNumber: 'registrationNumber',
+  color: 'color',
+  seatCapacity: 'seatCapacity',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type VehicleScalarFieldEnum = (typeof VehicleScalarFieldEnum)[keyof typeof VehicleScalarFieldEnum]
+
+
 export const RideScalarFieldEnum = {
   rideId: 'rideId',
   driverId: 'driverId',
+  vehicleId: 'vehicleId',
   communityId: 'communityId',
   source: 'source',
   destination: 'destination',
   departureTime: 'departureTime',
+  sourceLatitude: 'sourceLatitude',
+  sourceLongitude: 'sourceLongitude',
+  destinationLatitude: 'destinationLatitude',
+  destinationLongitude: 'destinationLongitude',
   totalSeats: 'totalSeats',
   availableSeats: 'availableSeats',
   farePerSeat: 'farePerSeat',
   status: 'status',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 } as const
 
 export type RideScalarFieldEnum = (typeof RideScalarFieldEnum)[keyof typeof RideScalarFieldEnum]
@@ -118,26 +169,84 @@ export type RideScalarFieldEnum = (typeof RideScalarFieldEnum)[keyof typeof Ride
 export const BookingScalarFieldEnum = {
   bookingId: 'bookingId',
   rideId: 'rideId',
-  userId: 'userId',
+  riderId: 'riderId',
   seatsBooked: 'seatsBooked',
   status: 'status',
   totalAmount: 'totalAmount',
-  bookedAt: 'bookedAt'
+  bookedAt: 'bookedAt',
+  updatedAt: 'updatedAt',
+  cancelledAt: 'cancelledAt',
+  cancelledById: 'cancelledById',
+  cancellationReason: 'cancellationReason'
 } as const
 
 export type BookingScalarFieldEnum = (typeof BookingScalarFieldEnum)[keyof typeof BookingScalarFieldEnum]
 
 
-export const TransactionScalarFieldEnum = {
-  transactionId: 'transactionId',
-  bookingId: 'bookingId',
-  amount: 'amount',
-  type: 'type',
-  status: 'status',
+export const EmergencyContactScalarFieldEnum = {
+  contactId: 'contactId',
+  userId: 'userId',
+  name: 'name',
+  phone: 'phone',
+  relationship: 'relationship',
+  isPrimary: 'isPrimary',
   createdAt: 'createdAt'
 } as const
 
+export type EmergencyContactScalarFieldEnum = (typeof EmergencyContactScalarFieldEnum)[keyof typeof EmergencyContactScalarFieldEnum]
+
+
+export const SOSAlertScalarFieldEnum = {
+  alertId: 'alertId',
+  userId: 'userId',
+  rideId: 'rideId',
+  message: 'message',
+  latitude: 'latitude',
+  longitude: 'longitude',
+  status: 'status',
+  createdAt: 'createdAt',
+  resolvedAt: 'resolvedAt'
+} as const
+
+export type SOSAlertScalarFieldEnum = (typeof SOSAlertScalarFieldEnum)[keyof typeof SOSAlertScalarFieldEnum]
+
+
+export const TransactionScalarFieldEnum = {
+  transactionId: 'transactionId',
+  bookingId: 'bookingId',
+  senderId: 'senderId',
+  receiverId: 'receiverId',
+  amount: 'amount',
+  currency: 'currency',
+  type: 'type',
+  status: 'status',
+  paymentMethod: 'paymentMethod',
+  providerReference: 'providerReference',
+  referenceTransactionId: 'referenceTransactionId',
+  description: 'description',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  completedAt: 'completedAt'
+} as const
+
 export type TransactionScalarFieldEnum = (typeof TransactionScalarFieldEnum)[keyof typeof TransactionScalarFieldEnum]
+
+
+export const DriverEarningScalarFieldEnum = {
+  earningId: 'earningId',
+  bookingId: 'bookingId',
+  driverId: 'driverId',
+  grossAmount: 'grossAmount',
+  platformFee: 'platformFee',
+  netAmount: 'netAmount',
+  status: 'status',
+  payoutTransactionId: 'payoutTransactionId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  paidAt: 'paidAt'
+} as const
+
+export type DriverEarningScalarFieldEnum = (typeof DriverEarningScalarFieldEnum)[keyof typeof DriverEarningScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -154,4 +263,12 @@ export const QueryMode = {
 } as const
 
 export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
+
+
+export const NullsOrder = {
+  first: 'first',
+  last: 'last'
+} as const
+
+export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 

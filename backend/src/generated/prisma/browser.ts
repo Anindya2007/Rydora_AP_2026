@@ -28,6 +28,16 @@ export type User = Prisma.UserModel
  */
 export type Community = Prisma.CommunityModel
 /**
+ * Model CommunityMembership
+ * 
+ */
+export type CommunityMembership = Prisma.CommunityMembershipModel
+/**
+ * Model Vehicle
+ * 
+ */
+export type Vehicle = Prisma.VehicleModel
+/**
  * Model Ride
  * 
  */
@@ -38,7 +48,22 @@ export type Ride = Prisma.RideModel
  */
 export type Booking = Prisma.BookingModel
 /**
+ * Model EmergencyContact
+ * 
+ */
+export type EmergencyContact = Prisma.EmergencyContactModel
+/**
+ * Model SOSAlert
+ * 
+ */
+export type SOSAlert = Prisma.SOSAlertModel
+/**
  * Model Transaction
  * 
  */
 export type Transaction = Prisma.TransactionModel
+/**
+ * Model DriverEarning
+ * 
+ */
+export type DriverEarning = Prisma.DriverEarningModel
