@@ -68,3 +68,7 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+
+# excluding schema.md...
+backend/schema.md
