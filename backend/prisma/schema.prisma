@@ -313,3 +313,40 @@ model DriverEarning {
   @@index([driverId, status, createdAt])
   @@map("driver_earnings")
 }
+model Community {
+  communityId String   @id @default(uuid()) @map("community_id") @db.Uuid
+  name        String   @db.VarChar(150)
+  domain      String   @db.VarChar(255)
+  userId      String   @map("user_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user  User  @relation("CommunityCreator", fields: [userId], references: [userId], onDelete: Restrict)
+  rides Ride[]
+
+  @@index([userId])
+  @@map("communities")
+}
+
+model Ride {
+  rideId        String     @id @default(uuid()) @map("ride_id") @db.Uuid
+  driverId      String     @map("driver_id") @db.Uuid
+  communityId   String     @map("community_id") @db.Uuid
+  source        String     @db.VarChar(255)
+  destination   String     @db.VarChar(255)
+  departureTime DateTime   @map("departure_time") @db.Timestamptz(6)
+  totalSeats    Int        @map("total_seats")
+  availableSeats Int       @map("available_seats")
+  farePerSeat   Decimal    @map("fare_per_seat") @db.Decimal(10, 2)
+  status        RideStatus @default(SCHEDULED)
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  driver    User      @relation("RideDriver", fields: [driverId], references: [userId], onDelete: Restrict)
+  community Community @relation(fields: [communityId], references: [communityId], onDelete: Restrict)
+  bookings  Booking[]
+
+  @@index([driverId])
+  @@index([communityId])
+  @@index([departureTime])
+  @@index([status])
+  @@map("rides")
+}
