@@ -313,3 +313,37 @@ model DriverEarning {
   @@index([driverId, status, createdAt])
   @@map("driver_earnings")
 }
+model Booking {
+  bookingId   String        @id @default(uuid()) @map("booking_id") @db.Uuid
+  rideId      String        @map("ride_id") @db.Uuid
+  userId      String        @map("user_id") @db.Uuid
+  seatsBooked Int           @map("seats_booked")
+  status      BookingStatus @default(PENDING)
+  totalAmount Decimal       @map("total_amount") @db.Decimal(10, 2)
+  bookedAt    DateTime      @default(now()) @map("booked_at") @db.Timestamptz(6)
+
+  ride         Ride          @relation(fields: [rideId], references: [rideId], onDelete: Restrict)
+  user         User          @relation(fields: [userId], references: [userId], onDelete: Restrict)
+  transactions Transaction[]
+
+  @@index([rideId])
+  @@index([userId])
+  @@index([status])
+  @@map("bookings")
+}
+
+model Transaction {
+  transactionId String            @id @default(uuid()) @map("transaction_id") @db.Uuid
+  bookingId     String            @map("booking_id") @db.Uuid
+  amount        Decimal           @db.Decimal(10, 2)
+  type          TransactionType
+  status        TransactionStatus @default(PENDING)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  booking Booking @relation(fields: [bookingId], references: [bookingId], onDelete: Restrict)
+
+  @@index([bookingId])
+  @@index([status])
+  @@map("transactions")
+}
+
