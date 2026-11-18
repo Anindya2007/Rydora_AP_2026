@@ -103,10 +103,10 @@ model User {
   bookings             Booking[]             @relation("BookingRider")
   cancelledBookings    Booking[]             @relation("BookingCancelledBy")
   emergencyContacts    EmergencyContact[]    @relation("EmergencyContactOwner")
-  sosAlerts            SOSAlert[]             @relation("SOSAlertOwner")
+  sosAlerts            SOSAlert[]            @relation("SOSAlertOwner")
   sentTransactions     Transaction[]         @relation("TransactionSender")
   receivedTransactions Transaction[]         @relation("TransactionReceiver")
-  driverEarnings       DriverEarning[]        @relation("EarningDriver")
+  driverEarnings       DriverEarning[]       @relation("EarningDriver")
 
   @@map("users")
 }
@@ -121,7 +121,7 @@ model Community {
   createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  createdBy User                 @relation("CommunityCreator", fields: [createdById], references: [userId], onDelete: Restrict)
+  createdBy User                  @relation("CommunityCreator", fields: [createdById], references: [userId], onDelete: Restrict)
   members   CommunityMembership[]
   rides     Ride[]
 
@@ -131,12 +131,12 @@ model Community {
 }
 
 model CommunityMembership {
-  membershipId String               @id @default(uuid()) @map("membership_id") @db.Uuid
-  communityId  String               @map("community_id") @db.Uuid
-  userId       String               @map("user_id") @db.Uuid
-  memberRole   CommunityMemberRole  @default(MEMBER) @map("member_role")
-  status       MembershipStatus     @default(ACTIVE)
-  joinedAt     DateTime             @default(now()) @map("joined_at") @db.Timestamptz(6)
+  membershipId String              @id @default(uuid()) @map("membership_id") @db.Uuid
+  communityId  String              @map("community_id") @db.Uuid
+  userId       String              @map("user_id") @db.Uuid
+  memberRole   CommunityMemberRole @default(MEMBER) @map("member_role")
+  status       MembershipStatus    @default(ACTIVE)
+  joinedAt     DateTime            @default(now()) @map("joined_at") @db.Timestamptz(6)
 
   community Community @relation(fields: [communityId], references: [communityId], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [userId], onDelete: Cascade)
@@ -159,7 +159,7 @@ model Vehicle {
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  driver User  @relation("VehicleDriver", fields: [driverId], references: [userId], onDelete: Restrict)
+  driver User   @relation("VehicleDriver", fields: [driverId], references: [userId], onDelete: Restrict)
   rides  Ride[]
 
   @@index([driverId, isActive])
@@ -167,27 +167,27 @@ model Vehicle {
 }
 
 model Ride {
-  rideId                String     @id @default(uuid()) @map("ride_id") @db.Uuid
-  driverId              String     @map("driver_id") @db.Uuid
-  vehicleId             String     @map("vehicle_id") @db.Uuid
-  communityId           String     @map("community_id") @db.Uuid
-  source                String     @db.VarChar(255)
-  destination           String     @db.VarChar(255)
-  departureTime         DateTime   @map("departure_time") @db.Timestamptz(6)
-  sourceLatitude        Decimal?   @map("source_latitude") @db.Decimal(9, 6)
-  sourceLongitude       Decimal?   @map("source_longitude") @db.Decimal(9, 6)
-  destinationLatitude   Decimal?   @map("destination_latitude") @db.Decimal(9, 6)
-  destinationLongitude  Decimal?   @map("destination_longitude") @db.Decimal(9, 6)
-  totalSeats            Int        @map("total_seats")
-  availableSeats        Int        @map("available_seats")
-  farePerSeat           Decimal    @map("fare_per_seat") @db.Decimal(10, 2)
-  status                RideStatus @default(SCHEDULED)
-  createdAt             DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt             DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  rideId               String     @id @default(uuid()) @map("ride_id") @db.Uuid
+  driverId             String     @map("driver_id") @db.Uuid
+  vehicleId            String     @map("vehicle_id") @db.Uuid
+  communityId          String     @map("community_id") @db.Uuid
+  source               String     @db.VarChar(255)
+  destination          String     @db.VarChar(255)
+  departureTime        DateTime   @map("departure_time") @db.Timestamptz(6)
+  sourceLatitude       Decimal?   @map("source_latitude") @db.Decimal(9, 6)
+  sourceLongitude      Decimal?   @map("source_longitude") @db.Decimal(9, 6)
+  destinationLatitude  Decimal?   @map("destination_latitude") @db.Decimal(9, 6)
+  destinationLongitude Decimal?   @map("destination_longitude") @db.Decimal(9, 6)
+  totalSeats           Int        @map("total_seats")
+  availableSeats       Int        @map("available_seats")
+  farePerSeat          Decimal    @map("fare_per_seat") @db.Decimal(10, 2)
+  status               RideStatus @default(SCHEDULED)
+  createdAt            DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  driver    User      @relation("RideDriver", fields: [driverId], references: [userId], onDelete: Restrict)
-  vehicle   Vehicle   @relation(fields: [vehicleId], references: [vehicleId], onDelete: Restrict)
-  community Community @relation(fields: [communityId], references: [communityId], onDelete: Restrict)
+  driver    User       @relation("RideDriver", fields: [driverId], references: [userId], onDelete: Restrict)
+  vehicle   Vehicle    @relation(fields: [vehicleId], references: [vehicleId], onDelete: Restrict)
+  community Community  @relation(fields: [communityId], references: [communityId], onDelete: Restrict)
   bookings  Booking[]
   sosAlerts SOSAlert[]
 
@@ -213,11 +213,11 @@ model Booking {
   cancelledById      String?   @map("cancelled_by_id") @db.Uuid
   cancellationReason String?   @map("cancellation_reason") @db.Text
 
-  ride             Ride           @relation(fields: [rideId], references: [rideId], onDelete: Restrict)
-  rider            User           @relation("BookingRider", fields: [riderId], references: [userId], onDelete: Restrict)
-  cancelledBy      User?          @relation("BookingCancelledBy", fields: [cancelledById], references: [userId], onDelete: Restrict)
-  transactions     Transaction[]
-  driverEarning    DriverEarning?
+  ride          Ride           @relation(fields: [rideId], references: [rideId], onDelete: Restrict)
+  rider         User           @relation("BookingRider", fields: [riderId], references: [userId], onDelete: Restrict)
+  cancelledBy   User?          @relation("BookingCancelledBy", fields: [cancelledById], references: [userId], onDelete: Restrict)
+  transactions  Transaction[]
+  driverEarning DriverEarning?
 
   @@index([rideId, status])
   @@index([riderId, status])
@@ -260,25 +260,25 @@ model SOSAlert {
 }
 
 model Transaction {
-  transactionId String            @id @default(uuid()) @map("transaction_id") @db.Uuid
-  bookingId     String            @map("booking_id") @db.Uuid
-  senderId      String?           @map("sender_id") @db.Uuid
-  receiverId    String?           @map("receiver_id") @db.Uuid
-  amount        Decimal           @db.Decimal(12, 2)
-  currency      String            @default("INR") @db.VarChar(3)
-  type          TransactionType
-  status        TransactionStatus @default(PENDING)
-  paymentMethod String?           @map("payment_method") @db.VarChar(50)
-  providerReference String?       @unique @map("provider_reference") @db.VarChar(150)
-  referenceTransactionId String?  @map("reference_transaction_id") @db.Uuid
-  description   String?           @db.Text
-  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
-  completedAt   DateTime?         @map("completed_at") @db.Timestamptz(6)
+  transactionId          String            @id @default(uuid()) @map("transaction_id") @db.Uuid
+  bookingId              String            @map("booking_id") @db.Uuid
+  senderId               String?           @map("sender_id") @db.Uuid
+  receiverId             String?           @map("receiver_id") @db.Uuid
+  amount                 Decimal           @db.Decimal(12, 2)
+  currency               String            @default("INR") @db.VarChar(3)
+  type                   TransactionType
+  status                 TransactionStatus @default(PENDING)
+  paymentMethod          String?           @map("payment_method") @db.VarChar(50)
+  providerReference      String?           @unique @map("provider_reference") @db.VarChar(150)
+  referenceTransactionId String?           @map("reference_transaction_id") @db.Uuid
+  description            String?           @db.Text
+  createdAt              DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  completedAt            DateTime?         @map("completed_at") @db.Timestamptz(6)
 
-  booking Booking @relation(fields: [bookingId], references: [bookingId], onDelete: Restrict)
-  sender  User?   @relation("TransactionSender", fields: [senderId], references: [userId], onDelete: Restrict)
-  receiver User?  @relation("TransactionReceiver", fields: [receiverId], references: [userId], onDelete: Restrict)
+  booking  Booking @relation(fields: [bookingId], references: [bookingId], onDelete: Restrict)
+  sender   User?   @relation("TransactionSender", fields: [senderId], references: [userId], onDelete: Restrict)
+  receiver User?   @relation("TransactionReceiver", fields: [receiverId], references: [userId], onDelete: Restrict)
 
   // A refund can refer to its original payment. One payment can have multiple partial refunds.
   referenceTransaction Transaction?  @relation("TransactionReferences", fields: [referenceTransactionId], references: [transactionId], onDelete: Restrict)
@@ -306,8 +306,8 @@ model DriverEarning {
   updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
   paidAt              DateTime?           @map("paid_at") @db.Timestamptz(6)
 
-  booking          Booking      @relation(fields: [bookingId], references: [bookingId], onDelete: Restrict)
-  driver           User         @relation("EarningDriver", fields: [driverId], references: [userId], onDelete: Restrict)
+  booking           Booking      @relation(fields: [bookingId], references: [bookingId], onDelete: Restrict)
+  driver            User         @relation("EarningDriver", fields: [driverId], references: [userId], onDelete: Restrict)
   payoutTransaction Transaction? @relation("DriverEarningPayout", fields: [payoutTransactionId], references: [transactionId], onDelete: SetNull)
 
   @@index([driverId, status, createdAt])
