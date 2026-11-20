@@ -70,6 +70,15 @@ describe('Rydora Authentication & User Management Test Suite (Milestone 2 - Phas
       expect(res.body.data.user.roles).toEqual(['USER']);
       expect(res.body.data.token).toBeDefined();
       expect(typeof res.body.data.token).toBe('string');
+
+      // Verify token payload is strictly restricted to sub only
+      const verifiedToken = jwt.verify(res.body.data.token, env.JWT_SECRET) as jwt.JwtPayload;
+      expect(verifiedToken.sub).toBe(mockUser.userId);
+      expect(verifiedToken.email).toBeUndefined();
+      expect('email' in verifiedToken).toBe(false);
+      expect(verifiedToken.roles).toBeUndefined();
+      expect('roles' in verifiedToken).toBe(false);
+
       expect(res.headers['x-request-id']).toBeDefined();
     });
   });
@@ -154,6 +163,29 @@ describe('Rydora Authentication & User Management Test Suite (Milestone 2 - Phas
           expect.objectContaining({ field: 'phone', message: expect.any(String) }),
         ])
       );
+    });
+
+    it('should handle concurrent duplicate signup attempts safely when Prisma throws P2002', async () => {
+      // Pre-checks pass (simulating two requests entering simultaneously)
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
+
+      // Database-level unique constraint collision on email
+      const prismaP2002Error = new Error('Unique constraint failed on the fields: (`email`)') as any;
+      prismaP2002Error.code = 'P2002';
+      prismaP2002Error.meta = { target: ['email'] };
+      vi.spyOn(prisma.user, 'create').mockRejectedValueOnce(prismaP2002Error);
+
+      const res = await request(testApp).post('/api/v1/auth/signup').send({
+        name: 'Concurrent User',
+        email: 'concurrent@srmist.edu.in',
+        password: 'Password123!',
+      });
+
+      expect(res.status).toBe(409);
+      expect(res.body.success).toBe(false);
+      expect(res.body.statusCode).toBe(409);
+      expect(res.body.error.code).toBe('CONFLICT');
+      expect(res.body.error.message).toMatch(/email already exists/i);
     });
   });
 
@@ -245,8 +277,8 @@ describe('Rydora Authentication & User Management Test Suite (Milestone 2 - Phas
     });
   });
 
-  describe('8. JWT Subject (sub) and 24-Hour Expiration', () => {
-    it('should sign a JWT with sub equal to userId and an expiration duration of 24 hours', async () => {
+  describe('8. JWT Subject (sub), Payload Restrictions and 24-Hour Expiration', () => {
+    it('should sign a JWT containing only sub, strictly excluding email and roles, with 24-hour expiration', async () => {
       const rawPassword = 'ValidLoginPassword123!';
       const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
@@ -266,16 +298,27 @@ describe('Rydora Authentication & User Management Test Suite (Milestone 2 - Phas
       // Verify signature with secret
       const verified = jwt.verify(token, env.JWT_SECRET) as jwt.JwtPayload;
 
-      // Subject must be the user ID
+      // 1. Subject must be the user ID
       expect(verified.sub).toBe(mockUser.userId);
-      expect(verified.email).toBe(mockUser.email);
-      expect(verified.roles).toEqual(['USER']);
 
-      // 24 hours in seconds = 86400 seconds
+      // 2. Token must NOT contain email or roles
+      expect(verified.email).toBeUndefined();
+      expect('email' in verified).toBe(false);
+      expect(verified.roles).toBeUndefined();
+      expect('roles' in verified).toBe(false);
+
+      // 3. 24 hours in seconds = 86400 seconds
       expect(verified.exp).toBeDefined();
       expect(verified.iat).toBeDefined();
       const durationSeconds = verified.exp! - verified.iat!;
       expect(durationSeconds).toBe(86400); // exactly 24 hours
+
+      // 4. Verify returned user object STILL contains user information and roles
+      expect(res.body.data.user).toBeDefined();
+      expect(res.body.data.user.userId).toBe(mockUser.userId);
+      expect(res.body.data.user.email).toBe(mockUser.email);
+      expect(res.body.data.user.roles).toEqual(['USER']);
+      expect(res.body.data.user.name).toBe(mockUser.name);
     });
   });
 

@@ -44,13 +44,12 @@ export async function comparePassword(password: string, hash: string): Promise<b
 
 /**
  * Generates a stateless 24-hour JSON Web Token (JWT) with user ID as `sub`.
+ * Strictly restricts the payload to only `sub: user.userId` (no email or roles).
  */
-export function generateToken(user: { userId: string; email: string; roles: string[] }): string {
+export function generateToken(user: { userId: string }): string {
   return jwt.sign(
     {
       sub: user.userId,
-      email: user.email,
-      roles: user.roles,
     },
     env.JWT_SECRET,
     {
@@ -138,17 +137,29 @@ export async function signup(input: SignupInput): Promise<AuthResult> {
   // 3. Hash password
   const passwordHash = await hashPassword(input.password);
 
-  // 4. Create User in database
-  const createdUser = await prisma.user.create({
-    data: {
-      name: input.name.trim(),
-      email: normalizedEmail,
-      phone: normalizedPhone,
-      passwordHash,
-      roles: ['USER'],
-      driverVerified: false,
-    },
-  });
+  // 4. Create User in database (with atomic race-condition P2002 protection)
+  let createdUser;
+  try {
+    createdUser = await prisma.user.create({
+      data: {
+        name: input.name.trim(),
+        email: normalizedEmail,
+        phone: normalizedPhone,
+        passwordHash,
+        roles: ['USER'],
+        driverVerified: false,
+      },
+    });
+  } catch (error: any) {
+    if (error?.code === 'P2002') {
+      const target = error.meta?.target;
+      const targetStr = Array.isArray(target) ? target.join(', ') : target || 'field';
+      throw new ConflictError(`User with this ${targetStr} already exists`, [
+        { field: targetStr, message: 'Already in use' },
+      ]);
+    }
+    throw error;
+  }
 
   // 5. Generate JWT token
   const token = generateToken(createdUser);
