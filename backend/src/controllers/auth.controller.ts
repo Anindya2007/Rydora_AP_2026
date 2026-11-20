@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { signupSchema, loginSchema } from '../validators/authValidator.js';
 import { authService } from '../services/auth.service.js';
 import { sendSuccess } from '../utils/response.js';
+import { UnauthorizedError } from '../utils/errors.js';
 
 /**
  * Controller handling user registration (POST /api/v1/auth/signup)
@@ -31,7 +32,23 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
   }
 }
 
+/**
+ * Controller handling retrieval of current authenticated user profile (GET /api/v1/auth/me)
+ */
+export async function getMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    sendSuccess(res, { user: req.user }, 'Current user retrieved successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const AuthController = {
   signup,
   login,
+  getMe,
 };

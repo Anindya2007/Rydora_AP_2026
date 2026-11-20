@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller.js';
+import { authenticate } from '../middleware/auth.js';
 
 export const authRouter = Router();
 
@@ -14,3 +15,9 @@ authRouter.post('/signup', AuthController.signup);
  * Authenticates user credentials and returns a 24-hour JWT token.
  */
 authRouter.post('/login', AuthController.login);
+
+/**
+ * GET /api/v1/auth/me
+ * Retrieves the currently authenticated user's profile.
+ */
+authRouter.get('/me', authenticate, AuthController.getMe);
