@@ -763,6 +763,67 @@ async function main() {
         details: "Confirmed no password hashes, salt, or sensitive user fields in payload"
     });
 
+    // 13. Invalid/malformed token returns HTTP 401
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Invalid Token Rejection",
+        method: "POST",
+        path: "/communities",
+        token: "invalid.bearer.token",
+        body: {
+            name: `Invalid Token Comm ${timestamp}`,
+            domain: `invalid-token-${timestamp}.edu`
+        },
+        expectedStatus: 401
+    });
+
+    // 14. Community name too short returns HTTP 422
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Name Too Short Validation",
+        method: "POST",
+        path: "/communities",
+        token: token1,
+        body: {
+            name: "A",
+            domain: `short-name-${timestamp}.edu`
+        },
+        expectedStatus: 422
+    });
+
+    // 15. Community name too long returns HTTP 422
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Name Too Long Validation",
+        method: "POST",
+        path: "/communities",
+        token: token1,
+        body: {
+            name: "A".repeat(151),
+            domain: `long-name-${timestamp}.edu`
+        },
+        expectedStatus: 422
+    });
+
+    // 16. Description exceeding 1000 characters returns HTTP 422
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Description Exceeds Limit Validation",
+        method: "POST",
+        path: "/communities",
+        token: token1,
+        body: {
+            name: `Long Desc Comm ${timestamp}`,
+            domain: `long-desc-${timestamp}.edu`,
+            description: "A".repeat(1001)
+        },
+        expectedStatus: 422
+    });
+
     // ----------------------------------------------------
     // M3.5 Community Listing & Filtering Endpoint Tests
     // ----------------------------------------------------
@@ -889,6 +950,72 @@ async function main() {
         name: "Community Listing - Reject Injected Query Fields",
         method: "GET",
         path: "/communities?injectedField=malicious",
+        expectedStatus: 422
+    });
+
+    // 21. Non-existent domain query returns empty list with total 0
+    const nonExistentDomainRes = await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Non-Existent Domain Filter",
+        method: "GET",
+        path: `/communities?domain=nonexistent-${timestamp}.edu`,
+        expectedStatus: 200
+    });
+    const nonExistentDomainEmpty = Boolean(
+        nonExistentDomainRes?.data?.communities?.length === 0 &&
+        nonExistentDomainRes?.meta?.pagination?.total === 0
+    );
+    recordAssertion({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Non-Existent Domain Empty Verification",
+        passed: nonExistentDomainEmpty,
+        expectedStatus: 200,
+        actualStatus: nonExistentDomainEmpty ? 200 : "Unexpected Results",
+        details: `Returned count: ${nonExistentDomainRes?.data?.communities?.length}`
+    });
+
+    // 22. Non-existent name search query returns empty list with total 0
+    const nonExistentSearchRes = await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Non-Existent Search Query",
+        method: "GET",
+        path: `/communities?search=NonExistentCampus_${timestamp}`,
+        expectedStatus: 200
+    });
+    const nonExistentSearchEmpty = Boolean(
+        nonExistentSearchRes?.data?.communities?.length === 0 &&
+        nonExistentSearchRes?.meta?.pagination?.total === 0
+    );
+    recordAssertion({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Non-Existent Search Empty Verification",
+        passed: nonExistentSearchEmpty,
+        expectedStatus: 200,
+        actualStatus: nonExistentSearchEmpty ? 200 : "Unexpected Results",
+        details: `Returned count: ${nonExistentSearchRes?.data?.communities?.length}`
+    });
+
+    // 23. Reject negative limit returns HTTP 422
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Reject Negative Limit",
+        method: "GET",
+        path: "/communities?limit=-5",
+        expectedStatus: 422
+    });
+
+    // 24. Reject negative page returns HTTP 422
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Reject Negative Page",
+        method: "GET",
+        path: "/communities?page=-1",
         expectedStatus: 422
     });
 
