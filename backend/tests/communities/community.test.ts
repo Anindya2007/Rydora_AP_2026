@@ -1,4 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { prisma } from '../../src/config/prisma.js';
+import { communityService } from '../../src/services/community.service.js';
+import { ConflictError, NotFoundError } from '../../src/utils/errors.js';
 import {
   createCommunitySchema,
   communityQuerySchema,
@@ -293,6 +296,163 @@ describe('Community Request Validation Schemas (M3.1)', () => {
         status: 'ACTIVE',
       });
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe('5. Community Creation Service (M3.2 - communityService.createCommunity)', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    const mockUserId = '11111111-2222-3333-4444-555555555555';
+    const mockCommunityId = '99999999-8888-7777-6666-555555555555';
+
+    const mockCreator = {
+      userId: mockUserId,
+      email: 'badal@srmist.edu.in',
+    };
+
+    const mockCreatedCommunity = {
+      communityId: mockCommunityId,
+      name: 'SRM Institute of Science and Technology',
+      domain: 'srmist.edu.in',
+      description: 'Official campus carpooling',
+      status: 'ACTIVE',
+      createdById: mockUserId,
+      createdAt: new Date('2026-11-21T10:00:00.000Z'),
+      updatedAt: new Date('2026-11-21T10:00:00.000Z'),
+    };
+
+    const mockMembership = {
+      membershipId: '77777777-6666-5555-4444-333333333333',
+      communityId: mockCommunityId,
+      userId: mockUserId,
+      memberRole: 'ADMIN',
+      status: 'ACTIVE',
+      joinedAt: new Date('2026-11-21T10:00:00.000Z'),
+    };
+
+    it('should successfully create community and creator ADMIN membership within a transaction', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockCreator as any);
+      vi.spyOn(prisma.community, 'findFirst').mockResolvedValueOnce(null);
+
+      const mockCommunityCreate = vi.fn().mockResolvedValueOnce(mockCreatedCommunity);
+      const mockMembershipCreate = vi.fn().mockResolvedValueOnce(mockMembership);
+
+      vi.spyOn(prisma, '$transaction').mockImplementationOnce(async (callback: any) => {
+        return callback({
+          community: { create: mockCommunityCreate },
+          communityMembership: { create: mockMembershipCreate },
+        });
+      });
+
+      const result = await communityService.createCommunity(mockUserId, {
+        name: 'SRM Institute of Science and Technology',
+        domain: 'srmist.edu.in',
+        description: 'Official campus carpooling',
+      });
+
+      expect(result).toBeDefined();
+      expect(result.communityId).toBe(mockCommunityId);
+      expect(result.name).toBe('SRM Institute of Science and Technology');
+      expect(result.domain).toBe('srmist.edu.in');
+      expect(result.status).toBe('ACTIVE');
+      expect(result.createdById).toBe(mockUserId);
+      expect(result.membersCount).toBe(1);
+
+      expect(mockCommunityCreate).toHaveBeenCalledWith({
+        data: {
+          name: 'SRM Institute of Science and Technology',
+          domain: 'srmist.edu.in',
+          description: 'Official campus carpooling',
+          status: 'ACTIVE',
+          createdById: mockUserId,
+        },
+      });
+
+      expect(mockMembershipCreate).toHaveBeenCalledWith({
+        data: {
+          communityId: mockCommunityId,
+          userId: mockUserId,
+          memberRole: 'ADMIN',
+          status: 'ACTIVE',
+        },
+      });
+    });
+
+    it('should throw NotFoundError if creator user does not exist', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(null);
+
+      await expect(
+        communityService.createCommunity('00000000-0000-0000-0000-000000000000', {
+          name: 'IIT Madras',
+          domain: 'iitm.ac.in',
+        })
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it('should throw ConflictError if a community with the same domain already exists', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockCreator as any);
+      vi.spyOn(prisma.community, 'findFirst').mockResolvedValueOnce({
+        communityId: 'existing-id',
+        domain: 'srmist.edu.in',
+        name: 'Different Name',
+      } as any);
+
+      await expect(
+        communityService.createCommunity(mockUserId, {
+          name: 'New SRM Community',
+          domain: 'srmist.edu.in',
+        })
+      ).rejects.toThrow(ConflictError);
+    });
+
+    it('should throw ConflictError if a community with the same name already exists', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockCreator as any);
+      vi.spyOn(prisma.community, 'findFirst').mockResolvedValueOnce({
+        communityId: 'existing-id',
+        domain: 'other.edu.in',
+        name: 'SRM Institute of Science and Technology',
+      } as any);
+
+      await expect(
+        communityService.createCommunity(mockUserId, {
+          name: 'SRM Institute of Science and Technology',
+          domain: 'newdomain.edu.in',
+        })
+      ).rejects.toThrow(ConflictError);
+    });
+
+    it('should handle Prisma P2002 unique constraint violations and map to ConflictError', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockCreator as any);
+      vi.spyOn(prisma.community, 'findFirst').mockResolvedValueOnce(null);
+
+      const p2002Error: any = new Error('Unique constraint failed');
+      p2002Error.code = 'P2002';
+      p2002Error.meta = { target: ['domain'] };
+
+      vi.spyOn(prisma, '$transaction').mockRejectedValueOnce(p2002Error);
+
+      await expect(
+        communityService.createCommunity(mockUserId, {
+          name: 'SRM Institute of Science and Technology',
+          domain: 'srmist.edu.in',
+        })
+      ).rejects.toThrow(ConflictError);
+    });
+
+    it('should propagate unexpected database errors as-is', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockCreator as any);
+      vi.spyOn(prisma.community, 'findFirst').mockResolvedValueOnce(null);
+
+      vi.spyOn(prisma, '$transaction').mockRejectedValueOnce(new Error('PostgreSQL connection drop'));
+
+      await expect(
+        communityService.createCommunity(mockUserId, {
+          name: 'SRM Institute of Science and Technology',
+          domain: 'srmist.edu.in',
+        })
+      ).rejects.toThrow('PostgreSQL connection drop');
     });
   });
 });
