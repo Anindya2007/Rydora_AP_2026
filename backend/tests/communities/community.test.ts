@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { prisma } from '../../src/config/prisma.js';
 import { communityService } from '../../src/services/community.service.js';
-import { ConflictError, NotFoundError } from '../../src/utils/errors.js';
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+} from '../../src/utils/errors.js';
 import {
   createCommunitySchema,
   communityQuerySchema,
@@ -453,6 +458,279 @@ describe('Community Request Validation Schemas (M3.1)', () => {
           domain: 'srmist.edu.in',
         })
       ).rejects.toThrow('PostgreSQL connection drop');
+    });
+  });
+
+  describe('6. Community Membership Join Service (M3.8 - communityService.joinCommunity)', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    const mockJoinUserId = '22222222-3333-4444-5555-666666666666';
+    const mockJoinCommunityId = '99999999-8888-7777-6666-555555555555';
+    const mockMembershipId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    const mockJoinDate = new Date('2026-11-22T03:00:00.000Z');
+
+    const mockEligibleUser = {
+      userId: mockJoinUserId,
+      email: 'student@srmist.edu.in',
+    };
+
+    const mockActiveCommunity = {
+      communityId: mockJoinCommunityId,
+      name: 'SRM Institute of Science and Technology',
+      domain: 'srmist.edu.in',
+      status: 'ACTIVE' as const,
+    };
+
+    const mockCreatedMembership = {
+      membershipId: mockMembershipId,
+      communityId: mockJoinCommunityId,
+      userId: mockJoinUserId,
+      memberRole: 'MEMBER' as const,
+      status: 'ACTIVE' as const,
+      joinedAt: mockJoinDate,
+    };
+
+    it('1. should successfully join an active community when user has eligible domain', async () => {
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => cb(prisma));
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockEligibleUser as any);
+      vi.spyOn(prisma.community, 'findUnique').mockResolvedValue(mockActiveCommunity as any);
+      vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValue(null);
+      const createSpy = vi
+        .spyOn(prisma.communityMembership, 'create')
+        .mockResolvedValueOnce(mockCreatedMembership as any);
+
+      const result = await communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId);
+
+      expect(result).toEqual({
+        membershipId: mockMembershipId,
+        communityId: mockJoinCommunityId,
+        userId: mockJoinUserId,
+        memberRole: 'MEMBER',
+        status: 'ACTIVE',
+        joinedAt: mockJoinDate,
+      });
+
+      expect(createSpy).toHaveBeenCalledWith({
+        data: {
+          communityId: mockJoinCommunityId,
+          userId: mockJoinUserId,
+          memberRole: 'MEMBER',
+          status: 'ACTIVE',
+        },
+        select: {
+          membershipId: true,
+          communityId: true,
+          userId: true,
+          memberRole: true,
+          status: true,
+          joinedAt: true,
+        },
+      });
+    });
+
+    it('2. should throw NotFoundError when user does not exist', async () => {
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => cb(prisma));
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
+
+      await expect(
+        communityService.joinCommunity('00000000-0000-0000-0000-000000000000', mockJoinCommunityId)
+      ).rejects.toThrow(NotFoundError);
+      await expect(
+        communityService.joinCommunity('00000000-0000-0000-0000-000000000000', mockJoinCommunityId)
+      ).rejects.toThrow('User not found');
+    });
+
+    it('3. should throw NotFoundError when community does not exist', async () => {
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => cb(prisma));
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockEligibleUser as any);
+      vi.spyOn(prisma.community, 'findUnique').mockResolvedValue(null);
+
+      await expect(
+        communityService.joinCommunity(mockJoinUserId, '00000000-0000-0000-0000-000000000000')
+      ).rejects.toThrow(NotFoundError);
+      await expect(
+        communityService.joinCommunity(mockJoinUserId, '00000000-0000-0000-0000-000000000000')
+      ).rejects.toThrow('Community not found');
+    });
+
+    it('4. should throw BadRequestError when community status is INACTIVE', async () => {
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => cb(prisma));
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockEligibleUser as any);
+      vi.spyOn(prisma.community, 'findUnique').mockResolvedValue({
+        ...mockActiveCommunity,
+        status: 'INACTIVE',
+      } as any);
+
+      await expect(
+        communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId)
+      ).rejects.toThrow(BadRequestError);
+      await expect(
+        communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId)
+      ).rejects.toThrow('Community is not active or accepting new members');
+    });
+
+    it('5. should throw ForbiddenError when user email domain does not match community domain', async () => {
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => cb(prisma));
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue({
+        userId: mockJoinUserId,
+        email: 'attacker@gmail.com',
+      } as any);
+      vi.spyOn(prisma.community, 'findUnique').mockResolvedValue(mockActiveCommunity as any);
+
+      await expect(
+        communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId)
+      ).rejects.toThrow(ForbiddenError);
+      await expect(
+        communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId)
+      ).rejects.toThrow('User email domain is not eligible for this community');
+    });
+
+    it('6. should match email domains case-insensitively', async () => {
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => cb(prisma));
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue({
+        userId: mockJoinUserId,
+        email: 'Student@SRMIST.EDU.IN',
+      } as any);
+      vi.spyOn(prisma.community, 'findUnique').mockResolvedValue({
+        ...mockActiveCommunity,
+        domain: 'srmist.edu.in',
+      } as any);
+      vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValue(null);
+      vi.spyOn(prisma.communityMembership, 'create').mockResolvedValueOnce(mockCreatedMembership as any);
+
+      const result = await communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId);
+      expect(result.membershipId).toBe(mockMembershipId);
+    });
+
+    it('7. should reject similar looking but non-matching email domains (no loose substring matching)', async () => {
+      const nonMatchingEmails = [
+        'student@not-srmist.edu.in',
+        'student@srmist.edu.in.attacker.org',
+        'student@fake-srmist.edu.in',
+        'student@srmist.edu',
+        'student@srmist_edu.in',
+      ];
+
+      for (const email of nonMatchingEmails) {
+        vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => cb(prisma));
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValue({
+          userId: mockJoinUserId,
+          email,
+        } as any);
+        vi.spyOn(prisma.community, 'findUnique').mockResolvedValue(mockActiveCommunity as any);
+
+        await expect(
+          communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId)
+        ).rejects.toThrow(ForbiddenError);
+      }
+    });
+
+    it('8. should throw ConflictError when user is already an ACTIVE member', async () => {
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => cb(prisma));
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockEligibleUser as any);
+      vi.spyOn(prisma.community, 'findUnique').mockResolvedValue(mockActiveCommunity as any);
+      vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValue({
+        membershipId: 'existing-id',
+        status: 'ACTIVE',
+        memberRole: 'MEMBER',
+      } as any);
+
+      await expect(
+        communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId)
+      ).rejects.toThrow(ConflictError);
+      await expect(
+        communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId)
+      ).rejects.toThrow('User is already a member of this community');
+    });
+
+    it('9. should preserve creator ADMIN role and prevent privilege downgrade on repeated join', async () => {
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => cb(prisma));
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockEligibleUser as any);
+      vi.spyOn(prisma.community, 'findUnique').mockResolvedValue(mockActiveCommunity as any);
+      vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValue({
+        membershipId: 'creator-membership-id',
+        status: 'ACTIVE',
+        memberRole: 'ADMIN',
+      } as any);
+
+      const createSpy = vi.spyOn(prisma.communityMembership, 'create');
+      const updateSpy = vi.spyOn(prisma.communityMembership, 'update');
+
+      await expect(
+        communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId)
+      ).rejects.toThrow(ConflictError);
+
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(updateSpy).not.toHaveBeenCalled();
+    });
+
+    it('10. should reactivate membership when previous membership was INACTIVE', async () => {
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => cb(prisma));
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockEligibleUser as any);
+      vi.spyOn(prisma.community, 'findUnique').mockResolvedValue(mockActiveCommunity as any);
+      vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValue({
+        membershipId: 'inactive-id',
+        status: 'INACTIVE',
+        memberRole: 'MEMBER',
+      } as any);
+
+      const updateSpy = vi.spyOn(prisma.communityMembership, 'update').mockResolvedValueOnce({
+        membershipId: 'inactive-id',
+        communityId: mockJoinCommunityId,
+        userId: mockJoinUserId,
+        memberRole: 'MEMBER',
+        status: 'ACTIVE',
+        joinedAt: mockJoinDate,
+      } as any);
+
+      const result = await communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId);
+
+      expect(result.status).toBe('ACTIVE');
+      expect(updateSpy).toHaveBeenCalledWith({
+        where: { membershipId: 'inactive-id' },
+        data: {
+          status: 'ACTIVE',
+          joinedAt: expect.any(Date),
+        },
+        select: {
+          membershipId: true,
+          communityId: true,
+          userId: true,
+          memberRole: true,
+          status: true,
+          joinedAt: true,
+        },
+      });
+    });
+
+    it('11. should handle Prisma P2002 race condition on concurrent join attempts', async () => {
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => cb(prisma));
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockEligibleUser as any);
+      vi.spyOn(prisma.community, 'findUnique').mockResolvedValue(mockActiveCommunity as any);
+      vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValue(null);
+
+      const p2002Error: any = new Error('Unique constraint failed on community_memberships');
+      p2002Error.code = 'P2002';
+      vi.spyOn(prisma.communityMembership, 'create').mockRejectedValue(p2002Error);
+
+      await expect(
+        communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId)
+      ).rejects.toThrow(ConflictError);
+      await expect(
+        communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId)
+      ).rejects.toThrow('User is already a member of this community');
+    });
+
+    it('12. should propagate unexpected database errors as-is', async () => {
+      vi.spyOn(prisma, '$transaction').mockRejectedValueOnce(
+        new Error('PostgreSQL deadlock error')
+      );
+
+      await expect(
+        communityService.joinCommunity(mockJoinUserId, mockJoinCommunityId)
+      ).rejects.toThrow('PostgreSQL deadlock error');
     });
   });
 });

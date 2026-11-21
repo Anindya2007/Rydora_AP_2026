@@ -1,6 +1,11 @@
 import type { Prisma } from '../generated/prisma/client.js';
 import { prisma } from '../config/prisma.js';
-import { ConflictError, NotFoundError } from '../utils/errors.js';
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+} from '../utils/errors.js';
 import type { PaginationMeta } from '../utils/response.js';
 import type { CommunityQueryInput, CreateCommunityInput } from '../validators/communityValidator.js';
 
@@ -34,6 +39,15 @@ export interface CommunityDetailOutput {
   updatedAt: Date;
   membersCount: number;
   createdBy: CommunityCreatorOutput;
+}
+
+export interface CommunityMembershipOutput {
+  membershipId: string;
+  communityId: string;
+  userId: string;
+  memberRole: 'MEMBER' | 'ADMIN';
+  status: 'ACTIVE' | 'INACTIVE';
+  joinedAt: Date;
 }
 
 export interface PaginatedCommunitiesResult {
@@ -284,8 +298,148 @@ export async function getCommunityById(
   };
 }
 
+/**
+ * Allows an existing user to join an active community.
+ *
+ * 1. Verifies that the user exists.
+ * 2. Verifies that the community exists.
+ * 3. Verifies that the community is ACTIVE (rejects INACTIVE/closed communities).
+ * 4. Strictly validates email domain eligibility (case-insensitive exact domain matching).
+ * 5. Checks for duplicate membership. Rejects active members with ConflictError; reactivates inactive memberships.
+ * 6. Creates a new CommunityMembership with default role 'MEMBER' and status 'ACTIVE'.
+ * 7. Wraps the operation inside a Prisma transaction to ensure atomicity.
+ * 8. Catches Prisma P2002 unique constraint violations and converts them to ConflictError.
+ */
+export async function joinCommunity(
+  userId: string,
+  communityId: string
+): Promise<CommunityMembershipOutput> {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Verify user exists
+    const user = await tx.user.findUnique({
+      where: { userId },
+      select: {
+        userId: true,
+        email: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundError('User not found');
+    }
+
+    // 2. Verify community exists
+    const community = await tx.community.findUnique({
+      where: { communityId },
+      select: {
+        communityId: true,
+        name: true,
+        domain: true,
+        status: true,
+      },
+    });
+
+    if (!community) {
+      throw new NotFoundError('Community not found');
+    }
+
+    // 3. Verify community is active
+    if (community.status !== 'ACTIVE') {
+      throw new BadRequestError('Community is not active or accepting new members');
+    }
+
+    // 4. Verify email domain matches community domain
+    const emailParts = user.email.trim().toLowerCase().split('@');
+    const userDomain = emailParts.length === 2 ? emailParts[1].trim() : null;
+    const communityDomain = community.domain.trim().toLowerCase();
+
+    if (!userDomain || userDomain !== communityDomain) {
+      throw new ForbiddenError('User email domain is not eligible for this community');
+    }
+
+    // 5. Check existing membership
+    const existingMembership = await tx.communityMembership.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+    });
+
+    if (existingMembership) {
+      if (existingMembership.status === 'ACTIVE') {
+        throw new ConflictError('User is already a member of this community');
+      }
+
+      // Reactivate inactive membership
+      const reactivated = await tx.communityMembership.update({
+        where: {
+          membershipId: existingMembership.membershipId,
+        },
+        data: {
+          status: 'ACTIVE',
+          joinedAt: new Date(),
+        },
+        select: {
+          membershipId: true,
+          communityId: true,
+          userId: true,
+          memberRole: true,
+          status: true,
+          joinedAt: true,
+        },
+      });
+
+      return {
+        membershipId: reactivated.membershipId,
+        communityId: reactivated.communityId,
+        userId: reactivated.userId,
+        memberRole: reactivated.memberRole as 'MEMBER' | 'ADMIN',
+        status: reactivated.status as 'ACTIVE' | 'INACTIVE',
+        joinedAt: reactivated.joinedAt,
+      };
+    }
+
+    // 6. Create new membership
+    try {
+      const newMembership = await tx.communityMembership.create({
+        data: {
+          communityId,
+          userId,
+          memberRole: 'MEMBER',
+          status: 'ACTIVE',
+        },
+        select: {
+          membershipId: true,
+          communityId: true,
+          userId: true,
+          memberRole: true,
+          status: true,
+          joinedAt: true,
+        },
+      });
+
+      return {
+        membershipId: newMembership.membershipId,
+        communityId: newMembership.communityId,
+        userId: newMembership.userId,
+        memberRole: newMembership.memberRole as 'MEMBER' | 'ADMIN',
+        status: newMembership.status as 'ACTIVE' | 'INACTIVE',
+        joinedAt: newMembership.joinedAt,
+      };
+    } catch (error: any) {
+      if (error?.code === 'P2002') {
+        throw new ConflictError('User is already a member of this community');
+      }
+      throw error;
+    }
+  });
+}
+
 export const communityService = {
   createCommunity,
   getCommunities,
   getCommunityById,
+  joinCommunity,
 };
