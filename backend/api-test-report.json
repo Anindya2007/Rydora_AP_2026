@@ -1,0 +1,860 @@
+{
+  "project": "Rydora API Testing",
+  "baseURL": "http://localhost:3000/api/v1",
+  "startedAt": "2026-11-21T11:25:43.988Z",
+  "tests": [
+    {
+      "name": "Signup - Valid User 1",
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/v1/auth/signup",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "Rydora Test User 1",
+          "email": "rydora.test.1795260343988@example.com",
+          "password": "[REDACTED]",
+          "phone": "+919860343988"
+        }
+      },
+      "expectedStatus": 201,
+      "actualStatus": 201,
+      "passed": true,
+      "response": {
+        "success": true,
+        "statusCode": 201,
+        "message": "User registered successfully",
+        "data": {
+          "user": {
+            "userId": "535653a0-8ebf-4308-9081-fa6d108037ca",
+            "name": "Rydora Test User 1",
+            "email": "rydora.test.1795260343988@example.com",
+            "phone": "+919860343988",
+            "roles": [
+              "USER"
+            ],
+            "profileImage": null,
+            "driverVerified": false,
+            "walletBalance": "0",
+            "averageRating": "0",
+            "ratingCount": 0,
+            "createdAt": "2026-11-21T11:25:46.251Z",
+            "updatedAt": "2026-11-21T11:25:46.251Z"
+          },
+          "token": "[REDACTED]"
+        },
+        "meta": {
+          "requestId": "e1f4f852-c56c-45c3-a97f-f79030338a06",
+          "timestamp": "2026-11-21T11:25:46.554Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Signup - Duplicate Email",
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/v1/auth/signup",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "Rydora Test User 1",
+          "email": "rydora.test.1795260343988@example.com",
+          "password": "[REDACTED]",
+          "phone": "+919860343988"
+        }
+      },
+      "expectedStatus": 409,
+      "actualStatus": 409,
+      "passed": true,
+      "response": {
+        "success": false,
+        "statusCode": 409,
+        "error": {
+          "code": "CONFLICT",
+          "message": "User with this email already exists",
+          "details": [
+            {
+              "field": "email",
+              "message": "Email is already registered"
+            }
+          ]
+        },
+        "meta": {
+          "requestId": "e2fae083-de9a-4873-9d9c-25691db98944",
+          "timestamp": "2026-11-21T11:25:46.811Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Signup - Invalid Email and Password",
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/v1/auth/signup",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "A",
+          "email": "invalid-email",
+          "password": "[REDACTED]"
+        }
+      },
+      "expectedStatus": 422,
+      "actualStatus": 422,
+      "passed": true,
+      "response": {
+        "success": false,
+        "statusCode": 422,
+        "error": {
+          "code": "UNPROCESSABLE_ENTITY",
+          "message": "Validation failed",
+          "details": [
+            {
+              "field": "name",
+              "message": "Name must be at least 2 characters long"
+            },
+            {
+              "field": "email",
+              "message": "Invalid email address format"
+            },
+            {
+              "field": "password",
+              "message": "Password must be at least 8 characters long"
+            }
+          ]
+        },
+        "meta": {
+          "requestId": "34e355b5-8721-42d7-9210-a3e628412a2f",
+          "timestamp": "2026-11-21T11:25:46.816Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Login - Valid Credentials",
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/v1/auth/login",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "email": "rydora.test.1795260343988@example.com",
+          "password": "[REDACTED]"
+        }
+      },
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "passed": true,
+      "response": {
+        "success": true,
+        "statusCode": 200,
+        "message": "Login successful",
+        "data": {
+          "user": {
+            "userId": "535653a0-8ebf-4308-9081-fa6d108037ca",
+            "name": "Rydora Test User 1",
+            "email": "rydora.test.1795260343988@example.com",
+            "phone": "+919860343988",
+            "roles": [
+              "USER"
+            ],
+            "profileImage": null,
+            "driverVerified": false,
+            "walletBalance": "0",
+            "averageRating": "0",
+            "ratingCount": 0,
+            "createdAt": "2026-11-21T11:25:46.251Z",
+            "updatedAt": "2026-11-21T11:25:46.251Z"
+          },
+          "token": "[REDACTED]"
+        },
+        "meta": {
+          "requestId": "bf95cdc9-3697-44f5-94e7-939229fa0348",
+          "timestamp": "2026-11-21T11:25:47.276Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Login - Incorrect Password",
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/v1/auth/login",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "email": "rydora.test.1795260343988@example.com",
+          "password": "[REDACTED]"
+        }
+      },
+      "expectedStatus": 401,
+      "actualStatus": 401,
+      "passed": true,
+      "response": {
+        "success": false,
+        "statusCode": 401,
+        "error": {
+          "code": "UNAUTHORIZED",
+          "message": "Invalid email or password",
+          "details": null
+        },
+        "meta": {
+          "requestId": "ed102f9f-3e3e-4222-8f7b-9f632f0eaead",
+          "timestamp": "2026-11-21T11:25:47.704Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Get Current User - Valid Token",
+      "request": {
+        "method": "GET",
+        "url": "http://localhost:3000/api/v1/auth/me",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "[REDACTED]"
+        },
+        "body": null
+      },
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "passed": true,
+      "response": {
+        "success": true,
+        "statusCode": 200,
+        "message": "Current user retrieved successfully",
+        "data": {
+          "user": {
+            "userId": "535653a0-8ebf-4308-9081-fa6d108037ca",
+            "name": "Rydora Test User 1",
+            "email": "rydora.test.1795260343988@example.com",
+            "phone": "+919860343988",
+            "roles": [
+              "USER"
+            ],
+            "profileImage": null,
+            "licenseNumber": null,
+            "licenseExpiry": null,
+            "driverVerified": false,
+            "walletBalance": "0",
+            "averageRating": "0",
+            "ratingCount": 0,
+            "createdAt": "2026-11-21T11:25:46.251Z",
+            "updatedAt": "2026-11-21T11:25:46.251Z"
+          }
+        },
+        "meta": {
+          "requestId": "8d680cea-859f-429d-b0bc-632ebf82de3e",
+          "timestamp": "2026-11-21T11:25:47.987Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Get Current User - No Token",
+      "request": {
+        "method": "GET",
+        "url": "http://localhost:3000/api/v1/auth/me",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": null
+      },
+      "expectedStatus": 401,
+      "actualStatus": 401,
+      "passed": true,
+      "response": {
+        "success": false,
+        "statusCode": 401,
+        "error": {
+          "code": "UNAUTHORIZED",
+          "message": "Authorization header is required",
+          "details": null
+        },
+        "meta": {
+          "requestId": "194000f4-4046-4550-9208-fc888b27187e",
+          "timestamp": "2026-11-21T11:25:47.990Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Update Profile - Valid Name",
+      "request": {
+        "method": "PATCH",
+        "url": "http://localhost:3000/api/v1/users/me",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "[REDACTED]"
+        },
+        "body": {
+          "name": "Rydora Updated User"
+        }
+      },
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "passed": true,
+      "response": {
+        "success": true,
+        "statusCode": 200,
+        "message": "Profile updated successfully",
+        "data": {
+          "user": {
+            "userId": "535653a0-8ebf-4308-9081-fa6d108037ca",
+            "name": "Rydora Updated User",
+            "email": "rydora.test.1795260343988@example.com",
+            "phone": "+919860343988",
+            "roles": [
+              "USER"
+            ],
+            "profileImage": null,
+            "driverVerified": false,
+            "walletBalance": "0",
+            "averageRating": "0",
+            "ratingCount": 0,
+            "createdAt": "2026-11-21T11:25:46.251Z",
+            "updatedAt": "2026-11-21T11:25:48.480Z"
+          }
+        },
+        "meta": {
+          "requestId": "40b569fa-9db9-4e2e-be12-0e81c332fe1d",
+          "timestamp": "2026-11-21T11:25:48.723Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Update Profile - Valid Phone",
+      "request": {
+        "method": "PATCH",
+        "url": "http://localhost:3000/api/v1/users/me",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "[REDACTED]"
+        },
+        "body": {
+          "phone": "+919860343988"
+        }
+      },
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "passed": true,
+      "response": {
+        "success": true,
+        "statusCode": 200,
+        "message": "Profile updated successfully",
+        "data": {
+          "user": {
+            "userId": "535653a0-8ebf-4308-9081-fa6d108037ca",
+            "name": "Rydora Updated User",
+            "email": "rydora.test.1795260343988@example.com",
+            "phone": "+919860343988",
+            "roles": [
+              "USER"
+            ],
+            "profileImage": null,
+            "driverVerified": false,
+            "walletBalance": "0",
+            "averageRating": "0",
+            "ratingCount": 0,
+            "createdAt": "2026-11-21T11:25:46.251Z",
+            "updatedAt": "2026-11-21T11:25:49.214Z"
+          }
+        },
+        "meta": {
+          "requestId": "31f7d590-aa41-4d08-bb0e-4483231ca1cf",
+          "timestamp": "2026-11-21T11:25:49.521Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Update Profile - Valid Profile Image",
+      "request": {
+        "method": "PATCH",
+        "url": "http://localhost:3000/api/v1/users/me",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "[REDACTED]"
+        },
+        "body": {
+          "profileImage": "https://example.com/profile.jpg"
+        }
+      },
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "passed": true,
+      "response": {
+        "success": true,
+        "statusCode": 200,
+        "message": "Profile updated successfully",
+        "data": {
+          "user": {
+            "userId": "535653a0-8ebf-4308-9081-fa6d108037ca",
+            "name": "Rydora Updated User",
+            "email": "rydora.test.1795260343988@example.com",
+            "phone": "+919860343988",
+            "roles": [
+              "USER"
+            ],
+            "profileImage": "https://example.com/profile.jpg",
+            "driverVerified": false,
+            "walletBalance": "0",
+            "averageRating": "0",
+            "ratingCount": 0,
+            "createdAt": "2026-11-21T11:25:46.251Z",
+            "updatedAt": "2026-11-21T11:25:50.136Z"
+          }
+        },
+        "meta": {
+          "requestId": "0973e662-8758-4524-a7bf-2b44f3b7c675",
+          "timestamp": "2026-11-21T11:25:50.443Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Get Current User - Verify Updated Profile",
+      "request": {
+        "method": "GET",
+        "url": "http://localhost:3000/api/v1/auth/me",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "[REDACTED]"
+        },
+        "body": null
+      },
+      "expectedStatus": 200,
+      "actualStatus": 200,
+      "passed": true,
+      "response": {
+        "success": true,
+        "statusCode": 200,
+        "message": "Current user retrieved successfully",
+        "data": {
+          "user": {
+            "userId": "535653a0-8ebf-4308-9081-fa6d108037ca",
+            "name": "Rydora Updated User",
+            "email": "rydora.test.1795260343988@example.com",
+            "phone": "+919860343988",
+            "roles": [
+              "USER"
+            ],
+            "profileImage": "https://example.com/profile.jpg",
+            "licenseNumber": null,
+            "licenseExpiry": null,
+            "driverVerified": false,
+            "walletBalance": "0",
+            "averageRating": "0",
+            "ratingCount": 0,
+            "createdAt": "2026-11-21T11:25:46.251Z",
+            "updatedAt": "2026-11-21T11:25:50.136Z"
+          }
+        },
+        "meta": {
+          "requestId": "be305e6e-2495-42ad-86e6-d3571bf74df4",
+          "timestamp": "2026-11-21T11:25:50.690Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Update Profile - No Token",
+      "request": {
+        "method": "PATCH",
+        "url": "http://localhost:3000/api/v1/users/me",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "Unauthorized Name"
+        }
+      },
+      "expectedStatus": 401,
+      "actualStatus": 401,
+      "passed": true,
+      "response": {
+        "success": false,
+        "statusCode": 401,
+        "error": {
+          "code": "UNAUTHORIZED",
+          "message": "Authorization header is required",
+          "details": null
+        },
+        "meta": {
+          "requestId": "7272c2c5-f070-4d12-a507-7a10eaf9c321",
+          "timestamp": "2026-11-21T11:25:50.694Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Update Profile - Protected Roles Field",
+      "request": {
+        "method": "PATCH",
+        "url": "http://localhost:3000/api/v1/users/me",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "[REDACTED]"
+        },
+        "body": {
+          "roles": [
+            "DRIVER"
+          ]
+        }
+      },
+      "expectedStatus": 422,
+      "actualStatus": 422,
+      "passed": true,
+      "response": {
+        "success": false,
+        "statusCode": 422,
+        "error": {
+          "code": "UNPROCESSABLE_ENTITY",
+          "message": "Validation failed",
+          "details": [
+            {
+              "field": "",
+              "message": "Unrecognized key: \"roles\""
+            },
+            {
+              "field": "",
+              "message": "At least one field (name, phone, or profileImage) must be provided for update"
+            }
+          ]
+        },
+        "meta": {
+          "requestId": "7aec7aad-a1ac-4a89-ac31-910f3790473c",
+          "timestamp": "2026-11-21T11:25:50.939Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Update Profile - Protected Wallet Field",
+      "request": {
+        "method": "PATCH",
+        "url": "http://localhost:3000/api/v1/users/me",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "[REDACTED]"
+        },
+        "body": {
+          "walletBalance": 100000
+        }
+      },
+      "expectedStatus": 422,
+      "actualStatus": 422,
+      "passed": true,
+      "response": {
+        "success": false,
+        "statusCode": 422,
+        "error": {
+          "code": "UNPROCESSABLE_ENTITY",
+          "message": "Validation failed",
+          "details": [
+            {
+              "field": "",
+              "message": "Unrecognized key: \"walletBalance\""
+            },
+            {
+              "field": "",
+              "message": "At least one field (name, phone, or profileImage) must be provided for update"
+            }
+          ]
+        },
+        "meta": {
+          "requestId": "217a059e-660e-4b73-bdf0-816ec60e7091",
+          "timestamp": "2026-11-21T11:25:51.275Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Update Profile - Protected Email Field",
+      "request": {
+        "method": "PATCH",
+        "url": "http://localhost:3000/api/v1/users/me",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "[REDACTED]"
+        },
+        "body": {
+          "email": "changed@example.com"
+        }
+      },
+      "expectedStatus": 422,
+      "actualStatus": 422,
+      "passed": true,
+      "response": {
+        "success": false,
+        "statusCode": 422,
+        "error": {
+          "code": "UNPROCESSABLE_ENTITY",
+          "message": "Validation failed",
+          "details": [
+            {
+              "field": "",
+              "message": "Unrecognized key: \"email\""
+            },
+            {
+              "field": "",
+              "message": "At least one field (name, phone, or profileImage) must be provided for update"
+            }
+          ]
+        },
+        "meta": {
+          "requestId": "c76c0f9d-0b73-4056-96fa-2bcdb6a932e5",
+          "timestamp": "2026-11-21T11:25:51.573Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Update Profile - Protected User ID",
+      "request": {
+        "method": "PATCH",
+        "url": "http://localhost:3000/api/v1/users/me",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "[REDACTED]"
+        },
+        "body": {
+          "userId": "45413689-c19a-4ffb-9d0c-130f8ce2e26c"
+        }
+      },
+      "expectedStatus": 422,
+      "actualStatus": 422,
+      "passed": true,
+      "response": {
+        "success": false,
+        "statusCode": 422,
+        "error": {
+          "code": "UNPROCESSABLE_ENTITY",
+          "message": "Validation failed",
+          "details": [
+            {
+              "field": "",
+              "message": "Unrecognized key: \"userId\""
+            },
+            {
+              "field": "",
+              "message": "At least one field (name, phone, or profileImage) must be provided for update"
+            }
+          ]
+        },
+        "meta": {
+          "requestId": "cd5fd3fd-280d-4e18-b89d-07e7b71c2426",
+          "timestamp": "2026-11-21T11:25:51.881Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Update Profile - Empty Body",
+      "request": {
+        "method": "PATCH",
+        "url": "http://localhost:3000/api/v1/users/me",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "[REDACTED]"
+        },
+        "body": {}
+      },
+      "expectedStatus": 422,
+      "actualStatus": 422,
+      "passed": true,
+      "response": {
+        "success": false,
+        "statusCode": 422,
+        "error": {
+          "code": "UNPROCESSABLE_ENTITY",
+          "message": "Validation failed",
+          "details": [
+            {
+              "field": "",
+              "message": "At least one field (name, phone, or profileImage) must be provided for update"
+            }
+          ]
+        },
+        "meta": {
+          "requestId": "56031ff9-07cf-475d-82a8-354851d3da6c",
+          "timestamp": "2026-11-21T11:25:52.127Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Update Profile - Invalid Phone",
+      "request": {
+        "method": "PATCH",
+        "url": "http://localhost:3000/api/v1/users/me",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "[REDACTED]"
+        },
+        "body": {
+          "phone": "abc123"
+        }
+      },
+      "expectedStatus": 422,
+      "actualStatus": 422,
+      "passed": true,
+      "response": {
+        "success": false,
+        "statusCode": 422,
+        "error": {
+          "code": "UNPROCESSABLE_ENTITY",
+          "message": "Validation failed",
+          "details": [
+            {
+              "field": "phone",
+              "message": "Phone number must be at least 10 characters"
+            },
+            {
+              "field": "phone",
+              "message": "Invalid phone number format"
+            }
+          ]
+        },
+        "meta": {
+          "requestId": "56b10d6e-3b5e-41e0-922d-9a96b4614ce6",
+          "timestamp": "2026-11-21T11:25:52.389Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Update Profile - Invalid Image URL",
+      "request": {
+        "method": "PATCH",
+        "url": "http://localhost:3000/api/v1/users/me",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "[REDACTED]"
+        },
+        "body": {
+          "profileImage": "not-a-valid-url"
+        }
+      },
+      "expectedStatus": 422,
+      "actualStatus": 422,
+      "passed": true,
+      "response": {
+        "success": false,
+        "statusCode": 422,
+        "error": {
+          "code": "UNPROCESSABLE_ENTITY",
+          "message": "Validation failed",
+          "details": [
+            {
+              "field": "profileImage",
+              "message": "Profile image must be a valid URL"
+            }
+          ]
+        },
+        "meta": {
+          "requestId": "5fb6a040-c609-4d8b-a018-74b17a3d8f9e",
+          "timestamp": "2026-11-21T11:25:52.696Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Signup - Valid User 2",
+      "request": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/v1/auth/signup",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "name": "Rydora Test User 2",
+          "email": "rydora.test.second.1795260343988@example.com",
+          "password": "[REDACTED]"
+        }
+      },
+      "expectedStatus": 201,
+      "actualStatus": 201,
+      "passed": true,
+      "response": {
+        "success": true,
+        "statusCode": 201,
+        "message": "User registered successfully",
+        "data": {
+          "user": {
+            "userId": "cc63181d-e7e6-4dea-86d0-2080cd478feb",
+            "name": "Rydora Test User 2",
+            "email": "rydora.test.second.1795260343988@example.com",
+            "phone": null,
+            "roles": [
+              "USER"
+            ],
+            "profileImage": null,
+            "driverVerified": false,
+            "walletBalance": "0",
+            "averageRating": "0",
+            "ratingCount": 0,
+            "createdAt": "2026-11-21T11:25:53.055Z",
+            "updatedAt": "2026-11-21T11:25:53.055Z"
+          },
+          "token": "[REDACTED]"
+        },
+        "meta": {
+          "requestId": "92a71710-3efe-4818-b8dd-f793885b6f0e",
+          "timestamp": "2026-11-21T11:25:53.311Z"
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "Update Profile - Duplicate Phone",
+      "request": {
+        "method": "PATCH",
+        "url": "http://localhost:3000/api/v1/users/me",
+        "headers": {
+          "Content-Type": "application/json",
+          "Authorization": "[REDACTED]"
+        },
+        "body": {
+          "phone": "+919860343988"
+        }
+      },
+      "expectedStatus": 409,
+      "actualStatus": 409,
+      "passed": true,
+      "response": {
+        "success": false,
+        "statusCode": 409,
+        "error": {
+          "code": "CONFLICT",
+          "message": "User with this phone number already exists",
+          "details": [
+            {
+              "field": "phone",
+              "message": "Phone number is already registered"
+            }
+          ]
+        },
+        "meta": {
+          "requestId": "ad8bb5dd-9a74-4dd6-a0f7-fdd824b4bc25",
+          "timestamp": "2026-11-21T11:25:54.101Z"
+        }
+      },
+      "error": null
+    }
+  ],
+  "finishedAt": "2026-11-21T11:25:54.103Z",
+  "summary": {
+    "total": 21,
+    "passed": 21,
+    "failed": 0,
+    "result": "ALL TESTS PASSED"
+  }
+}

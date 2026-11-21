@@ -95,7 +95,7 @@ describe('Rydora Shared Foundation Test Suite', () => {
 
       expect(config.DATABASE_URL).toBe('postgresql://user:pass@localhost:5432/db');
       expect(config.JWT_SECRET).toBe('super-secure-token-12345-at-least-32-chars-long');
-      expect(config.PORT).toBe(5000);
+      expect(config.PORT).toBe(3000);
       expect(config.NODE_ENV).toBe('development');
       expect(config.CORS_ORIGIN).toBe('*');
     });

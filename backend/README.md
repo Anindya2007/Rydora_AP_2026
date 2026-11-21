@@ -59,7 +59,7 @@ cp .env.example .env
 # Edit .env with your Supabase database credentials
 npm run prisma:generate
 npm run prisma:push     # Synchronizes schema with Supabase
-npm run dev             # Starts Express server on http://localhost:5000
+npm run dev             # Starts Express server on http://localhost:3000
 ```
 
 ### 2. Frontend Setup

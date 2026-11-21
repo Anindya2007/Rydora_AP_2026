@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../config/prisma.js';
 import { sendSuccess } from '../utils/response.js';
+import { authRouter } from './auth.routes.js';
+import { userRouter } from './user.routes.js';
 
 export const apiV1Router = Router();
 
@@ -63,11 +65,6 @@ apiV1Router.get('/ready', async (req, res) => {
  * As feature milestones are completed, each developer exports their router.
  * Anindya (Lead Architect) will register them here:
  *
- * Badal (Identity, Auth, Communities):
- *   // apiV1Router.use('/auth', authRouter);
- *   // apiV1Router.use('/users', userRouter);
- *   // apiV1Router.use('/communities', communityRouter);
- *
  * Anindya (Fleet & Rides):
  *   // apiV1Router.use('/vehicles', vehicleRouter);
  *   // apiV1Router.use('/rides', rideRouter);
@@ -83,3 +80,8 @@ apiV1Router.get('/ready', async (req, res) => {
  *   // apiV1Router.use('/driver-earnings', driverEarningRouter);
  * ========================================================================
  */
+
+// Badal (Identity, Auth, Communities):
+apiV1Router.use('/auth', authRouter);
+apiV1Router.use('/users', userRouter);
+// apiV1Router.use('/communities', communityRouter);
