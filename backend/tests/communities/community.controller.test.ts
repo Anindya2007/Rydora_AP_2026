@@ -5,7 +5,12 @@ import { app } from '../../src/app.js';
 import { prisma } from '../../src/config/prisma.js';
 import { env } from '../../src/config/env.js';
 import { communityService } from '../../src/services/community.service.js';
-import { ConflictError, NotFoundError } from '../../src/utils/errors.js';
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+} from '../../src/utils/errors.js';
 
 const mockUserId = '11111111-2222-3333-4444-555555555555';
 
@@ -627,5 +632,241 @@ describe('Community Detail Controller & Route Test Suite (M3.7: GET /api/v1/comm
     // Creation route auth check
     const createRes = await request(app).post('/api/v1/communities').send({});
     expect(createRes.status).toBe(401);
+  });
+});
+
+describe('Community Membership Join Controller & Route Test Suite (M3.9: POST /api/v1/communities/:communityId/join)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const mockDate = new Date('2026-11-22T03:30:00.000Z');
+  const mockCommunityId = '99999999-8888-7777-6666-555555555555';
+  const mockJoiningUserId = mockUserId;
+
+  const mockCreatedMembership = {
+    membershipId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+    communityId: mockCommunityId,
+    userId: mockJoiningUserId,
+    memberRole: 'MEMBER' as const,
+    status: 'ACTIVE' as const,
+    joinedAt: mockDate,
+  };
+
+  it('1. should return HTTP 201 with membership data when authenticated user successfully joins an eligible community', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    const serviceSpy = vi
+      .spyOn(communityService, 'joinCommunity')
+      .mockResolvedValueOnce(mockCreatedMembership);
+
+    const token = generateValidToken(mockJoiningUserId);
+    const res = await request(app)
+      .post(`/api/v1/communities/${mockCommunityId}/join`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.statusCode).toBe(201);
+    expect(res.body.message).toBe('Joined community successfully');
+    expect(res.body.data.membership).toBeDefined();
+    expect(res.body.data.membership.membershipId).toBe(mockCreatedMembership.membershipId);
+    expect(res.body.data.membership.communityId).toBe(mockCommunityId);
+    expect(res.body.data.membership.userId).toBe(mockJoiningUserId);
+    expect(res.body.data.membership.memberRole).toBe('MEMBER');
+    expect(res.body.data.membership.status).toBe('ACTIVE');
+    expect(serviceSpy).toHaveBeenCalledWith(mockJoiningUserId, mockCommunityId);
+  });
+
+  it('2. should obtain userId exclusively from authenticated req.user and reject forged userId in body with HTTP 422', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    const serviceSpy = vi.spyOn(communityService, 'joinCommunity');
+
+    const token = generateValidToken(mockJoiningUserId);
+    const res = await request(app)
+      .post(`/api/v1/communities/${mockCommunityId}/join`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        userId: '99999999-9999-9999-9999-999999999999',
+      });
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    expect(serviceSpy).not.toHaveBeenCalled();
+  });
+
+  it('3. should reject attempt by client to specify memberRole with HTTP 422', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    const serviceSpy = vi.spyOn(communityService, 'joinCommunity');
+
+    const token = generateValidToken(mockJoiningUserId);
+    const res = await request(app)
+      .post(`/api/v1/communities/${mockCommunityId}/join`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        memberRole: 'ADMIN',
+      });
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    expect(serviceSpy).not.toHaveBeenCalled();
+  });
+
+  it('4. should reject attempt by client to manipulate status with HTTP 422', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    const serviceSpy = vi.spyOn(communityService, 'joinCommunity');
+
+    const token = generateValidToken(mockJoiningUserId);
+    const res = await request(app)
+      .post(`/api/v1/communities/${mockCommunityId}/join`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        status: 'ACTIVE',
+      });
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    expect(serviceSpy).not.toHaveBeenCalled();
+  });
+
+  it('5. should reject unauthenticated requests with HTTP 401', async () => {
+    const res = await request(app)
+      .post(`/api/v1/communities/${mockCommunityId}/join`)
+      .send({});
+
+    expect(res.status).toBe(401);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNAUTHORIZED');
+  });
+
+  it('6. should reject malformed or invalid UUID communityId with HTTP 422', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    const token = generateValidToken(mockJoiningUserId);
+
+    const res = await request(app)
+      .post('/api/v1/communities/not-a-valid-uuid/join')
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+  });
+
+  it('7. should return HTTP 404 when community is not found', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    vi.spyOn(communityService, 'joinCommunity').mockRejectedValueOnce(
+      new NotFoundError('Community not found')
+    );
+
+    const token = generateValidToken(mockJoiningUserId);
+    const res = await request(app)
+      .post(`/api/v1/communities/${mockCommunityId}/join`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+
+    expect(res.status).toBe(404);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+    expect(res.body.error.message).toBe('Community not found');
+  });
+
+  it('8. should return HTTP 403 when user email domain is ineligible', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    vi.spyOn(communityService, 'joinCommunity').mockRejectedValueOnce(
+      new ForbiddenError('User email domain is not eligible for this community')
+    );
+
+    const token = generateValidToken(mockJoiningUserId);
+    const res = await request(app)
+      .post(`/api/v1/communities/${mockCommunityId}/join`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+
+    expect(res.status).toBe(403);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+    expect(res.body.error.message).toBe('User email domain is not eligible for this community');
+  });
+
+  it('9. should return HTTP 409 when user is already a member', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    vi.spyOn(communityService, 'joinCommunity').mockRejectedValueOnce(
+      new ConflictError('User is already a member of this community')
+    );
+
+    const token = generateValidToken(mockJoiningUserId);
+    const res = await request(app)
+      .post(`/api/v1/communities/${mockCommunityId}/join`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+
+    expect(res.status).toBe(409);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('CONFLICT');
+    expect(res.body.error.message).toBe('User is already a member of this community');
+  });
+
+  it('10. should return HTTP 400 when community is inactive', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    vi.spyOn(communityService, 'joinCommunity').mockRejectedValueOnce(
+      new BadRequestError('Community is not active or accepting new members')
+    );
+
+    const token = generateValidToken(mockJoiningUserId);
+    const res = await request(app)
+      .post(`/api/v1/communities/${mockCommunityId}/join`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('BAD_REQUEST');
+    expect(res.body.error.message).toBe('Community is not active or accepting new members');
+  });
+
+  it('11. should forward unexpected service errors as HTTP 500', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    vi.spyOn(communityService, 'joinCommunity').mockRejectedValueOnce(
+      new Error('Database cluster connection failure')
+    );
+
+    const token = generateValidToken(mockJoiningUserId);
+    const res = await request(app)
+      .post(`/api/v1/communities/${mockCommunityId}/join`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+
+    expect(res.status).toBe(500);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('INTERNAL_SERVER_ERROR');
+  });
+
+  it('12. should ensure existing community routes remain functional and unconflicted', async () => {
+    // Detail route check (GET /:communityId)
+    vi.spyOn(communityService, 'getCommunityById').mockResolvedValueOnce({
+      communityId: mockCommunityId,
+      name: 'SRM Institute of Science and Technology',
+      domain: 'srmist.edu.in',
+      description: null,
+      status: 'ACTIVE',
+      createdById: mockJoiningUserId,
+      createdAt: mockDate,
+      updatedAt: mockDate,
+      membersCount: 1,
+      createdBy: {
+        userId: mockJoiningUserId,
+        name: 'Badal Khandelwal',
+        email: 'badal@srmist.edu.in',
+        profileImage: null,
+      },
+    });
+
+    const detailRes = await request(app).get(`/api/v1/communities/${mockCommunityId}`);
+    expect(detailRes.status).toBe(200);
+    expect(detailRes.body.data.community.communityId).toBe(mockCommunityId);
   });
 });

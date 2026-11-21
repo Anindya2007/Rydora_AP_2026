@@ -3,6 +3,7 @@ import {
   createCommunitySchema,
   communityQuerySchema,
   communityIdParamSchema,
+  joinCommunitySchema,
 } from '../validators/communityValidator.js';
 import { communityService } from '../services/community.service.js';
 import { sendSuccess } from '../utils/response.js';
@@ -78,8 +79,38 @@ export async function getCommunityById(
   }
 }
 
+/**
+ * Controller handling community membership joining (POST /api/v1/communities/:communityId/join).
+ * Derives user identity strictly from authenticated req.user.userId.
+ * Validates route parameters and ensures request body cannot inject roles or IDs.
+ */
+export async function joinCommunity(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const { communityId } = communityIdParamSchema.parse(req.params);
+    joinCommunitySchema.parse(req.body);
+
+    const membership = await communityService.joinCommunity(
+      req.user.userId,
+      communityId
+    );
+
+    sendSuccess(res, { membership }, 'Joined community successfully', 201);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const CommunityController = {
   createCommunity,
   getCommunities,
   getCommunityById,
+  joinCommunity,
 };

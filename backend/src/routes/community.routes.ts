@@ -21,3 +21,9 @@ communityRouter.get('/:communityId', CommunityController.getCommunityById);
  * Protected endpoint to create a new community and atomically register the creator as an ADMIN.
  */
 communityRouter.post('/', authenticate, CommunityController.createCommunity);
+
+/**
+ * POST /api/v1/communities/:communityId/join
+ * Protected endpoint to join an eligible active community as a MEMBER.
+ */
+communityRouter.post('/:communityId/join', authenticate, CommunityController.joinCommunity);

@@ -1118,6 +1118,169 @@ async function main() {
         expectedStatus: 422
     });
 
+    // ----------------------------------------------------
+    // M3.9 Community Membership Join Endpoint Tests
+    // ----------------------------------------------------
+
+    // 31. Community join without authentication returns 401
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Join - Without Authentication Rejection",
+        method: "POST",
+        path: `/communities/${comm?.communityId || "00000000-0000-0000-0000-000000000000"}/join`,
+        expectedStatus: 401
+    });
+
+    // 32. Community join with invalid bearer token returns 401
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Join - Invalid Token Rejection",
+        method: "POST",
+        path: `/communities/${comm?.communityId || "00000000-0000-0000-0000-000000000000"}/join`,
+        token: "invalid.jwt.token",
+        expectedStatus: 401
+    });
+
+    // 33. Signup an eligible member whose email domain matches the community domain
+    const eligibleMember = {
+        name: "Eligible Community Member",
+        email: `member.${timestamp}@${community1.domain}`,
+        password: "TestPassword123"
+    };
+
+    const signupMemberRes = await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Join - Signup Eligible Member",
+        method: "POST",
+        path: "/auth/signup",
+        body: eligibleMember,
+        expectedStatus: 201
+    });
+
+    const eligibleMemberToken = findToken(signupMemberRes);
+
+    if (comm && comm.communityId && eligibleMemberToken) {
+        // 34. Client attempting to pass privileged role is rejected with 422
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Join - Reject Privileged Role Injection",
+            method: "POST",
+            path: `/communities/${comm.communityId}/join`,
+            token: eligibleMemberToken,
+            body: {
+                memberRole: "ADMIN"
+            },
+            expectedStatus: 422
+        });
+
+        // 35. Client attempting to inject forged userId in body is rejected with 422
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Join - Reject Forged User ID Injection",
+            method: "POST",
+            path: `/communities/${comm.communityId}/join`,
+            token: eligibleMemberToken,
+            body: {
+                userId: crypto.randomUUID()
+            },
+            expectedStatus: 422
+        });
+
+        // 36. Eligible member successfully joins community returning HTTP 201
+        const joinRes = await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Join - Eligible Member Joins Successfully",
+            method: "POST",
+            path: `/communities/${comm.communityId}/join`,
+            token: eligibleMemberToken,
+            body: {},
+            expectedStatus: 201
+        });
+
+        // 37. Validate join response structure and default role/status
+        const membership = joinRes?.data?.membership;
+        const hasValidMembershipStructure = Boolean(
+            joinRes &&
+            joinRes.success === true &&
+            joinRes.statusCode === 201 &&
+            membership &&
+            typeof membership.membershipId === "string" &&
+            membership.communityId === comm.communityId &&
+            membership.memberRole === "MEMBER" &&
+            membership.status === "ACTIVE" &&
+            typeof membership.joinedAt === "string"
+        );
+        recordAssertion({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Join - Response Structure & Default Role",
+            passed: hasValidMembershipStructure,
+            expectedStatus: 201,
+            actualStatus: hasValidMembershipStructure ? 201 : "Invalid Membership Structure",
+            details: `Role: ${membership?.memberRole}, Status: ${membership?.status}, Community: ${membership?.communityId}`
+        });
+
+        // 38. Duplicate join attempt by same user returns HTTP 409
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Join - Duplicate Membership Conflict Rejection",
+            method: "POST",
+            path: `/communities/${comm.communityId}/join`,
+            token: eligibleMemberToken,
+            body: {},
+            expectedStatus: 409
+        });
+    }
+
+    // 39. User with ineligible email domain is rejected with HTTP 403
+    if (comm && comm.communityId && token2) {
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Join - Ineligible Email Domain Rejection",
+            method: "POST",
+            path: `/communities/${comm.communityId}/join`,
+            token: token2,
+            body: {},
+            expectedStatus: 403
+        });
+    }
+
+    // 40. Joining non-existent community UUID returns HTTP 404
+    if (token1) {
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Join - Non-Existent Community ID Rejection",
+            method: "POST",
+            path: "/communities/00000000-0000-0000-0000-000000000000/join",
+            token: token1,
+            body: {},
+            expectedStatus: 404
+        });
+    }
+
+    // 41. Invalid UUID format in URL parameter returns HTTP 422
+    if (token1) {
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Join - Invalid UUID Route Parameter Rejection",
+            method: "POST",
+            path: "/communities/not-a-valid-uuid-format/join",
+            token: token1,
+            body: {},
+            expectedStatus: 422
+        });
+    }
+
     // ============================================
     // FINAL REPORT & SUMMARY
     // ============================================
