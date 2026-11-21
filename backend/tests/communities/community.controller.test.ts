@@ -457,4 +457,26 @@ describe('Community Listing Controller & Route Test Suite (M3.5: GET /api/v1/com
     expect(res.body.success).toBe(true);
     expect(res.body.data.communities).toHaveLength(2);
   });
+
+  it('13. should ensure community listing response does not expose sensitive fields', async () => {
+    vi.spyOn(communityService, 'getCommunities').mockResolvedValueOnce({
+      communities: mockCommunityList,
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 2,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+    });
+
+    const res = await request(app).get('/api/v1/communities');
+
+    expect(res.status).toBe(200);
+    const bodyString = JSON.stringify(res.body);
+    expect(bodyString).not.toMatch(/password/i);
+    expect(bodyString).not.toMatch(/hash/i);
+    expect(bodyString).not.toMatch(/salt/i);
+  });
 });
