@@ -16,6 +16,26 @@ export interface CommunityOutput {
   membersCount?: number;
 }
 
+export interface CommunityCreatorOutput {
+  userId: string;
+  name: string;
+  email: string;
+  profileImage: string | null;
+}
+
+export interface CommunityDetailOutput {
+  communityId: string;
+  name: string;
+  domain: string;
+  description: string | null;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdById: string;
+  createdAt: Date;
+  updatedAt: Date;
+  membersCount: number;
+  createdBy: CommunityCreatorOutput;
+}
+
 export interface PaginatedCommunitiesResult {
   communities: CommunityOutput[];
   pagination: PaginationMeta;
@@ -199,7 +219,73 @@ export async function getCommunities(
   };
 }
 
+/**
+ * Retrieves the full details of a specific community by its unique UUID.
+ *
+ * 1. Queries the community by primary key (communityId).
+ * 2. Selects only public/safe fields: communityId, name, domain, description, status, createdById, createdAt, updatedAt.
+ * 3. Includes creator's public profile (userId, name, email, profileImage), strictly excluding sensitive data (passwordHash, phone, wallet, license).
+ * 4. Counts active memberships using Prisma relation _count with status: 'ACTIVE'.
+ * 5. Throws NotFoundError if the community does not exist.
+ * 6. Returns a structured CommunityDetailOutput representation.
+ */
+export async function getCommunityById(
+  communityId: string
+): Promise<CommunityDetailOutput> {
+  const community = await prisma.community.findUnique({
+    where: { communityId },
+    select: {
+      communityId: true,
+      name: true,
+      domain: true,
+      description: true,
+      status: true,
+      createdById: true,
+      createdAt: true,
+      updatedAt: true,
+      createdBy: {
+        select: {
+          userId: true,
+          name: true,
+          email: true,
+          profileImage: true,
+        },
+      },
+      _count: {
+        select: {
+          members: {
+            where: { status: 'ACTIVE' },
+          },
+        },
+      },
+    },
+  });
+
+  if (!community) {
+    throw new NotFoundError('Community not found');
+  }
+
+  return {
+    communityId: community.communityId,
+    name: community.name,
+    domain: community.domain,
+    description: community.description,
+    status: community.status as 'ACTIVE' | 'INACTIVE',
+    createdById: community.createdById,
+    createdAt: community.createdAt,
+    updatedAt: community.updatedAt,
+    membersCount: typeof community._count?.members === 'number' ? community._count.members : 0,
+    createdBy: {
+      userId: community.createdBy.userId,
+      name: community.createdBy.name,
+      email: community.createdBy.email,
+      profileImage: community.createdBy.profileImage,
+    },
+  };
+}
+
 export const communityService = {
   createCommunity,
   getCommunities,
+  getCommunityById,
 };
