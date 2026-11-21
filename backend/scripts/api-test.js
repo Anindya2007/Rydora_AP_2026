@@ -1019,6 +1019,105 @@ async function main() {
         expectedStatus: 422
     });
 
+    // ----------------------------------------------------
+    // M3.7 Community Detail Endpoint Tests
+    // ----------------------------------------------------
+
+    // 25. Retrieving existing community by ID returns HTTP 200
+    if (comm && comm.communityId) {
+        const detailRes = await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Detail - Retrieve Existing Community by ID",
+            method: "GET",
+            path: `/communities/${comm.communityId}`,
+            expectedStatus: 200
+        });
+
+        // 26. Validate detail response envelope and structure
+        const detailComm = detailRes?.data?.community;
+        const hasValidDetailEnvelope = Boolean(
+            detailRes &&
+            detailRes.success === true &&
+            detailRes.statusCode === 200 &&
+            detailComm &&
+            detailComm.communityId === comm.communityId &&
+            detailComm.name === comm.name &&
+            detailComm.domain === comm.domain &&
+            typeof detailComm.membersCount === "number" &&
+            detailComm.createdBy &&
+            typeof detailComm.createdBy.userId === "string" &&
+            typeof detailComm.createdBy.name === "string" &&
+            typeof detailComm.createdBy.email === "string" &&
+            detailRes.meta &&
+            typeof detailRes.meta.requestId === "string" &&
+            typeof detailRes.meta.timestamp === "string"
+        );
+        recordAssertion({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Detail - API Response Envelope & Structure",
+            passed: hasValidDetailEnvelope,
+            expectedStatus: 200,
+            actualStatus: hasValidDetailEnvelope ? 200 : "Invalid Detail Envelope",
+            details: `Validated communityId: ${detailComm?.communityId}, membersCount: ${detailComm?.membersCount}, creator: ${detailComm?.createdBy?.email}`
+        });
+
+        // 27. Ensure sensitive fields are excluded from detail response
+        const detailRawString = JSON.stringify(detailRes || {});
+        const detailExposesSensitiveData = /password|passwordHash|"salt"|walletBalance|licenseNumber/i.test(detailRawString);
+        recordAssertion({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Detail - No Sensitive Data Exposure",
+            passed: !detailExposesSensitiveData,
+            expectedStatus: 200,
+            actualStatus: !detailExposesSensitiveData ? 200 : "Exposed Sensitive Data",
+            details: "Confirmed no password hashes, walletBalance, licenseNumber, or sensitive fields in payload"
+        });
+
+        // 28. Authenticated request to detail endpoint also allowed
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Detail - Authenticated Request Allowed",
+            method: "GET",
+            path: `/communities/${comm.communityId}`,
+            token: token1,
+            expectedStatus: 200
+        });
+    } else {
+        console.log("SKIP | Community Detail Tests | Created community ID unavailable");
+        report.tests.push({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Detail - Retrieve Existing Community",
+            passed: false,
+            skipped: true,
+            reason: "Could not retrieve created community ID from M3.3 creation step."
+        });
+    }
+
+    // 29. Retrieving a non-existent community UUID returns HTTP 404
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Detail - Non-Existent Community ID Rejection",
+        method: "GET",
+        path: "/communities/00000000-0000-0000-0000-000000000000",
+        expectedStatus: 404
+    });
+
+    // 30. Invalid community ID format (non-UUID) returns HTTP 422
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Detail - Invalid UUID Format Rejection",
+        method: "GET",
+        path: "/communities/invalid-community-id-not-a-uuid",
+        expectedStatus: 422
+    });
+
     // ============================================
     // FINAL REPORT & SUMMARY
     // ============================================

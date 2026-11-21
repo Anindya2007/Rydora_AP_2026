@@ -11,6 +11,12 @@ export const communityRouter = Router();
 communityRouter.get('/', CommunityController.getCommunities);
 
 /**
+ * GET /api/v1/communities/:communityId
+ * Public endpoint to retrieve full details for a specific community by ID.
+ */
+communityRouter.get('/:communityId', CommunityController.getCommunityById);
+
+/**
  * POST /api/v1/communities
  * Protected endpoint to create a new community and atomically register the creator as an ADMIN.
  */

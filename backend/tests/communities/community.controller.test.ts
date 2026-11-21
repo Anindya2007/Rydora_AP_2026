@@ -5,7 +5,7 @@ import { app } from '../../src/app.js';
 import { prisma } from '../../src/config/prisma.js';
 import { env } from '../../src/config/env.js';
 import { communityService } from '../../src/services/community.service.js';
-import { ConflictError } from '../../src/utils/errors.js';
+import { ConflictError, NotFoundError } from '../../src/utils/errors.js';
 
 const mockUserId = '11111111-2222-3333-4444-555555555555';
 
@@ -478,5 +478,154 @@ describe('Community Listing Controller & Route Test Suite (M3.5: GET /api/v1/com
     expect(bodyString).not.toMatch(/password/i);
     expect(bodyString).not.toMatch(/hash/i);
     expect(bodyString).not.toMatch(/salt/i);
+  });
+});
+
+describe('Community Detail Controller & Route Test Suite (M3.7: GET /api/v1/communities/:communityId)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const mockDate = new Date('2026-11-21T10:00:00.000Z');
+  const mockCommunityId = '99999999-8888-7777-6666-555555555555';
+  const mockCreatorId = '11111111-2222-3333-4444-555555555555';
+
+  const mockCommunityDetail = {
+    communityId: mockCommunityId,
+    name: 'SRM Institute of Science and Technology',
+    domain: 'srmist.edu.in',
+    description: 'Official campus carpooling community',
+    status: 'ACTIVE' as const,
+    createdById: mockCreatorId,
+    createdAt: mockDate,
+    updatedAt: mockDate,
+    membersCount: 42,
+    createdBy: {
+      userId: mockCreatorId,
+      name: 'Badal Khandelwal',
+      email: 'badal@srmist.edu.in',
+      profileImage: 'https://example.com/avatar.jpg',
+    },
+  };
+
+  it('1. should return HTTP 200 with community details when given a valid existing community ID', async () => {
+    const serviceSpy = vi
+      .spyOn(communityService, 'getCommunityById')
+      .mockResolvedValueOnce(mockCommunityDetail);
+
+    const res = await request(app).get(`/api/v1/communities/${mockCommunityId}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.statusCode).toBe(200);
+    expect(res.body.message).toBe('Community retrieved successfully');
+    expect(res.body.data.community).toBeDefined();
+    expect(res.body.data.community.communityId).toBe(mockCommunityId);
+    expect(res.body.data.community.name).toBe('SRM Institute of Science and Technology');
+    expect(res.body.data.community.domain).toBe('srmist.edu.in');
+    expect(res.body.data.community.membersCount).toBe(42);
+    expect(res.body.data.community.createdBy).toEqual({
+      userId: mockCreatorId,
+      name: 'Badal Khandelwal',
+      email: 'badal@srmist.edu.in',
+      profileImage: 'https://example.com/avatar.jpg',
+    });
+    expect(res.body.meta.requestId).toBeDefined();
+    expect(res.body.meta.timestamp).toBeDefined();
+    expect(serviceSpy).toHaveBeenCalledWith(mockCommunityId);
+  });
+
+  it('2. should allow authenticated requests to retrieve community details', async () => {
+    vi.spyOn(communityService, 'getCommunityById').mockResolvedValueOnce(mockCommunityDetail);
+    const token = generateValidToken();
+
+    const res = await request(app)
+      .get(`/api/v1/communities/${mockCommunityId}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.community.communityId).toBe(mockCommunityId);
+  });
+
+  it('3. should return HTTP 422 when community ID is not a valid UUID format', async () => {
+    const res = await request(app).get('/api/v1/communities/invalid-uuid-1234');
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    expect(res.body.error.message).toBe('Validation failed');
+    expect(res.body.error.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          field: 'communityId',
+          message: 'Invalid community ID format. Must be a valid UUID',
+        }),
+      ])
+    );
+  });
+
+  it('4. should return HTTP 404 when community does not exist in service', async () => {
+    const nonExistentId = '00000000-0000-0000-0000-000000000000';
+    vi.spyOn(communityService, 'getCommunityById').mockRejectedValueOnce(
+      new NotFoundError('Community not found')
+    );
+
+    const res = await request(app).get(`/api/v1/communities/${nonExistentId}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.success).toBe(false);
+    expect(res.body.statusCode).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+    expect(res.body.error.message).toBe('Community not found');
+  });
+
+  it('5. should forward unexpected service errors to global error handler as HTTP 500', async () => {
+    vi.spyOn(communityService, 'getCommunityById').mockRejectedValueOnce(
+      new Error('Database cluster connection failure')
+    );
+
+    const res = await request(app).get(`/api/v1/communities/${mockCommunityId}`);
+
+    expect(res.status).toBe(500);
+    expect(res.body.success).toBe(false);
+    expect(res.body.statusCode).toBe(500);
+    expect(res.body.error.code).toBe('INTERNAL_SERVER_ERROR');
+    expect(res.body.meta.requestId).toBeDefined();
+  });
+
+  it('6. should ensure sensitive user fields are not exposed in detail response', async () => {
+    vi.spyOn(communityService, 'getCommunityById').mockResolvedValueOnce(mockCommunityDetail);
+
+    const res = await request(app).get(`/api/v1/communities/${mockCommunityId}`);
+
+    expect(res.status).toBe(200);
+    const bodyString = JSON.stringify(res.body);
+    expect(bodyString).not.toMatch(/password/i);
+    expect(bodyString).not.toMatch(/hash/i);
+    expect(bodyString).not.toMatch(/walletBalance/i);
+    expect(bodyString).not.toMatch(/licenseNumber/i);
+  });
+
+  it('7. should ensure community creation (POST) and listing (GET) routes remain functional and unconflicted', async () => {
+    // Listing route check
+    vi.spyOn(communityService, 'getCommunities').mockResolvedValueOnce({
+      communities: [],
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false,
+      },
+    });
+    const listRes = await request(app).get('/api/v1/communities');
+    expect(listRes.status).toBe(200);
+    expect(listRes.body.data.communities).toBeDefined();
+
+    // Creation route auth check
+    const createRes = await request(app).post('/api/v1/communities').send({});
+    expect(createRes.status).toBe(401);
   });
 });

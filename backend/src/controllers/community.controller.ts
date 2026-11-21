@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import {
   createCommunitySchema,
   communityQuerySchema,
+  communityIdParamSchema,
 } from '../validators/communityValidator.js';
 import { communityService } from '../services/community.service.js';
 import { sendSuccess } from '../utils/response.js';
@@ -58,7 +59,27 @@ export async function getCommunities(
   }
 }
 
+/**
+ * Controller handling community detail retrieval (GET /api/v1/communities/:communityId).
+ * Validates the communityId UUID route parameter and returns full community details.
+ */
+export async function getCommunityById(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { communityId } = communityIdParamSchema.parse(req.params);
+    const community = await communityService.getCommunityById(communityId);
+
+    sendSuccess(res, { community }, 'Community retrieved successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const CommunityController = {
   createCommunity,
   getCommunities,
+  getCommunityById,
 };
