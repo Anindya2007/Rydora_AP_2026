@@ -420,6 +420,19 @@ describe('Community Service - Community Detail (M3.6: getCommunityById)', () => 
     expect(result.membersCount).toBe(0);
   });
 
+  it('should successfully handle a community with null description and INACTIVE status', async () => {
+    const mockDbRecord = createMockDbCommunityDetail({
+      description: null,
+      status: 'INACTIVE',
+    });
+    vi.spyOn(prisma.community, 'findUnique').mockResolvedValueOnce(mockDbRecord as any);
+
+    const result = await communityService.getCommunityById(mockCommunityId);
+
+    expect(result.description).toBeNull();
+    expect(result.status).toBe('INACTIVE');
+  });
+
   it('should propagate unexpected database errors as-is', async () => {
     vi.spyOn(prisma.community, 'findUnique').mockRejectedValueOnce(
       new Error('Neon database unreachable')
