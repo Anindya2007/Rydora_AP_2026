@@ -1,6 +1,8 @@
+import type { Prisma } from '../generated/prisma/client.js';
 import { prisma } from '../config/prisma.js';
 import { ConflictError, NotFoundError } from '../utils/errors.js';
-import type { CreateCommunityInput } from '../validators/communityValidator.js';
+import type { PaginationMeta } from '../utils/response.js';
+import type { CommunityQueryInput, CreateCommunityInput } from '../validators/communityValidator.js';
 
 export interface CommunityOutput {
   communityId: string;
@@ -12,6 +14,11 @@ export interface CommunityOutput {
   createdAt: Date;
   updatedAt: Date;
   membersCount?: number;
+}
+
+export interface PaginatedCommunitiesResult {
+  communities: CommunityOutput[];
+  pagination: PaginationMeta;
 }
 
 /**
@@ -112,6 +119,87 @@ export async function createCommunity(
   }
 }
 
+/**
+ * Retrieves a paginated list of ACTIVE communities with optional domain and name search filtering.
+ *
+ * 1. Enforces status = 'ACTIVE' so soft-deleted/inactive communities are hidden.
+ * 2. Applies optional domain filter (case-insensitive exact match).
+ * 3. Applies optional search filter (case-insensitive substring match in community name).
+ * 4. Paginates results using skip/take calculated from page and limit.
+ * 5. Uses a Prisma transaction to execute count and findMany concurrently.
+ * 6. Includes membersCount aggregated from CommunityMembership.
+ * 7. Returns formatted communities and standard PaginationMeta.
+ */
+export async function getCommunities(
+  query: CommunityQueryInput
+): Promise<PaginatedCommunitiesResult> {
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 20;
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.CommunityWhereInput = {
+    status: 'ACTIVE',
+  };
+
+  if (query.domain && query.domain.trim()) {
+    where.domain = {
+      equals: query.domain.trim().toLowerCase(),
+      mode: 'insensitive',
+    };
+  }
+
+  if (query.search && query.search.trim()) {
+    where.name = {
+      contains: query.search.trim(),
+      mode: 'insensitive',
+    };
+  }
+
+  const [total, records] = await prisma.$transaction([
+    prisma.community.count({ where }),
+    prisma.community.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { members: true },
+        },
+      },
+    }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit) || 0;
+  const hasNext = page < totalPages;
+  const hasPrev = page > 1;
+
+  const communities: CommunityOutput[] = records.map((record) => ({
+    communityId: record.communityId,
+    name: record.name,
+    domain: record.domain,
+    description: record.description,
+    status: record.status as 'ACTIVE' | 'INACTIVE',
+    createdById: record.createdById,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    membersCount: record._count?.members ?? 0,
+  }));
+
+  return {
+    communities,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext,
+      hasPrev,
+    },
+  };
+}
+
 export const communityService = {
   createCommunity,
+  getCommunities,
 };
