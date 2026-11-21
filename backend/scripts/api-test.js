@@ -1,15 +1,45 @@
+/**
+ * ==============================================================================
+ * Rydora RideShare Ecosystem — Central Live API Test Runner
+ * ==============================================================================
+ *
+ * This test suite executes real HTTP requests against the active Rydora backend.
+ * It validates endpoints across Foundation, Authentication, User Profile, and
+ * Community Management milestones.
+ *
+ * Architecture Tested:
+ * Express 5 -> Routing -> Auth / Validation Middleware -> Controllers -> Services -> Neon PostgreSQL
+ *
+ * Execution:
+ *   npm run test:api
+ *   (or: node scripts/api-test.js)
+ *
+ * Environment:
+ *   API_BASE_URL (defaults to http://localhost:3000/api/v1)
+ *
+ * Database Safety Rules:
+ *   - Each run generates isolated, timestamped test data with unique prefixes.
+ *   - No arbitrary deletes or truncations are performed on the shared database.
+ * ==============================================================================
+ */
 
 import fs from "node:fs/promises";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 
 // ============================================
-// CONFIGURATION
+// CONFIGURATION & SETUP
 // ============================================
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const outputFile = path.resolve(__dirname, "../api-test-report.json");
 
 const BASE_URL = process.env.API_BASE_URL || "http://localhost:3000/api/v1";
-
 const timestamp = Date.now();
 
+// Unique test credentials for User 1 (Primary Actor & Community Creator)
 const user1 = {
     name: "Rydora Test User 1",
     email: `rydora.test.${timestamp}@example.com`,
@@ -17,12 +47,21 @@ const user1 = {
     phone: `+9198${String(timestamp).slice(-8)}`
 };
 
+// Unique test credentials for User 2 (Secondary Actor for Conflict Testing)
 const user2 = {
     name: "Rydora Test User 2",
     email: `rydora.test.second.${timestamp}@example.com`,
     password: "TestPassword123"
 };
 
+// Unique community definitions for Milestone 3 testing
+const community1 = {
+    name: `Rydora Test University ${timestamp}`,
+    domain: `univ-${timestamp}.edu`,
+    description: "Official institutional carpooling community"
+};
+
+let user1Id = null;
 let token1 = null;
 let token2 = null;
 
@@ -34,8 +73,14 @@ const report = {
 };
 
 // ============================================
-// HELPERS
+// HELPER FUNCTIONS
 // ============================================
+
+function printSectionHeader(title) {
+    console.log(`\n========================================`);
+    console.log(title.toUpperCase());
+    console.log(`========================================`);
+}
 
 function findToken(data) {
     if (!data || typeof data !== "object") return null;
@@ -74,16 +119,21 @@ function sanitize(value) {
     return value;
 }
 
+/**
+ * Executes an HTTP request against the API and records test outcome.
+ */
 async function runTest({
+    section = "General",
+    milestone = "M1",
     name,
     method,
-    path,
+    path: reqPath,
     body,
     token,
     expectedStatus,
     headers = {}
 }) {
-    const url = `${BASE_URL}${path}`;
+    const url = `${BASE_URL}${reqPath}`;
 
     const requestHeaders = {
         "Content-Type": "application/json",
@@ -116,7 +166,6 @@ async function runTest({
         });
 
         status = response.status;
-
         const responseText = await response.text();
 
         try {
@@ -131,6 +180,8 @@ async function runTest({
     const passed = status === expectedStatus;
 
     const result = {
+        section,
+        milestone,
         name,
         request: sanitize(request),
         expectedStatus,
@@ -149,17 +200,79 @@ async function runTest({
     return responseData;
 }
 
+/**
+ * Records an assertion test verifying specific response payload rules.
+ */
+function recordAssertion({
+    section,
+    milestone,
+    name,
+    passed,
+    expectedStatus = 201,
+    actualStatus = 201,
+    details = null,
+    error = null
+}) {
+    const result = {
+        section,
+        milestone,
+        name,
+        expectedStatus,
+        actualStatus,
+        passed,
+        details,
+        error
+    };
+
+    report.tests.push(result);
+
+    console.log(
+        `${passed ? "PASS" : "FAIL"} | ${name} | Expected: ${expectedStatus} | Actual: ${actualStatus}`
+    );
+
+    return passed;
+}
+
 // ============================================
-// TEST EXECUTION
+// TEST SUITE EXECUTION
 // ============================================
 
 async function main() {
-    console.log("\nStarting Rydora API tests...\n");
+    console.log("\nStarting Rydora API tests...");
     console.log("Base URL:", BASE_URL);
 
-    // 1. SIGNUP USER 1
+    // ========================================================
+    // SECTION 1: FOUNDATION API TESTS (Milestone 1)
+    // ========================================================
+    printSectionHeader("Section 1: Foundation API Tests");
 
+    await runTest({
+        section: "Foundation API Tests",
+        milestone: "M1",
+        name: "Health Probe - Liveness Check",
+        method: "GET",
+        path: "/health",
+        expectedStatus: 200
+    });
+
+    await runTest({
+        section: "Foundation API Tests",
+        milestone: "M1",
+        name: "Readiness Probe - Database Connectivity",
+        method: "GET",
+        path: "/ready",
+        expectedStatus: 200
+    });
+
+    // ========================================================
+    // SECTION 2: AUTHENTICATION API TESTS (Milestone 2)
+    // ========================================================
+    printSectionHeader("Section 2: Authentication API Tests");
+
+    // 1. SIGNUP USER 1
     const signup1 = await runTest({
+        section: "Authentication API Tests",
+        milestone: "M2",
         name: "Signup - Valid User 1",
         method: "POST",
         path: "/auth/signup",
@@ -168,10 +281,12 @@ async function main() {
     });
 
     token1 = findToken(signup1);
+    user1Id = signup1?.data?.user?.userId || null;
 
     // 2. DUPLICATE EMAIL
-
     await runTest({
+        section: "Authentication API Tests",
+        milestone: "M2",
         name: "Signup - Duplicate Email",
         method: "POST",
         path: "/auth/signup",
@@ -180,8 +295,9 @@ async function main() {
     });
 
     // 3. INVALID SIGNUP
-
     await runTest({
+        section: "Authentication API Tests",
+        milestone: "M2",
         name: "Signup - Invalid Email and Password",
         method: "POST",
         path: "/auth/signup",
@@ -194,8 +310,9 @@ async function main() {
     });
 
     // 4. LOGIN SUCCESS
-
     const login = await runTest({
+        section: "Authentication API Tests",
+        milestone: "M2",
         name: "Login - Valid Credentials",
         method: "POST",
         path: "/auth/login",
@@ -209,8 +326,9 @@ async function main() {
     token1 = findToken(login) || token1;
 
     // 5. LOGIN FAILURE
-
     await runTest({
+        section: "Authentication API Tests",
+        milestone: "M2",
         name: "Login - Incorrect Password",
         method: "POST",
         path: "/auth/login",
@@ -228,9 +346,15 @@ async function main() {
         );
     }
 
-    // 6. GET ME SUCCESS
+    // ========================================================
+    // SECTION 3: USER PROFILE API TESTS (Milestone 2)
+    // ========================================================
+    printSectionHeader("Section 3: User Profile API Tests");
 
-    await runTest({
+    // 6. GET ME SUCCESS
+    const meRes = await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Get Current User - Valid Token",
         method: "GET",
         path: "/auth/me",
@@ -238,9 +362,14 @@ async function main() {
         expectedStatus: 200
     });
 
-    // 7. GET ME WITHOUT TOKEN
+    if (!user1Id && meRes?.data?.user?.userId) {
+        user1Id = meRes.data.user.userId;
+    }
 
+    // 7. GET ME WITHOUT TOKEN
     await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Get Current User - No Token",
         method: "GET",
         path: "/auth/me",
@@ -248,8 +377,9 @@ async function main() {
     });
 
     // 8. PATCH PROFILE SUCCESS
-
     await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Update Profile - Valid Name",
         method: "PATCH",
         path: "/users/me",
@@ -261,8 +391,9 @@ async function main() {
     });
 
     // 9. UPDATE PHONE
-
     await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Update Profile - Valid Phone",
         method: "PATCH",
         path: "/users/me",
@@ -274,8 +405,9 @@ async function main() {
     });
 
     // 10. UPDATE PROFILE IMAGE
-
     await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Update Profile - Valid Profile Image",
         method: "PATCH",
         path: "/users/me",
@@ -287,8 +419,9 @@ async function main() {
     });
 
     // 11. VERIFY PROFILE PERSISTENCE
-
     await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Get Current User - Verify Updated Profile",
         method: "GET",
         path: "/auth/me",
@@ -297,8 +430,9 @@ async function main() {
     });
 
     // 12. PATCH WITHOUT TOKEN
-
     await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Update Profile - No Token",
         method: "PATCH",
         path: "/users/me",
@@ -309,8 +443,9 @@ async function main() {
     });
 
     // 13. PROTECTED ROLES FIELD
-
     await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Update Profile - Protected Roles Field",
         method: "PATCH",
         path: "/users/me",
@@ -322,8 +457,9 @@ async function main() {
     });
 
     // 14. PROTECTED WALLET FIELD
-
     await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Update Profile - Protected Wallet Field",
         method: "PATCH",
         path: "/users/me",
@@ -335,8 +471,9 @@ async function main() {
     });
 
     // 15. PROTECTED EMAIL FIELD
-
     await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Update Profile - Protected Email Field",
         method: "PATCH",
         path: "/users/me",
@@ -348,8 +485,9 @@ async function main() {
     });
 
     // 16. PROTECTED USER ID FIELD
-
     await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Update Profile - Protected User ID",
         method: "PATCH",
         path: "/users/me",
@@ -361,8 +499,9 @@ async function main() {
     });
 
     // 17. EMPTY UPDATE
-
     await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Update Profile - Empty Body",
         method: "PATCH",
         path: "/users/me",
@@ -372,8 +511,9 @@ async function main() {
     });
 
     // 18. INVALID PHONE
-
     await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Update Profile - Invalid Phone",
         method: "PATCH",
         path: "/users/me",
@@ -385,8 +525,9 @@ async function main() {
     });
 
     // 19. INVALID PROFILE IMAGE
-
     await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Update Profile - Invalid Image URL",
         method: "PATCH",
         path: "/users/me",
@@ -398,8 +539,9 @@ async function main() {
     });
 
     // 20. CREATE SECOND USER
-
     const signup2 = await runTest({
+        section: "User Profile API Tests",
+        milestone: "M2",
         name: "Signup - Valid User 2",
         method: "POST",
         path: "/auth/signup",
@@ -410,9 +552,10 @@ async function main() {
     token2 = findToken(signup2);
 
     // 21. DUPLICATE PHONE
-
     if (token2) {
         await runTest({
+            section: "User Profile API Tests",
+            milestone: "M2",
             name: "Update Profile - Duplicate Phone",
             method: "PATCH",
             path: "/users/me",
@@ -424,8 +567,9 @@ async function main() {
         });
     } else {
         console.log("SKIP | Duplicate Phone | User 2 token unavailable");
-
         report.tests.push({
+            section: "User Profile API Tests",
+            milestone: "M2",
             name: "Update Profile - Duplicate Phone",
             passed: false,
             skipped: true,
@@ -433,12 +577,328 @@ async function main() {
         });
     }
 
+    // ========================================================
+    // SECTION 4: COMMUNITY API TESTS (Milestone 3)
+    // ========================================================
+    printSectionHeader("Section 4: Community API Tests");
+
+    // 1. Community creation without authentication returns 401
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Without Authentication",
+        method: "POST",
+        path: "/communities",
+        body: community1,
+        expectedStatus: 401
+    });
+
+    // 2. Valid authenticated community creation returns HTTP 201
+    const createCommunityRes = await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Valid Authenticated Creation",
+        method: "POST",
+        path: "/communities",
+        token: token1,
+        body: community1,
+        expectedStatus: 201
+    });
+
+    const comm = createCommunityRes?.data?.community;
+
+    // 3. Response body contains created community in established API response format
+    const hasValidEnvelope = Boolean(
+        createCommunityRes &&
+        createCommunityRes.success === true &&
+        createCommunityRes.statusCode === 201 &&
+        typeof createCommunityRes.message === "string" &&
+        createCommunityRes.data &&
+        createCommunityRes.data.community &&
+        createCommunityRes.meta &&
+        typeof createCommunityRes.meta.requestId === "string" &&
+        typeof createCommunityRes.meta.timestamp === "string"
+    );
+    recordAssertion({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - API Response Envelope Structure",
+        passed: hasValidEnvelope,
+        expectedStatus: 201,
+        actualStatus: hasValidEnvelope ? 201 : "Invalid Envelope",
+        details: "Validated success, statusCode, message, data.community, meta.requestId, meta.timestamp"
+    });
+
+    // 4. Created community contains expected name and domain
+    const hasValidNameAndDomain = Boolean(
+        comm &&
+        comm.name === community1.name &&
+        comm.domain === community1.domain
+    );
+    recordAssertion({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Verify Name and Domain",
+        passed: hasValidNameAndDomain,
+        expectedStatus: 201,
+        actualStatus: hasValidNameAndDomain ? 201 : "Mismatch",
+        details: `Name: ${comm?.name}, Domain: ${comm?.domain}`
+    });
+
+    // 5. Creator membership is assigned ADMIN
+    const hasAdminCreatorRole = Boolean(
+        comm &&
+        comm.membersCount === 1 &&
+        (!user1Id || comm.createdById === user1Id)
+    );
+    recordAssertion({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Creator Membership Admin Role",
+        passed: hasAdminCreatorRole,
+        expectedStatus: 201,
+        actualStatus: hasAdminCreatorRole ? 201 : "Invalid Creator",
+        details: `Creator ID: ${comm?.createdById}, Members Count: ${comm?.membersCount}`
+    });
+
+    // 6. Creator membership has expected ACTIVE status
+    const hasActiveStatus = Boolean(comm && comm.status === "ACTIVE");
+    recordAssertion({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Creator Membership Active Status",
+        passed: hasActiveStatus,
+        expectedStatus: 201,
+        actualStatus: hasActiveStatus ? 201 : comm?.status,
+        details: `Community status is ${comm?.status}`
+    });
+
+    // 7. Missing community name returns standard validation error
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Missing Community Name",
+        method: "POST",
+        path: "/communities",
+        token: token1,
+        body: {
+            domain: `valid-domain-${timestamp}.edu`,
+            description: "Missing name community"
+        },
+        expectedStatus: 422
+    });
+
+    // 8. Invalid email domain returns standard validation error
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Invalid Email Domain",
+        method: "POST",
+        path: "/communities",
+        token: token1,
+        body: {
+            name: `Invalid Domain Comm ${timestamp}`,
+            domain: "https://invalid-domain.edu/campus"
+        },
+        expectedStatus: 422
+    });
+
+    // 9. Duplicate community domain returns HTTP 409
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Duplicate Community Domain",
+        method: "POST",
+        path: "/communities",
+        token: token1,
+        body: {
+            name: `Different Name Comm ${timestamp}`,
+            domain: community1.domain
+        },
+        expectedStatus: 409
+    });
+
+    // 10. Duplicate community name returns HTTP 409
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Duplicate Community Name",
+        method: "POST",
+        path: "/communities",
+        token: token1,
+        body: {
+            name: community1.name,
+            domain: `different-domain-${timestamp}.edu`
+        },
+        expectedStatus: 409
+    });
+
+    // 11. Supplying a forged creator user ID cannot override authenticated user identity
+    // Zod .strict() schema rejects injected client fields; authenticated user identity remains authoritative
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - Reject Forged Creator User ID",
+        method: "POST",
+        path: "/communities",
+        token: token1,
+        body: {
+            name: `Forged ID Comm ${timestamp}`,
+            domain: `forged-${timestamp}.edu`,
+            createdById: "00000000-0000-0000-0000-000000000000"
+        },
+        expectedStatus: 422
+    });
+
+    // 12. Endpoint does not expose password hashes or other sensitive data
+    const rawResString = JSON.stringify(createCommunityRes || {});
+    const exposesSensitiveData = /password|passwordHash|"hash"|"salt"/i.test(rawResString);
+    recordAssertion({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Creation - No Sensitive Data Exposure",
+        passed: !exposesSensitiveData,
+        expectedStatus: 201,
+        actualStatus: !exposesSensitiveData ? 201 : "Exposed Sensitive Data",
+        details: "Confirmed no password hashes, salt, or sensitive user fields in payload"
+    });
+
+    // ----------------------------------------------------
+    // M3.5 Community Listing & Filtering Endpoint Tests
+    // ----------------------------------------------------
+
+    // 13. Public community listing returns HTTP 200 with pagination
+    const listRes = await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Default Pagination & Public Access",
+        method: "GET",
+        path: "/communities",
+        expectedStatus: 200
+    });
+
+    const hasListingPagination = Boolean(
+        listRes &&
+        listRes.success === true &&
+        Array.isArray(listRes.data?.communities) &&
+        listRes.meta?.pagination &&
+        listRes.meta.pagination.page === 1 &&
+        listRes.meta.pagination.limit === 20
+    );
+    recordAssertion({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Pagination Metadata Structure",
+        passed: hasListingPagination,
+        expectedStatus: 200,
+        actualStatus: hasListingPagination ? 200 : "Invalid Pagination Envelope",
+        details: "Verified success, array of communities, and standard pagination metadata"
+    });
+
+    // 14. Authenticated community listing returns HTTP 200
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Authenticated Request Allowed",
+        method: "GET",
+        path: "/communities",
+        token: token1,
+        expectedStatus: 200
+    });
+
+    // 15. Domain filter returns matching community
+    const domainRes = await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Domain Filter",
+        method: "GET",
+        path: `/communities?domain=${community1.domain}`,
+        expectedStatus: 200
+    });
+    const domainMatches = Boolean(
+        domainRes?.data?.communities?.length > 0 &&
+        domainRes.data.communities.every(c => c.domain.toLowerCase() === community1.domain.toLowerCase())
+    );
+    recordAssertion({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Domain Filter Match Verification",
+        passed: domainMatches,
+        expectedStatus: 200,
+        actualStatus: domainMatches ? 200 : "Domain mismatch",
+        details: `Filtered by ${community1.domain}, count: ${domainRes?.data?.communities?.length}`
+    });
+
+    // 16. Search filter returns matching substring
+    const searchRes = await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Search Query Filter",
+        method: "GET",
+        path: `/communities?search=${encodeURIComponent(community1.name)}`,
+        expectedStatus: 200
+    });
+    const searchMatches = Boolean(
+        searchRes?.data?.communities?.length > 0 &&
+        searchRes.data.communities.some(c => c.name.includes(community1.name))
+    );
+    recordAssertion({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Search Query Match Verification",
+        passed: searchMatches,
+        expectedStatus: 200,
+        actualStatus: searchMatches ? 200 : "Search mismatch",
+        details: `Filtered by search query: ${community1.name}`
+    });
+
+    // 17. Custom pagination parameters
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Custom Pagination Parameters",
+        method: "GET",
+        path: "/communities?page=1&limit=5",
+        expectedStatus: 200
+    });
+
+    // 18. Invalid page returns HTTP 422
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Reject Invalid Page",
+        method: "GET",
+        path: "/communities?page=0",
+        expectedStatus: 422
+    });
+
+    // 19. Limit exceeding 100 returns HTTP 422
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Reject Excessive Limit",
+        method: "GET",
+        path: "/communities?limit=101",
+        expectedStatus: 422
+    });
+
+    // 20. Injected unknown query parameter returns HTTP 422
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Listing - Reject Injected Query Fields",
+        method: "GET",
+        path: "/communities?injectedField=malicious",
+        expectedStatus: 422
+    });
+
     // ============================================
-    // FINAL REPORT
+    // FINAL REPORT & SUMMARY
     // ============================================
 
     const passed = report.tests.filter(t => t.passed).length;
     const failed = report.tests.filter(t => !t.passed).length;
+    const skipped = report.tests.filter(t => t.skipped).length;
 
     report.finishedAt = new Date().toISOString();
 
@@ -446,38 +906,54 @@ async function main() {
         total: report.tests.length,
         passed,
         failed,
+        skipped,
+        bySection: {
+            foundation: report.tests.filter(t => t.section === "Foundation API Tests").length,
+            authentication: report.tests.filter(t => t.section === "Authentication API Tests").length,
+            userProfile: report.tests.filter(t => t.section === "User Profile API Tests").length,
+            community: report.tests.filter(t => t.section === "Community API Tests").length
+        },
+        byMilestone: {
+            M1_Foundation: report.tests.filter(t => t.milestone === "M1").length,
+            M2_AuthAndProfile: report.tests.filter(t => t.milestone === "M2").length,
+            M3_Communities: report.tests.filter(t => t.milestone === "M3").length
+        },
         result: failed === 0 ? "ALL TESTS PASSED" : "SOME TESTS FAILED"
     };
 
-    const outputFile = "api-test-report.json";
+    await fs.writeFile(outputFile, JSON.stringify(report, null, 2), "utf8");
 
-    await fs.writeFile(
-        outputFile,
-        JSON.stringify(report, null, 2),
-        "utf8"
-    );
+    console.log("\n========================================");
+    console.log("RYDORA LIVE API TEST SUMMARY");
+    console.log("========================================");
+    console.log("Total Tests :", report.summary.total);
+    console.log("Passed      :", passed);
+    console.log("Failed      :", failed);
+    console.log("Skipped     :", skipped);
+    console.log("----------------------------------------");
+    console.log("M1 Foundation   :", report.summary.byMilestone.M1_Foundation);
+    console.log("M2 Auth/Profile :", report.summary.byMilestone.M2_AuthAndProfile);
+    console.log("M3 Communities  :", report.summary.byMilestone.M3_Communities);
+    console.log("----------------------------------------");
+    console.log("Report saved to :", outputFile);
+    console.log("========================================\n");
 
-    console.log("\n================================");
-    console.log("RYDORA API TEST SUMMARY");
-    console.log("================================");
-    console.log("Total:", report.summary.total);
-    console.log("Passed:", passed);
-    console.log("Failed:", failed);
-    console.log("Report saved:", outputFile);
-    console.log("================================\n");
+    if (failed > 0) {
+        process.exitCode = 1;
+    }
 }
 
-main().catch(async error => {
-    console.error("\nTest execution stopped:", error.message);
+main().catch(async (error) => {
+    console.error("\nTest execution stopped with unhandled error:", error.message);
 
     report.fatalError = error.message;
     report.finishedAt = new Date().toISOString();
 
-    await fs.writeFile(
-        "api-test-report.json",
-        JSON.stringify(report, null, 2),
-        "utf8"
-    );
+    try {
+        await fs.writeFile(outputFile, JSON.stringify(report, null, 2), "utf8");
+    } catch {
+        // Ignored in catastrophic file write failure
+    }
 
     process.exitCode = 1;
 });

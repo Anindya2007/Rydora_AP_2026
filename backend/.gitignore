@@ -20,6 +20,10 @@ npm-debug.log*
 dist/
 build/
 
+# Runtime test reports
+api-test-report.json
+*.report.json
+
 # OS and Editor
 .DS_Store
 .vscode/

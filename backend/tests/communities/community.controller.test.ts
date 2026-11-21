@@ -226,3 +226,235 @@ describe('Community Creation Controller & Route Test Suite (M3.3: POST /api/v1/c
     expect(authRes.body.error.code).toBe('UNPROCESSABLE_ENTITY');
   });
 });
+
+describe('Community Listing Controller & Route Test Suite (M3.5: GET /api/v1/communities)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const mockCommunityDate = new Date('2026-11-21T10:00:00.000Z');
+
+  const mockCommunityList = [
+    {
+      communityId: '11111111-1111-1111-1111-111111111111',
+      name: 'SRM Institute of Science and Technology',
+      domain: 'srmist.edu.in',
+      description: 'Main campus community',
+      status: 'ACTIVE' as const,
+      createdById: '00000000-0000-0000-0000-000000000000',
+      createdAt: mockCommunityDate,
+      updatedAt: mockCommunityDate,
+      membersCount: 42,
+    },
+    {
+      communityId: '22222222-2222-2222-2222-222222222222',
+      name: 'IIT Madras',
+      domain: 'iitm.ac.in',
+      description: 'IITM campus pool',
+      status: 'ACTIVE' as const,
+      createdById: '00000000-0000-0000-0000-000000000000',
+      createdAt: mockCommunityDate,
+      updatedAt: mockCommunityDate,
+      membersCount: 15,
+    },
+  ];
+
+  it('1. should return HTTP 200 with empty list and default pagination meta when no communities exist', async () => {
+    vi.spyOn(communityService, 'getCommunities').mockResolvedValueOnce({
+      communities: [],
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false,
+      },
+    });
+
+    const res = await request(app).get('/api/v1/communities');
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.statusCode).toBe(200);
+    expect(res.body.message).toBe('Communities retrieved successfully');
+    expect(res.body.data.communities).toEqual([]);
+    expect(res.body.meta.pagination).toEqual({
+      page: 1,
+      limit: 20,
+      total: 0,
+      totalPages: 0,
+      hasNext: false,
+      hasPrev: false,
+    });
+  });
+
+  it('2. should return HTTP 200 with retrieved communities and pagination metadata', async () => {
+    vi.spyOn(communityService, 'getCommunities').mockResolvedValueOnce({
+      communities: mockCommunityList,
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 2,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+    });
+
+    const res = await request(app).get('/api/v1/communities');
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.communities).toHaveLength(2);
+    expect(res.body.data.communities[0].name).toBe('SRM Institute of Science and Technology');
+    expect(res.body.data.communities[0].membersCount).toBe(42);
+    expect(res.body.meta.pagination.total).toBe(2);
+  });
+
+  it('3. should coerce page and limit query strings to numbers and forward to service', async () => {
+    const serviceSpy = vi.spyOn(communityService, 'getCommunities').mockResolvedValueOnce({
+      communities: [mockCommunityList[0]],
+      pagination: {
+        page: 2,
+        limit: 5,
+        total: 10,
+        totalPages: 2,
+        hasNext: false,
+        hasPrev: true,
+      },
+    });
+
+    const res = await request(app).get('/api/v1/communities?page=2&limit=5');
+
+    expect(res.status).toBe(200);
+    expect(serviceSpy).toHaveBeenCalledWith({
+      page: 2,
+      limit: 5,
+    });
+    expect(res.body.meta.pagination.page).toBe(2);
+    expect(res.body.meta.pagination.limit).toBe(5);
+  });
+
+  it('4. should correctly forward domain filter query parameter', async () => {
+    const serviceSpy = vi.spyOn(communityService, 'getCommunities').mockResolvedValueOnce({
+      communities: [mockCommunityList[0]],
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+    });
+
+    const res = await request(app).get('/api/v1/communities?domain=SRMIST.EDU.IN');
+
+    expect(res.status).toBe(200);
+    expect(serviceSpy).toHaveBeenCalledWith({
+      page: 1,
+      limit: 20,
+      domain: 'srmist.edu.in',
+    });
+  });
+
+  it('5. should correctly forward search query parameter', async () => {
+    const serviceSpy = vi.spyOn(communityService, 'getCommunities').mockResolvedValueOnce({
+      communities: [mockCommunityList[1]],
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+    });
+
+    const res = await request(app).get('/api/v1/communities?search=Madras');
+
+    expect(res.status).toBe(200);
+    expect(serviceSpy).toHaveBeenCalledWith({
+      page: 1,
+      limit: 20,
+      search: 'Madras',
+    });
+  });
+
+  it('6. should reject invalid page <= 0 with HTTP 422', async () => {
+    const res = await request(app).get('/api/v1/communities?page=0');
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+  });
+
+  it('7. should reject non-numeric page with HTTP 422', async () => {
+    const res = await request(app).get('/api/v1/communities?page=invalid');
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+  });
+
+  it('8. should reject limit exceeding 100 with HTTP 422', async () => {
+    const res = await request(app).get('/api/v1/communities?limit=150');
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+  });
+
+  it('9. should reject limit < 1 with HTTP 422', async () => {
+    const res = await request(app).get('/api/v1/communities?limit=0');
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+  });
+
+  it('10. should reject unexpected query parameters with HTTP 422 due to strict schema', async () => {
+    const res = await request(app).get('/api/v1/communities?injectedField=malicious');
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+  });
+
+  it('11. should return HTTP 500 when communityService throws an unexpected error', async () => {
+    vi.spyOn(communityService, 'getCommunities').mockRejectedValueOnce(
+      new Error('PostgreSQL unexpected disconnect')
+    );
+
+    const res = await request(app).get('/api/v1/communities');
+
+    expect(res.status).toBe(500);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('INTERNAL_SERVER_ERROR');
+    expect(res.body.meta.requestId).toBeDefined();
+  });
+
+  it('12. should allow optional authentication headers on public listing endpoint', async () => {
+    vi.spyOn(communityService, 'getCommunities').mockResolvedValueOnce({
+      communities: mockCommunityList,
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 2,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      },
+    });
+
+    const token = generateValidToken();
+    const res = await request(app)
+      .get('/api/v1/communities')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.communities).toHaveLength(2);
+  });
+});

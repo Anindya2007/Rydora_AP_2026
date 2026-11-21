@@ -1,5 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
-import { createCommunitySchema } from '../validators/communityValidator.js';
+import {
+  createCommunitySchema,
+  communityQuerySchema,
+} from '../validators/communityValidator.js';
 import { communityService } from '../services/community.service.js';
 import { sendSuccess } from '../utils/response.js';
 import { UnauthorizedError } from '../utils/errors.js';
@@ -30,6 +33,32 @@ export async function createCommunity(
   }
 }
 
+/**
+ * Controller handling community listing & filtering (GET /api/v1/communities).
+ * Validates query parameters (search, domain, page, limit) and returns paginated active communities.
+ */
+export async function getCommunities(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const validatedQuery = communityQuerySchema.parse(req.query);
+    const result = await communityService.getCommunities(validatedQuery);
+
+    sendSuccess(
+      res,
+      { communities: result.communities },
+      'Communities retrieved successfully',
+      200,
+      result.pagination
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const CommunityController = {
   createCommunity,
+  getCommunities,
 };
