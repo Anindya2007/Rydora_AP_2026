@@ -3,6 +3,7 @@ import { prisma } from '../config/prisma.js';
 import { sendSuccess } from '../utils/response.js';
 import { authRouter } from './auth.routes.js';
 import { userRouter } from './user.routes.js';
+import { communityRouter } from './community.routes.js';
 
 export const apiV1Router = Router();
 
@@ -84,4 +85,4 @@ apiV1Router.get('/ready', async (req, res) => {
 // Badal (Identity, Auth, Communities):
 apiV1Router.use('/auth', authRouter);
 apiV1Router.use('/users', userRouter);
-// apiV1Router.use('/communities', communityRouter);
+apiV1Router.use('/communities', communityRouter);
