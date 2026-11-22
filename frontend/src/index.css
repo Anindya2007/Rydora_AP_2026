@@ -1,111 +1,186 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  --sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-body {
-  margin: 0;
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  background: #020105;
+  color: #ffffff;
+  font-family: var(--sans);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100dvh;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
+
 p {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+/* Prevent iPhone Safari auto-zoom on input focus */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Responsive Layout Helpers */
+.rs-section {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 clamp(14px, 3.5vw, 48px) clamp(36px, 5vw, 80px) clamp(14px, 3.5vw, 48px);
+}
+
+.rs-hero-section {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: clamp(14px, 2.5vw, 36px) clamp(14px, 3.5vw, 48px) clamp(36px, 5vw, 64px) clamp(14px, 3.5vw, 48px);
+  display: grid;
+  grid-template-columns: minmax(min(100%, 360px), 480px) minmax(0, 1fr);
+  gap: clamp(20px, 4vw, 56px);
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .rs-hero-section {
+    grid-template-columns: 100%;
+    gap: 20px;
+    padding-top: 10px;
+  }
+}
+
+/* Smooth horizontal scroll strip for mobile tags & chips */
+.rs-scroll-strip {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+
+.rs-scroll-strip::-webkit-scrollbar {
+  display: none;
+}
+
+/* Single-row horizontal scroll strip for cards with full shadow bleed */
+.rs-cards-single-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(260px, 1fr));
+  gap: 20px;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 24px 64px 24px;
+  margin: -12px -24px -64px -24px;
+}
+
+.rs-cards-single-row::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 1200px) {
+  .rs-cards-single-row {
+    overflow: visible;
+    padding: 10px 0 32px 0;
+    margin: -10px 0 -32px 0;
+  }
+}
+
+.rs-navbar-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding-top: max(clamp(8px, 1.5vw, 14px), env(safe-area-inset-top, 14px));
+  padding-left: max(clamp(12px, 3vw, 32px), env(safe-area-inset-left, 12px));
+  padding-right: max(clamp(12px, 3vw, 32px), env(safe-area-inset-right, 12px));
+  pointer-events: none;
+}
+
+.rs-navbar-wrapper > * {
+  pointer-events: auto;
+}
+
+.rs-navbar-spacer {
+  height: calc(74px + env(safe-area-inset-top, 0px));
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .rs-navbar-spacer {
+    height: calc(66px + env(safe-area-inset-top, 0px));
+  }
+}
+
+.rs-nav-desktop-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.rs-nav-utility-hide-tablet {
+  display: inline-flex;
+}
+
+@media (max-width: 768px) {
+  .rs-nav-utility-hide-tablet {
+    display: none !important;
+  }
+}
+
+@media (max-width: 740px) {
+  .rs-navbar-inner {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .rs-navbar-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .rs-navbar-nav-scroll {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    justify-content: center;
+    padding-bottom: 2px;
+  }
+  .rs-navbar-nav-scroll::-webkit-scrollbar {
+    display: none;
+  }
 }

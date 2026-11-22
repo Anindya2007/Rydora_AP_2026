@@ -1,122 +1,221 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import { Hero } from '@/components/ui/tailwind-css-background-snippet';
+import { Navbar } from '@/components/Navbar';
+import { RidePage } from '@/components/RidePage';
+import { DrivePage } from '@/components/DrivePage';
+import { BusinessPage } from '@/components/BusinessPage';
+import { AboutPage } from '@/components/AboutPage';
+import { Footer } from '@/components/Footer';
+import { SignupPage } from '@/components/SignupPage';
+import { LoginPage } from '@/components/LoginPage';
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [entranceComplete, setEntranceComplete] = useState(false);
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('rideshare_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [currentView, setCurrentView] = useState(() => {
+    if (window.location.hash === '#signup') return 'signup';
+    if (window.location.hash === '#login') return 'login';
+    return 'home';
+  });
+
+  const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (['ride', 'drive', 'business', 'about'].includes(hash)) return hash;
+    return 'ride';
+  });
+
+  const handleLoginSuccess = (userData = { name: 'Atharv' }) => {
+    setUser(userData);
+    try {
+      localStorage.setItem('rideshare_user', JSON.stringify(userData));
+    } catch {}
+    window.location.hash = `#${activeTab}`;
+    setCurrentView('home');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSignOut = () => {
+    setUser(null);
+    try {
+      localStorage.removeItem('rideshare_user');
+    } catch {}
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setEntranceComplete(true);
+    }, 1300);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'signup') {
+        setCurrentView('signup');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (hash === 'login') {
+        setCurrentView('login');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        setCurrentView('home');
+        if (['ride', 'drive', 'business', 'about'].includes(hash)) {
+          setActiveTab(hash);
+        }
+      }
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
+  const handleSelectTab = (tabId) => {
+    setActiveTab(tabId);
+    window.location.hash = `#${tabId}`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navigateToSignup = () => {
+    window.location.hash = '#signup';
+    setCurrentView('signup');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navigateToLogin = () => {
+    window.location.hash = '#login';
+    setCurrentView('login');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navigateToHome = () => {
+    window.location.hash = `#${activeTab}`;
+    setCurrentView('home');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <Hero>
+      <style>{`
+        @keyframes ridesharePageBlurIn {
+          0% {
+            filter: blur(24px);
+            opacity: 0;
+          }
+          100% {
+            filter: blur(0px);
+            opacity: 1;
+          }
+        }
+        @keyframes rideshareBackdropCurtainFade {
+          0% {
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            opacity: 1;
+          }
+          100% {
+            backdrop-filter: blur(0px);
+            -webkit-backdrop-filter: blur(0px);
+            opacity: 0;
+          }
+        }
+      `}</style>
 
-      <div className="ticks"></div>
+      {/* Full-viewport blur curtain that unblurs continuously and unmounts after completion */}
+      {!entranceComplete && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            pointerEvents: 'none',
+            animation: 'rideshareBackdropCurtainFade 1.25s ease-out forwards',
+          }}
+        />
+      )}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      {currentView === 'signup' ? (
+        <SignupPage
+          onNavigateHome={navigateToHome}
+          onNavigateLogin={navigateToLogin}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      ) : currentView === 'login' ? (
+        <LoginPage
+          onNavigateHome={navigateToHome}
+          onNavigateSignup={navigateToSignup}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      ) : (
+        <>
+          {/* Pinned Top Liquid Glass Navbar */}
+          <Navbar
+            user={user}
+            activeTab={activeTab}
+            onSelectTab={handleSelectTab}
+            onSignUpClick={navigateToSignup}
+            onLoginClick={navigateToLogin}
+            onSignOutClick={handleSignOut}
+            onNavigateHome={() => handleSelectTab('ride')}
+          />
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+          <div
+            onAnimationEnd={(e) => {
+              if (e.animationName === 'ridesharePageBlurIn') {
+                setEntranceComplete(true);
+              }
+            }}
+            style={{
+              minHeight: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: entranceComplete
+                ? 'none'
+                : 'ridesharePageBlurIn 1.25s ease-out forwards',
+            }}
+          >
+            <div className="rs-navbar-spacer" />
+            <main
+              key={activeTab}
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                animation: 'ridesharePageBlurIn 0.35s ease-out forwards',
+              }}
+            >
+              {activeTab === 'ride' && (
+                <RidePage
+                  user={user}
+                  onLoginClick={navigateToLogin}
+                  onSignUpClick={navigateToSignup}
+                />
+              )}
+              {activeTab === 'drive' && (
+                <DrivePage
+                  user={user}
+                  onSignUpClick={navigateToSignup}
+                  onLoginClick={navigateToLogin}
+                />
+              )}
+              {activeTab === 'business' && (
+                <BusinessPage onSignUpClick={navigateToSignup} />
+              )}
+              {activeTab === 'about' && (
+                <AboutPage onSignUpClick={navigateToSignup} />
+              )}
+            </main>
+            <Footer onSelectTab={handleSelectTab} />
+          </div>
+        </>
+      )}
+    </Hero>
+  );
 }
-
-export default App
