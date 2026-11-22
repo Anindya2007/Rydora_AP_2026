@@ -1472,6 +1472,28 @@ async function main() {
             token: token1,
             expectedStatus: 422
         });
+
+        // 54. Client attempting invalid page parameter (page=0) returns HTTP 422
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - Reject Invalid Page Parameter",
+            method: "GET",
+            path: `/communities/${comm.communityId}/members?page=0`,
+            token: token1,
+            expectedStatus: 422
+        });
+
+        // 55. Client attempting negative limit parameter returns HTTP 422
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - Reject Negative Limit Parameter",
+            method: "GET",
+            path: `/communities/${comm.communityId}/members?limit=-5`,
+            token: token1,
+            expectedStatus: 422
+        });
     }
 
     // ============================================
