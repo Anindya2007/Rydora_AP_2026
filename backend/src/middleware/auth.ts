@@ -10,7 +10,7 @@ export interface AuthenticatedUser {
   name: string;
   email: string;
   phone: string | null;
-  roles: UserRole[];
+  roles: (UserRole | 'ADMIN' | string)[];
   profileImage: string | null;
   licenseNumber: string | null;
   licenseExpiry: Date | null;

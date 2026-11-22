@@ -1,7 +1,44 @@
 import { prisma } from '../config/prisma.js';
-import { ConflictError, NotFoundError } from '../utils/errors.js';
+import { BadRequestError, ConflictError, NotFoundError } from '../utils/errors.js';
 import { sanitizeUser, type SanitizedUser } from './auth.service.js';
-import type { UpdateProfileInput } from '../validators/userValidator.js';
+import type {
+  UpdateProfileInput,
+  DriverVerificationSubmissionInput,
+} from '../validators/userValidator.js';
+import { UserRole } from '../generated/prisma/client.js';
+import type { PaginationMeta } from '../utils/response.js';
+
+export interface DriverVerificationSubmissionOutput {
+  userId: string;
+  licenseNumber: string | null;
+  licenseExpiry: Date | null;
+  driverVerified: boolean;
+  updatedAt: Date;
+}
+
+export interface PendingVerificationUser {
+  userId: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  licenseNumber: string | null;
+  licenseExpiry: Date | null;
+  driverVerified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ApprovedDriverOutput {
+  userId: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  roles: UserRole[];
+  licenseNumber: string | null;
+  licenseExpiry: Date | null;
+  driverVerified: boolean;
+  updatedAt: Date;
+}
 
 /**
  * Retrieves the full profile of a user by their unique identifier.
@@ -87,7 +124,224 @@ export async function updateUserProfile(
   }
 }
 
+/**
+ * Submits driving licence details for the authenticated user (POST /api/v1/users/driver-verification).
+ *
+ * Security & Lifecycle Invariants:
+ * 1. Submitting a licence NEVER grants the DRIVER role.
+ * 2. Explicitly sets driverVerified = false.
+ * 3. Rejects submission if the user is already a verified driver (409 Conflict).
+ * 4. Rejects submission if a licence is already submitted and pending review (409 Conflict).
+ * 5. Rejects expired licences.
+ * 6. Checks duplicate licence numbers proactively and reactively (P2002 -> 409 Conflict).
+ */
+export async function submitDriverVerification(
+  userId: string,
+  input: DriverVerificationSubmissionInput
+): Promise<DriverVerificationSubmissionOutput> {
+  const existingUser = await prisma.user.findUnique({
+    where: { userId },
+    select: {
+      userId: true,
+      licenseNumber: true,
+      driverVerified: true,
+    },
+  });
+
+  if (!existingUser) {
+    throw new NotFoundError('User not found');
+  }
+
+  if (existingUser.driverVerified) {
+    throw new ConflictError('User is already a verified driver');
+  }
+
+  if (existingUser.licenseNumber && !existingUser.driverVerified) {
+    throw new ConflictError('A driver licence verification request is already pending review');
+  }
+
+  const normalizedLicense = input.licenseNumber.trim().toUpperCase();
+
+  // Proactive uniqueness check against database
+  const duplicateLicense = await prisma.user.findFirst({
+    where: {
+      licenseNumber: normalizedLicense,
+      NOT: { userId },
+    },
+    select: { userId: true },
+  });
+
+  if (duplicateLicense) {
+    throw new ConflictError('A licence with this number is already registered in the system', [
+      { field: 'licenseNumber', message: 'Already exists' },
+    ]);
+  }
+
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { userId },
+      data: {
+        licenseNumber: normalizedLicense,
+        licenseExpiry: input.licenseExpiry,
+        driverVerified: false, // Invariant: must remain unverified pending review
+      },
+      select: {
+        userId: true,
+        licenseNumber: true,
+        licenseExpiry: true,
+        driverVerified: true,
+        updatedAt: true,
+      },
+    });
+
+    return updatedUser;
+  } catch (error: any) {
+    if (error?.code === 'P2002') {
+      throw new ConflictError('A licence with this number is already registered in the system', [
+        { field: 'licenseNumber', message: 'Already exists' },
+      ]);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Lists pending driver verification submissions for administrative review (GET /api/v1/users/driver-verification/pending).
+ *
+ * Security Invariants:
+ * 1. Only accessible by ADMIN users (enforced by RBAC route middleware).
+ * 2. Filters strictly for licenseNumber != null AND driverVerified = false.
+ * 3. Never returns password hashes, authentication secrets, or unrelated financial data.
+ * 4. Paginated using standard Rydora PaginationMeta conventions.
+ */
+export async function listPendingVerifications(options?: {
+  page?: number;
+  limit?: number;
+}): Promise<{
+  pendingVerifications: PendingVerificationUser[];
+  pagination: PaginationMeta;
+}> {
+  const page = options?.page ?? 1;
+  const limit = options?.limit ?? 20;
+  const skip = (page - 1) * limit;
+
+  const where = {
+    licenseNumber: { not: null },
+    driverVerified: false,
+  };
+
+  const [total, records] = await Promise.all([
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { updatedAt: 'asc' }, // FIFO: oldest submissions first
+      select: {
+        userId: true,
+        name: true,
+        email: true,
+        phone: true,
+        licenseNumber: true,
+        licenseExpiry: true,
+        driverVerified: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit) || 0;
+  return {
+    pendingVerifications: records,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
+  };
+}
+
+/**
+ * Approves a pending driver verification application (PATCH /api/v1/users/:userId/driver-verification/approve).
+ *
+ * Security & Lifecycle Invariants:
+ * 1. Only accessible by ADMIN users (enforced by RBAC route middleware).
+ * 2. Target user must exist and must have submitted licence details.
+ * 3. Licence must not be expired at the time of approval.
+ * 4. Rejects approval if user is already verified (409 Conflict).
+ * 5. Atomically sets driverVerified = true and adds DRIVER to user's roles array.
+ * 6. Preserves all existing roles (e.g. USER, ADMIN) without duplication.
+ */
+export async function approveDriverVerification(
+  adminUserId: string,
+  targetUserId: string
+): Promise<ApprovedDriverOutput> {
+  return await prisma.$transaction(async (tx) => {
+    const targetUser = await tx.user.findUnique({
+      where: { userId: targetUserId },
+      select: {
+        userId: true,
+        name: true,
+        email: true,
+        phone: true,
+        roles: true,
+        licenseNumber: true,
+        licenseExpiry: true,
+        driverVerified: true,
+      },
+    });
+
+    if (!targetUser) {
+      throw new NotFoundError('Target user not found');
+    }
+
+    if (!targetUser.licenseNumber || !targetUser.licenseExpiry) {
+      throw new BadRequestError('User has not submitted driving licence details for verification');
+    }
+
+    if (targetUser.driverVerified) {
+      throw new ConflictError('User is already a verified driver');
+    }
+
+    const now = new Date();
+    if (new Date(targetUser.licenseExpiry).getTime() <= now.getTime()) {
+      throw new BadRequestError('Cannot approve driver verification: Driving licence has expired');
+    }
+
+    // Preserve all existing roles and add DRIVER exactly once
+    const updatedRoles = Array.from(new Set([...targetUser.roles, UserRole.DRIVER]));
+
+    const approvedUser = await tx.user.update({
+      where: { userId: targetUserId },
+      data: {
+        driverVerified: true,
+        roles: { set: updatedRoles },
+      },
+      select: {
+        userId: true,
+        name: true,
+        email: true,
+        phone: true,
+        roles: true,
+        licenseNumber: true,
+        licenseExpiry: true,
+        driverVerified: true,
+        updatedAt: true,
+      },
+    });
+
+    return approvedUser;
+  });
+}
+
 export const userService = {
   getUserProfile,
   updateUserProfile,
+  submitDriverVerification,
+  listPendingVerifications,
+  approveDriverVerification,
 };

@@ -41,7 +41,12 @@ export async function getMe(req: Request, res: Response, next: NextFunction): Pr
       throw new UnauthorizedError('Authentication required');
     }
 
-    sendSuccess(res, { user: req.user }, 'Current user retrieved successfully', 200);
+    sendSuccess(
+      res,
+      { user: authService.sanitizeUser(req.user) },
+      'Current user retrieved successfully',
+      200
+    );
   } catch (error) {
     next(error);
   }
