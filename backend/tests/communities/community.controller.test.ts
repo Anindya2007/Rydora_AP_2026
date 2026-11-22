@@ -508,7 +508,6 @@ describe('Community Detail Controller & Route Test Suite (M3.7: GET /api/v1/comm
     createdBy: {
       userId: mockCreatorId,
       name: 'Badal Khandelwal',
-      email: 'badal@srmist.edu.in',
       profileImage: 'https://example.com/avatar.jpg',
     },
   };
@@ -532,7 +531,6 @@ describe('Community Detail Controller & Route Test Suite (M3.7: GET /api/v1/comm
     expect(res.body.data.community.createdBy).toEqual({
       userId: mockCreatorId,
       name: 'Badal Khandelwal',
-      email: 'badal@srmist.edu.in',
       profileImage: 'https://example.com/avatar.jpg',
     });
     expect(res.body.meta.requestId).toBeDefined();
@@ -610,6 +608,7 @@ describe('Community Detail Controller & Route Test Suite (M3.7: GET /api/v1/comm
     expect(bodyString).not.toMatch(/hash/i);
     expect(bodyString).not.toMatch(/walletBalance/i);
     expect(bodyString).not.toMatch(/licenseNumber/i);
+    expect((res.body.data.community.createdBy as any).email).toBeUndefined();
   });
 
   it('7. should ensure community creation (POST) and listing (GET) routes remain functional and unconflicted', async () => {
@@ -860,7 +859,6 @@ describe('Community Membership Join Controller & Route Test Suite (M3.9: POST /a
       createdBy: {
         userId: mockJoiningUserId,
         name: 'Badal Khandelwal',
-        email: 'badal@srmist.edu.in',
         profileImage: null,
       },
     });

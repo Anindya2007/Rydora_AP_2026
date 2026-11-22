@@ -28,7 +28,6 @@ export interface CommunityOutput {
 export interface CommunityCreatorOutput {
   userId: string;
   name: string;
-  email: string;
   profileImage: string | null;
 }
 
@@ -81,11 +80,12 @@ export interface PaginatedCommunityMembersResult {
  * Creates a new community and atomically registers the creator as an ADMIN member.
  *
  * 1. Verifies that the creator user exists.
- * 2. Checks whether a community with the same domain or name already exists (case-insensitive).
- * 3. Uses an atomic Prisma transaction to:
+ * 2. Strictly validates that the creator's email domain matches the community domain.
+ * 3. Checks whether a community with the same domain or name already exists (case-insensitive).
+ * 4. Uses an atomic Prisma transaction to:
  *    a. Insert the Community record.
  *    b. Insert a CommunityMembership record for the creator with memberRole: 'ADMIN' and status: 'ACTIVE'.
- * 4. Returns the created community representation with membersCount = 1.
+ * 5. Returns the created community representation with membersCount = 1.
  */
 export async function createCommunity(
   creatorUserId: string,
@@ -104,7 +104,17 @@ export async function createCommunity(
   const normalizedDomain = input.domain.trim().toLowerCase();
   const trimmedName = input.name.trim();
 
-  // 2. Check for duplicate community by domain or name
+  // 2. Strictly verify creator's email domain matches the community domain
+  const creatorEmailParts = creator.email.trim().toLowerCase().split('@');
+  const creatorDomain = creatorEmailParts.length === 2 ? creatorEmailParts[1].trim() : null;
+
+  if (!creatorDomain || creatorDomain !== normalizedDomain) {
+    throw new ForbiddenError(
+      'Creator email domain does not match the community domain. You must hold an email with this domain to create its community.'
+    );
+  }
+
+  // 3. Check for duplicate community by domain or name
   const existingCommunity = await prisma.community.findFirst({
     where: {
       OR: [
@@ -220,7 +230,11 @@ export async function getCommunities(
       orderBy: { createdAt: 'desc' },
       include: {
         _count: {
-          select: { members: true },
+          select: {
+            members: {
+              where: { status: 'ACTIVE' },
+            },
+          },
         },
       },
     }),
@@ -260,7 +274,7 @@ export async function getCommunities(
  *
  * 1. Queries the community by primary key (communityId).
  * 2. Selects only public/safe fields: communityId, name, domain, description, status, createdById, createdAt, updatedAt.
- * 3. Includes creator's public profile (userId, name, email, profileImage), strictly excluding sensitive data (passwordHash, phone, wallet, license).
+ * 3. Includes creator's public profile (userId, name, profileImage), strictly excluding sensitive data (passwordHash, email, phone, wallet, license).
  * 4. Counts active memberships using Prisma relation _count with status: 'ACTIVE'.
  * 5. Throws NotFoundError if the community does not exist.
  * 6. Returns a structured CommunityDetailOutput representation.
@@ -283,7 +297,6 @@ export async function getCommunityById(
         select: {
           userId: true,
           name: true,
-          email: true,
           profileImage: true,
         },
       },
@@ -314,7 +327,6 @@ export async function getCommunityById(
     createdBy: {
       userId: community.createdBy.userId,
       name: community.createdBy.name,
-      email: community.createdBy.email,
       profileImage: community.createdBy.profileImage,
     },
   };

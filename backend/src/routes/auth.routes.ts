@@ -1,20 +1,23 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller.js';
 import { authenticate } from '../middleware/auth.js';
+import { authRateLimiter } from '../middleware/rateLimiter.js';
 
 export const authRouter = Router();
 
 /**
  * POST /api/v1/auth/signup
  * Registers a new user account with hashed password and returns a 24-hour JWT token.
+ * Protected by authRateLimiter.
  */
-authRouter.post('/signup', AuthController.signup);
+authRouter.post('/signup', authRateLimiter, AuthController.signup);
 
 /**
  * POST /api/v1/auth/login
  * Authenticates user credentials and returns a 24-hour JWT token.
+ * Protected by authRateLimiter.
  */
-authRouter.post('/login', AuthController.login);
+authRouter.post('/login', authRateLimiter, AuthController.login);
 
 /**
  * GET /api/v1/auth/me

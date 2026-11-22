@@ -95,7 +95,11 @@ describe('Community Service - Listing & Filtering (M3.4)', () => {
       orderBy: { createdAt: 'desc' },
       include: {
         _count: {
-          select: { members: true },
+          select: {
+            members: {
+              where: { status: 'ACTIVE' },
+            },
+          },
         },
       },
     });
@@ -278,7 +282,6 @@ describe('Community Service - Community Detail (M3.6: getCommunityById)', () => 
     createdBy: {
       userId: mockUserId,
       name: 'Badal Khandelwal',
-      email: 'badal@srmist.edu.in',
       profileImage: 'https://example.com/avatar.jpg',
     },
     _count: {
@@ -306,7 +309,6 @@ describe('Community Service - Community Detail (M3.6: getCommunityById)', () => 
       createdBy: {
         userId: mockUserId,
         name: 'Badal Khandelwal',
-        email: 'badal@srmist.edu.in',
         profileImage: 'https://example.com/avatar.jpg',
       },
     });
@@ -336,7 +338,6 @@ describe('Community Service - Community Detail (M3.6: getCommunityById)', () => 
           select: {
             userId: true,
             name: true,
-            email: true,
             profileImage: true,
           },
         },
@@ -364,7 +365,6 @@ describe('Community Service - Community Detail (M3.6: getCommunityById)', () => 
       createdBy: {
         userId: mockUserId,
         name: 'Jane Doe',
-        email: 'jane@srmist.edu.in',
         profileImage: null,
       },
     });
@@ -375,7 +375,6 @@ describe('Community Service - Community Detail (M3.6: getCommunityById)', () => 
     expect(result.createdBy).toEqual({
       userId: mockUserId,
       name: 'Jane Doe',
-      email: 'jane@srmist.edu.in',
       profileImage: null,
     });
   });
@@ -383,6 +382,7 @@ describe('Community Service - Community Detail (M3.6: getCommunityById)', () => 
   it('should ensure sensitive user fields are not exposed in output', async () => {
     const mockDbRecord = createMockDbCommunityDetail();
     (mockDbRecord.createdBy as any).passwordHash = '$2b$10$secretpasswordhash';
+    (mockDbRecord.createdBy as any).email = 'badal@srmist.edu.in';
     (mockDbRecord.createdBy as any).phone = '+919876543210';
     (mockDbRecord.createdBy as any).walletBalance = 1000;
     (mockDbRecord.createdBy as any).licenseNumber = 'DL-123456';
@@ -392,6 +392,7 @@ describe('Community Service - Community Detail (M3.6: getCommunityById)', () => 
     const result = await communityService.getCommunityById(mockCommunityId);
 
     expect((result.createdBy as any).passwordHash).toBeUndefined();
+    expect((result.createdBy as any).email).toBeUndefined();
     expect((result.createdBy as any).phone).toBeUndefined();
     expect((result.createdBy as any).walletBalance).toBeUndefined();
     expect((result.createdBy as any).licenseNumber).toBeUndefined();

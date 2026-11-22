@@ -465,8 +465,25 @@ describe('Community Request Validation Schemas (M3.1)', () => {
       ).rejects.toThrow(ConflictError);
     });
 
+    it('should throw ForbiddenError if creator email domain does not match community domain', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce({
+        ...mockCreator,
+        email: 'badal@gmail.com',
+      } as any);
+
+      await expect(
+        communityService.createCommunity(mockUserId, {
+          name: 'SRM Institute of Science and Technology',
+          domain: 'srmist.edu.in',
+        })
+      ).rejects.toThrow(ForbiddenError);
+    });
+
     it('should throw ConflictError if a community with the same name already exists', async () => {
-      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockCreator as any);
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce({
+        ...mockCreator,
+        email: 'badal@newdomain.edu.in',
+      } as any);
       vi.spyOn(prisma.community, 'findFirst').mockResolvedValueOnce({
         communityId: 'existing-id',
         domain: 'other.edu.in',
