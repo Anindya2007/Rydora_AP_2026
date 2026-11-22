@@ -272,6 +272,45 @@ describe('Vehicle Request Validation Schemas (M5.2)', () => {
         expect(result.success).toBe(false);
       }
     });
+
+    it('should reject protected fields when passed alongside permitted update fields', () => {
+      const mixedAttempts = [
+        { make: 'Honda', vehicleId: '11111111-2222-3333-4444-555555555555' },
+        { model: 'Civic', driverId: '11111111-2222-3333-4444-555555555555' },
+        { color: 'Black', registrationNumber: 'DL01AB9999' },
+        { isActive: false, vehicleType: 'SEDAN' },
+        { make: 'Toyota', seatCapacity: 7 },
+        { model: 'Camry', createdAt: new Date().toISOString() },
+        { isActive: true, updatedAt: new Date().toISOString() },
+      ];
+
+      for (const attempt of mixedAttempts) {
+        const result = updateVehicleSchema.safeParse(attempt);
+        expect(result.success).toBe(false);
+      }
+    });
+
+    it('should reject unknown arbitrary fields through strict validation', () => {
+      expect(updateVehicleSchema.safeParse({ unexpectedField: 'hack' }).success).toBe(false);
+      expect(updateVehicleSchema.safeParse({ make: 'Honda', hackerParam: true }).success).toBe(false);
+      expect(updateVehicleSchema.safeParse({ isActive: true, foo: 'bar', baz: 123 }).success).toBe(false);
+    });
+
+    it('should normalize whitespace-only color string to null on update', () => {
+      const result = updateVehicleSchema.safeParse({ color: '   ' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.color).toBeNull();
+      }
+    });
+
+    it('should reject non-string types for make, model, and color', () => {
+      expect(updateVehicleSchema.safeParse({ make: 123 }).success).toBe(false);
+      expect(updateVehicleSchema.safeParse({ model: true }).success).toBe(false);
+      expect(updateVehicleSchema.safeParse({ color: 456 }).success).toBe(false);
+      expect(updateVehicleSchema.safeParse({ make: ['Honda'] }).success).toBe(false);
+      expect(updateVehicleSchema.safeParse({ model: { name: 'City' } }).success).toBe(false);
+    });
   });
 
   describe('3. Vehicle ID Route Parameter Schema (vehicleIdParamSchema)', () => {

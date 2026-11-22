@@ -2,11 +2,15 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { prisma } from '../../src/config/prisma.js';
 import { vehicleService } from '../../src/services/vehicle.service.js';
 import {
+  BadRequestError,
   ConflictError,
   ForbiddenError,
   NotFoundError,
 } from '../../src/utils/errors.js';
-import type { CreateVehicleInput } from '../../src/validators/vehicleValidator.js';
+import type {
+  CreateVehicleInput,
+  UpdateVehicleInput,
+} from '../../src/validators/vehicleValidator.js';
 
 describe('Vehicle Service - Unit Tests', () => {
   afterEach(() => {
@@ -480,6 +484,48 @@ describe('Vehicle Service - Unit Tests', () => {
       );
     });
 
+    it('5b. should return all vehicles when includeInactive is explicitly true', async () => {
+      const countSpy = vi.spyOn(prisma.vehicle, 'count').mockResolvedValueOnce(2);
+      const findManySpy = vi.spyOn(prisma.vehicle, 'findMany').mockResolvedValueOnce([
+        createMockDbVehicle({ vehicleId: 'v1', isActive: true }),
+        createMockDbVehicle({ vehicleId: 'v2', isActive: false }),
+      ] as any);
+
+      await vehicleService.listVehicles(validDriverId, { includeInactive: true });
+
+      expect(countSpy).toHaveBeenCalledWith({
+        where: { driverId: validDriverId },
+      });
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { driverId: validDriverId },
+        })
+      );
+    });
+
+    it('5c. should give precedence to isActive when both isActive and includeInactive are passed with conflicting values', async () => {
+      const countSpy = vi.spyOn(prisma.vehicle, 'count').mockResolvedValueOnce(1);
+      const findManySpy = vi.spyOn(prisma.vehicle, 'findMany').mockResolvedValueOnce([
+        createMockDbVehicle({ vehicleId: 'v2', isActive: false }),
+      ] as any);
+
+      // Conflict: isActive=false (inactive only) vs includeInactive=false (active only)
+      await vehicleService.listVehicles(validDriverId, {
+        isActive: false,
+        includeInactive: false,
+      });
+
+      // Explicit isActive takes precedence
+      expect(countSpy).toHaveBeenCalledWith({
+        where: { driverId: validDriverId, isActive: false },
+      });
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { driverId: validDriverId, isActive: false },
+        })
+      );
+    });
+
     it('6. should filter for active-only vehicles when isActive is explicitly true', async () => {
       const countSpy = vi.spyOn(prisma.vehicle, 'count').mockResolvedValueOnce(1);
       const findManySpy = vi.spyOn(prisma.vehicle, 'findMany').mockResolvedValueOnce([
@@ -669,6 +715,339 @@ describe('Vehicle Service - Unit Tests', () => {
       await expect(
         vehicleService.getVehicleById(validDriverId, mockVehicleId)
       ).rejects.toThrow('PostgreSQL connection dropped');
+    });
+  });
+
+  describe('Vehicle Update (M5.7: updateVehicle)', () => {
+    const validVehicleId = '88888888-7777-6666-5555-444444444444';
+
+    beforeEach(() => {
+      // Default transaction mock to pass through callback with prisma mock client
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (cb: any) => {
+        if (typeof cb === 'function') {
+          return cb(prisma);
+        }
+        return Promise.all(cb);
+      });
+    });
+
+    describe('1. Successful updates', () => {
+      it('should update make successfully', async () => {
+        const updateManySpy = vi
+          .spyOn(prisma.vehicle, 'updateMany')
+          .mockResolvedValueOnce({ count: 1 });
+
+        const findFirstSpy = vi
+          .spyOn(prisma.vehicle, 'findFirst')
+          .mockResolvedValueOnce(createMockDbVehicle({ make: 'Honda' }) as any);
+
+        const result = await vehicleService.updateVehicle(validDriverId, validVehicleId, {
+          make: 'Honda',
+        });
+
+        expect(updateManySpy).toHaveBeenCalledWith({
+          where: { vehicleId: validVehicleId, driverId: validDriverId },
+          data: { make: 'Honda' },
+        });
+        expect(findFirstSpy).toHaveBeenCalledWith({
+          where: { vehicleId: validVehicleId, driverId: validDriverId },
+          select: expect.any(Object),
+        });
+        expect(result.make).toBe('Honda');
+      });
+
+      it('should update model successfully', async () => {
+        const updateManySpy = vi
+          .spyOn(prisma.vehicle, 'updateMany')
+          .mockResolvedValueOnce({ count: 1 });
+
+        vi.spyOn(prisma.vehicle, 'findFirst').mockResolvedValueOnce(
+          createMockDbVehicle({ model: 'Corolla' }) as any
+        );
+
+        const result = await vehicleService.updateVehicle(validDriverId, validVehicleId, {
+          model: 'Corolla',
+        });
+
+        expect(updateManySpy).toHaveBeenCalledWith({
+          where: { vehicleId: validVehicleId, driverId: validDriverId },
+          data: { model: 'Corolla' },
+        });
+        expect(result.model).toBe('Corolla');
+      });
+
+      it('should update color successfully, including nullifying color', async () => {
+        const updateManySpy = vi
+          .spyOn(prisma.vehicle, 'updateMany')
+          .mockResolvedValueOnce({ count: 1 });
+
+        vi.spyOn(prisma.vehicle, 'findFirst').mockResolvedValueOnce(
+          createMockDbVehicle({ color: null }) as any
+        );
+
+        const result = await vehicleService.updateVehicle(validDriverId, validVehicleId, {
+          color: null,
+        });
+
+        expect(updateManySpy).toHaveBeenCalledWith({
+          where: { vehicleId: validVehicleId, driverId: validDriverId },
+          data: { color: null },
+        });
+        expect(result.color).toBeNull();
+      });
+
+      it('should deactivate a vehicle by setting isActive to false', async () => {
+        const updateManySpy = vi
+          .spyOn(prisma.vehicle, 'updateMany')
+          .mockResolvedValueOnce({ count: 1 });
+
+        vi.spyOn(prisma.vehicle, 'findFirst').mockResolvedValueOnce(
+          createMockDbVehicle({ isActive: false }) as any
+        );
+
+        const result = await vehicleService.updateVehicle(validDriverId, validVehicleId, {
+          isActive: false,
+        });
+
+        expect(updateManySpy).toHaveBeenCalledWith({
+          where: { vehicleId: validVehicleId, driverId: validDriverId },
+          data: { isActive: false },
+        });
+        expect(result.isActive).toBe(false);
+      });
+
+      it('should reactivate a vehicle by setting isActive to true', async () => {
+        const updateManySpy = vi
+          .spyOn(prisma.vehicle, 'updateMany')
+          .mockResolvedValueOnce({ count: 1 });
+
+        vi.spyOn(prisma.vehicle, 'findFirst').mockResolvedValueOnce(
+          createMockDbVehicle({ isActive: true }) as any
+        );
+
+        const result = await vehicleService.updateVehicle(validDriverId, validVehicleId, {
+          isActive: true,
+        });
+
+        expect(updateManySpy).toHaveBeenCalledWith({
+          where: { vehicleId: validVehicleId, driverId: validDriverId },
+          data: { isActive: true },
+        });
+        expect(result.isActive).toBe(true);
+      });
+
+      it('should update multiple permitted fields together (make, model, color, isActive)', async () => {
+        const updateManySpy = vi
+          .spyOn(prisma.vehicle, 'updateMany')
+          .mockResolvedValueOnce({ count: 1 });
+
+        vi.spyOn(prisma.vehicle, 'findFirst').mockResolvedValueOnce(
+          createMockDbVehicle({
+            make: 'Hyundai',
+            model: 'Verna',
+            color: 'Phantom Black',
+            isActive: true,
+          }) as any
+        );
+
+        const result = await vehicleService.updateVehicle(validDriverId, validVehicleId, {
+          make: '  Hyundai  ',
+          model: '  Verna  ',
+          color: 'Phantom Black',
+          isActive: true,
+        });
+
+        expect(updateManySpy).toHaveBeenCalledWith({
+          where: { vehicleId: validVehicleId, driverId: validDriverId },
+          data: {
+            make: 'Hyundai',
+            model: 'Verna',
+            color: 'Phantom Black',
+            isActive: true,
+          },
+        });
+        expect(result.make).toBe('Hyundai');
+        expect(result.model).toBe('Verna');
+        expect(result.color).toBe('Phantom Black');
+        expect(result.isActive).toBe(true);
+      });
+    });
+
+    describe('2. Ownership and security', () => {
+      it('should update an owned vehicle successfully and return projected fields', async () => {
+        vi.spyOn(prisma.vehicle, 'updateMany').mockResolvedValueOnce({ count: 1 });
+
+        vi.spyOn(prisma.vehicle, 'findFirst').mockResolvedValueOnce(
+          createMockDbVehicle({ make: 'Honda' }) as any
+        );
+
+        const result = await vehicleService.updateVehicle(validDriverId, validVehicleId, {
+          make: 'Honda',
+        });
+
+        expect(result.vehicleId).toBe('99999999-8888-7777-6666-555555555555');
+      });
+
+      it('should reject nonexistent vehicle when count === 0 and throw NotFoundError', async () => {
+        vi.spyOn(prisma.vehicle, 'updateMany').mockResolvedValueOnce({ count: 0 });
+        const findFirstSpy = vi.spyOn(prisma.vehicle, 'findFirst');
+
+        await expect(
+          vehicleService.updateVehicle(validDriverId, 'nonexistent-uuid', { make: 'Honda' })
+        ).rejects.toThrow(NotFoundError);
+
+        expect(findFirstSpy).not.toHaveBeenCalled();
+      });
+
+      it('should reject another driver\'s vehicle when count === 0 and throw NotFoundError (Zero-Knowledge Privacy)', async () => {
+        vi.spyOn(prisma.vehicle, 'updateMany').mockResolvedValueOnce({ count: 0 });
+        const findFirstSpy = vi.spyOn(prisma.vehicle, 'findFirst');
+
+        await expect(
+          vehicleService.updateVehicle(otherDriverId, validVehicleId, { make: 'Honda' })
+        ).rejects.toThrow(NotFoundError);
+
+        expect(findFirstSpy).not.toHaveBeenCalled();
+      });
+
+      it('should enforce driverId directly in the mutation query where clause (updateMany)', async () => {
+        const updateManySpy = vi
+          .spyOn(prisma.vehicle, 'updateMany')
+          .mockResolvedValueOnce({ count: 1 });
+
+        vi.spyOn(prisma.vehicle, 'findFirst').mockResolvedValueOnce(
+          createMockDbVehicle({ make: 'Honda' }) as any
+        );
+
+        await vehicleService.updateVehicle(validDriverId, validVehicleId, { make: 'Honda' });
+
+        expect(updateManySpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: {
+              vehicleId: validVehicleId,
+              driverId: validDriverId,
+            },
+          })
+        );
+      });
+
+      it('should retrieve updated vehicle using BOTH vehicleId and driverId for post-mutation query', async () => {
+        vi.spyOn(prisma.vehicle, 'updateMany').mockResolvedValueOnce({ count: 1 });
+
+        const findFirstSpy = vi
+          .spyOn(prisma.vehicle, 'findFirst')
+          .mockResolvedValueOnce(createMockDbVehicle({ make: 'Honda' }) as any);
+
+        await vehicleService.updateVehicle(validDriverId, validVehicleId, { make: 'Honda' });
+
+        expect(findFirstSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: {
+              vehicleId: validVehicleId,
+              driverId: validDriverId,
+            },
+            select: expect.any(Object),
+          })
+        );
+      });
+
+      it('should throw NotFoundError if updated vehicle cannot be retrieved after updateMany', async () => {
+        vi.spyOn(prisma.vehicle, 'updateMany').mockResolvedValueOnce({ count: 1 });
+        vi.spyOn(prisma.vehicle, 'findFirst').mockResolvedValueOnce(null);
+
+        await expect(
+          vehicleService.updateVehicle(validDriverId, validVehicleId, { make: 'Honda' })
+        ).rejects.toThrow(NotFoundError);
+      });
+
+      it('should ensure client input cannot override driverId or vehicleId', async () => {
+        const updateManySpy = vi
+          .spyOn(prisma.vehicle, 'updateMany')
+          .mockResolvedValueOnce({ count: 1 });
+
+        vi.spyOn(prisma.vehicle, 'findFirst').mockResolvedValueOnce(
+          createMockDbVehicle({ make: 'Honda' }) as any
+        );
+
+        const spoofedInput: any = {
+          make: 'Honda',
+          driverId: 'malicious-driver-id',
+          vehicleId: 'malicious-vehicle-id',
+        };
+
+        await vehicleService.updateVehicle(validDriverId, validVehicleId, spoofedInput);
+
+        const updateDataPassed = updateManySpy.mock.calls[0][0].data;
+        expect(updateDataPassed).not.toHaveProperty('driverId');
+        expect(updateDataPassed).not.toHaveProperty('vehicleId');
+      });
+
+      it('should ensure system-managed fields (createdAt, updatedAt, registrationNumber) cannot be updated', async () => {
+        const updateManySpy = vi
+          .spyOn(prisma.vehicle, 'updateMany')
+          .mockResolvedValueOnce({ count: 1 });
+
+        vi.spyOn(prisma.vehicle, 'findFirst').mockResolvedValueOnce(
+          createMockDbVehicle({ make: 'Honda' }) as any
+        );
+
+        const forbiddenUpdates: any = {
+          make: 'Honda',
+          registrationNumber: 'NEW_REG_123',
+          createdAt: new Date('2020-01-01'),
+          updatedAt: new Date('2020-01-01'),
+        };
+
+        await vehicleService.updateVehicle(validDriverId, validVehicleId, forbiddenUpdates);
+
+        const updateDataPassed = updateManySpy.mock.calls[0][0].data;
+        expect(updateDataPassed).not.toHaveProperty('registrationNumber');
+        expect(updateDataPassed).not.toHaveProperty('createdAt');
+        expect(updateDataPassed).not.toHaveProperty('updatedAt');
+      });
+    });
+
+    describe('3. Error handling & Transaction Guarantees', () => {
+      it('should throw BadRequestError when update input contains no permitted fields', async () => {
+        const updateManySpy = vi.spyOn(prisma.vehicle, 'updateMany');
+
+        await expect(
+          vehicleService.updateVehicle(validDriverId, validVehicleId, {} as any)
+        ).rejects.toThrow(BadRequestError);
+
+        expect(updateManySpy).not.toHaveBeenCalled();
+      });
+
+      it('should propagate database errors when tx.vehicle.updateMany fails', async () => {
+        vi.spyOn(prisma.vehicle, 'updateMany').mockRejectedValueOnce(
+          new Error('Deadlock detected during updateMany')
+        );
+
+        await expect(
+          vehicleService.updateVehicle(validDriverId, validVehicleId, { make: 'Honda' })
+        ).rejects.toThrow('Deadlock detected during updateMany');
+      });
+
+      it('should propagate database errors when tx.vehicle.findFirst fails during read-back', async () => {
+        vi.spyOn(prisma.vehicle, 'updateMany').mockResolvedValueOnce({ count: 1 });
+        vi.spyOn(prisma.vehicle, 'findFirst').mockRejectedValueOnce(
+          new Error('Connection failure on findFirst')
+        );
+
+        await expect(
+          vehicleService.updateVehicle(validDriverId, validVehicleId, { make: 'Honda' })
+        ).rejects.toThrow('Connection failure on findFirst');
+      });
+
+      it('should propagate transaction failures from prisma.$transaction', async () => {
+        vi.spyOn(prisma, '$transaction').mockRejectedValueOnce(
+          new Error('Prisma transaction timeout')
+        );
+
+        await expect(
+          vehicleService.updateVehicle(validDriverId, validVehicleId, { make: 'Honda' })
+        ).rejects.toThrow('Prisma transaction timeout');
+      });
     });
   });
 });

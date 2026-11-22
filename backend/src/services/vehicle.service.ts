@@ -1,11 +1,15 @@
 import type { Prisma } from '../generated/prisma/client.js';
 import { prisma } from '../config/prisma.js';
 import {
+  BadRequestError,
   ConflictError,
   ForbiddenError,
   NotFoundError,
 } from '../utils/errors.js';
-import type { CreateVehicleInput } from '../validators/vehicleValidator.js';
+import type {
+  CreateVehicleInput,
+  UpdateVehicleInput,
+} from '../validators/vehicleValidator.js';
 import type { PaginationMeta } from '../utils/response.js';
 
 export interface VehicleOutput {
@@ -225,8 +229,78 @@ export async function getVehicleById(
   return vehicle;
 }
 
+/**
+ * Updates permitted mutable fields of a vehicle belonging to the authenticated driver.
+ *
+ * Security & Ownership Rules:
+ * 1. Database-Level Ownership Scoping: Mutation uses `tx.vehicle.updateMany({ where: { vehicleId, driverId } })`.
+ *    This enforces ownership directly in the SQL UPDATE statement (`WHERE "vehicleId" = $1 AND "driverId" = $2`).
+ * 2. Zero-Knowledge Privacy Policy: If `count === 0` (nonexistent vehicle OR owned by another driver),
+ *    throws `NotFoundError('Vehicle not found')` to prevent resource enumeration and ID-probing attacks.
+ * 3. Atomic Transaction: Wraps the `updateMany` mutation and the subsequent `findFirst` retrieval within
+ *    `prisma.$transaction(async (tx) => { ... })` ensuring row-level locking, atomicity, and consistent read state.
+ * 4. Permitted Fields Only: Updates make, model, color, and isActive. Rejects empty payloads.
+ *    Client-supplied driverId, vehicleId, registrationNumber, and timestamps are completely ignored.
+ * 5. Lifecycle Management: Supports setting isActive to true (reactivation) or false (deactivation).
+ * 6. Safe Output Projection: Returns standardized VehicleOutput with database-managed fields.
+ *
+ * @param driverId UUID of the authenticated driver.
+ * @param vehicleId UUID of the target vehicle.
+ * @param input Validated update payload.
+ * @returns Standardized VehicleOutput representation.
+ */
+export async function updateVehicle(
+  driverId: string,
+  vehicleId: string,
+  input: UpdateVehicleInput
+): Promise<VehicleOutput> {
+  // 1. Filter and sanitize update data to permitted mutable fields only
+  const updateData: Prisma.VehicleUpdateManyMutationInput = {};
+
+  if (input.make !== undefined) updateData.make = input.make.trim();
+  if (input.model !== undefined) updateData.model = input.model.trim();
+  if (input.color !== undefined) updateData.color = input.color;
+  if (input.isActive !== undefined) updateData.isActive = input.isActive;
+
+  if (Object.keys(updateData).length === 0) {
+    throw new BadRequestError('At least one field (make, model, color, or isActive) must be provided for update');
+  }
+
+  // 2. Perform ownership-scoped mutation and retrieval within an atomic transaction
+  return await prisma.$transaction(async (tx) => {
+    // Enforce ownership directly in the database mutation query
+    const updateResult = await tx.vehicle.updateMany({
+      where: {
+        vehicleId,
+        driverId,
+      },
+      data: updateData,
+    });
+
+    if (updateResult.count === 0) {
+      throw new NotFoundError('Vehicle not found');
+    }
+
+    // Retrieve updated vehicle scoped by both vehicleId and driverId
+    const updatedVehicle = await tx.vehicle.findFirst({
+      where: {
+        vehicleId,
+        driverId,
+      },
+      select: vehicleSelectProjection,
+    });
+
+    if (!updatedVehicle) {
+      throw new NotFoundError('Vehicle not found');
+    }
+
+    return updatedVehicle;
+  });
+}
+
 export const vehicleService = {
   createVehicle,
   listVehicles,
   getVehicleById,
+  updateVehicle,
 };
