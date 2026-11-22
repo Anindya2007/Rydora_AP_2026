@@ -3,13 +3,14 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
 import { UnauthorizedError } from '../utils/errors.js';
+import type { UserRole } from '../generated/prisma/client.js';
 
 export interface AuthenticatedUser {
   userId: string;
   name: string;
   email: string;
   phone: string | null;
-  roles: string[];
+  roles: UserRole[];
   profileImage: string | null;
   licenseNumber: string | null;
   licenseExpiry: Date | null;
