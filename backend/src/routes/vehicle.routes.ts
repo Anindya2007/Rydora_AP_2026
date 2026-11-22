@@ -25,6 +25,39 @@ export const validateCreateVehicle = (
 };
 
 /**
+ * GET /api/v1/vehicles/me
+ * Protected endpoint to list vehicles belonging to the authenticated DRIVER.
+ * NOTE: Must be declared BEFORE /:vehicleId so Express does not match "me" as a vehicleId param.
+ *
+ * Security & Middleware Execution Sequence:
+ * 1. authenticate - Validates JWT Bearer token and attaches fresh user state to req.user.
+ * 2. requireRoles(UserRole.DRIVER) - Enforces global DRIVER role on req.user.roles.
+ * 3. VehicleController.listVehicles - Validates query parameters and returns paginated vehicle list.
+ */
+vehicleRouter.get(
+  '/me',
+  authenticate,
+  requireRoles(UserRole.DRIVER),
+  VehicleController.listVehicles
+);
+
+/**
+ * GET /api/v1/vehicles/:vehicleId
+ * Protected endpoint to retrieve an individual vehicle belonging to the authenticated DRIVER.
+ *
+ * Security & Middleware Execution Sequence:
+ * 1. authenticate - Validates JWT Bearer token and attaches fresh user state to req.user.
+ * 2. requireRoles(UserRole.DRIVER) - Enforces global DRIVER role on req.user.roles.
+ * 3. VehicleController.getVehicleById - Validates vehicleId UUID parameter and returns single vehicle.
+ */
+vehicleRouter.get(
+  '/:vehicleId',
+  authenticate,
+  requireRoles(UserRole.DRIVER),
+  VehicleController.getVehicleById
+);
+
+/**
  * POST /api/v1/vehicles
  * Protected endpoint to register a new vehicle for an authenticated DRIVER.
  *

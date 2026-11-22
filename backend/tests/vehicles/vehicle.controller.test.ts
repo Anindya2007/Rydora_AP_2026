@@ -84,6 +84,18 @@ describe('Vehicle Controller & API Route Test Suite (M5.4: POST /api/v1/vehicles
     updatedAt: mockTimestamp,
   };
 
+  const mockListResult = {
+    vehicles: [mockCreatedVehicle],
+    pagination: {
+      page: 1,
+      limit: 20,
+      total: 1,
+      totalPages: 1,
+      hasNext: false,
+      hasPrev: false,
+    },
+  };
+
   describe('1. Authentication & RBAC Authorization', () => {
     it('should reject unauthenticated request when Authorization header is missing (401)', async () => {
       const res = await request(app)
@@ -545,6 +557,288 @@ describe('Vehicle Controller & API Route Test Suite (M5.4: POST /api/v1/vehicles
       await VehicleController.createVehicle(mockReq, mockRes, mockNext);
 
       expect(mockNext).toHaveBeenCalledWith(testError);
+    });
+
+    it('should throw UnauthorizedError when req.user is undefined in listVehicles', async () => {
+      const mockReq = { query: {} } as Request;
+      const mockRes = {} as Response;
+      const mockNext = vi.fn() as NextFunction;
+
+      await VehicleController.listVehicles(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('should forward service errors to next() in listVehicles', async () => {
+      const mockReq = {
+        user: { userId: mockDriverId },
+        query: {},
+      } as unknown as Request;
+      const mockRes = {} as Response;
+      const mockNext = vi.fn() as NextFunction;
+
+      const testError = new Error('Service failure');
+      vi.spyOn(vehicleService, 'listVehicles').mockRejectedValueOnce(testError);
+
+      await VehicleController.listVehicles(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalledWith(testError);
+    });
+
+    it('should throw UnauthorizedError when req.user is undefined in getVehicleById', async () => {
+      const mockReq = { params: { vehicleId: '88888888-7777-6666-5555-444444444444' } } as unknown as Request;
+      const mockRes = {} as Response;
+      const mockNext = vi.fn() as NextFunction;
+
+      await VehicleController.getVehicleById(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('should forward service errors to next() in getVehicleById', async () => {
+      const mockReq = {
+        user: { userId: mockDriverId },
+        params: { vehicleId: '88888888-7777-6666-5555-444444444444' },
+      } as unknown as Request;
+      const mockRes = {} as Response;
+      const mockNext = vi.fn() as NextFunction;
+
+      const testError = new Error('Service failure');
+      vi.spyOn(vehicleService, 'getVehicleById').mockRejectedValueOnce(testError);
+
+      await VehicleController.getVehicleById(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalledWith(testError);
+    });
+  });
+
+  describe('6. Vehicle Listing API Route (M5.6: GET /api/v1/vehicles/me)', () => {
+    it('should reject unauthenticated request when Authorization header is missing (401)', async () => {
+      const res = await request(app).get('/api/v1/vehicles/me');
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+
+    it('should reject authenticated user who only has USER role (403 Forbidden)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockPassengerDbUser as any);
+      const serviceSpy = vi.spyOn(vehicleService, 'listVehicles');
+
+      const token = generateValidToken(mockUserId);
+      const res = await request(app)
+        .get('/api/v1/vehicles/me')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+      expect(serviceSpy).not.toHaveBeenCalled();
+    });
+
+    it('should allow authenticated DRIVER and return HTTP 200 with paginated vehicles', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+      vi.spyOn(vehicleService, 'listVehicles').mockResolvedValueOnce(mockListResult);
+
+      const token = generateValidToken(mockDriverId);
+      const res = await request(app)
+        .get('/api/v1/vehicles/me')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.statusCode).toBe(200);
+      expect(res.body.message).toMatch(/vehicles retrieved successfully/i);
+      expect(res.body.data.vehicles).toHaveLength(1);
+      expect(res.body.data.vehicles[0].vehicleId).toBe(mockCreatedVehicle.vehicleId);
+      expect(res.body.meta.pagination).toEqual(mockListResult.pagination);
+    });
+
+    it('should extract driverId exclusively from token and reject client-supplied driverId in query (422)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+      const token = generateValidToken(mockDriverId);
+      const res = await request(app)
+        .get('/api/v1/vehicles/me?driverId=spoofed-id')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should reject invalid page or limit query parameters (422)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+      const token = generateValidToken(mockDriverId);
+      const res = await request(app)
+        .get('/api/v1/vehicles/me?page=0&limit=150')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should support pagination and lifecycle filter queries', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+      const serviceSpy = vi
+        .spyOn(vehicleService, 'listVehicles')
+        .mockResolvedValueOnce(mockListResult);
+
+      const token = generateValidToken(mockDriverId);
+      const res = await request(app)
+        .get('/api/v1/vehicles/me?page=2&limit=10&isActive=true')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(serviceSpy).toHaveBeenCalledWith(mockDriverId, {
+        page: 2,
+        limit: 10,
+        isActive: true,
+      });
+    });
+
+    it('should forward unexpected service errors to error handler (500)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+      vi.spyOn(vehicleService, 'listVehicles').mockRejectedValueOnce(
+        new Error('Database connectivity failure')
+      );
+
+      const token = generateValidToken(mockDriverId);
+      const res = await request(app)
+        .get('/api/v1/vehicles/me')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('INTERNAL_SERVER_ERROR');
+    });
+  });
+
+  describe('7. Vehicle Detail Retrieval API Route (M5.6: GET /api/v1/vehicles/:vehicleId)', () => {
+    const validVehicleId = '88888888-7777-6666-5555-444444444444';
+
+    it('should reject unauthenticated request when Authorization header is missing (401)', async () => {
+      const res = await request(app).get(`/api/v1/vehicles/${validVehicleId}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+
+    it('should reject authenticated user who only has USER role (403 Forbidden)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockPassengerDbUser as any);
+      const serviceSpy = vi.spyOn(vehicleService, 'getVehicleById');
+
+      const token = generateValidToken(mockUserId);
+      const res = await request(app)
+        .get(`/api/v1/vehicles/${validVehicleId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+      expect(serviceSpy).not.toHaveBeenCalled();
+    });
+
+    it('should allow authenticated DRIVER to retrieve owned vehicle (200 OK)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+      vi.spyOn(vehicleService, 'getVehicleById').mockResolvedValueOnce(mockCreatedVehicle);
+
+      const token = generateValidToken(mockDriverId);
+      const res = await request(app)
+        .get(`/api/v1/vehicles/${validVehicleId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.statusCode).toBe(200);
+      expect(res.body.message).toMatch(/vehicle retrieved successfully/i);
+      expect(res.body.data.vehicle).toEqual(
+        expect.objectContaining({
+          vehicleId: mockCreatedVehicle.vehicleId,
+          driverId: mockDriverId,
+        })
+      );
+    });
+
+    it('should reject malformed or non-UUID vehicleId route parameter (422)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+      const token = generateValidToken(mockDriverId);
+      const res = await request(app)
+        .get('/api/v1/vehicles/not-a-valid-uuid')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should return HTTP 404 when vehicle does not exist', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+      vi.spyOn(vehicleService, 'getVehicleById').mockRejectedValueOnce(
+        new NotFoundError('Vehicle not found')
+      );
+
+      const token = generateValidToken(mockDriverId);
+      const res = await request(app)
+        .get(`/api/v1/vehicles/${validVehicleId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('NOT_FOUND');
+    });
+
+    it('should return HTTP 404 when vehicle belongs to another driver (Zero-Knowledge Privacy)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+      vi.spyOn(vehicleService, 'getVehicleById').mockRejectedValueOnce(
+        new NotFoundError('Vehicle not found')
+      );
+
+      const token = generateValidToken(mockDriverId);
+      const res = await request(app)
+        .get(`/api/v1/vehicles/${validVehicleId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('NOT_FOUND');
+    });
+
+    it('should ensure /me route is handled by listVehicles and not matched by :vehicleId', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+      const listSpy = vi
+        .spyOn(vehicleService, 'listVehicles')
+        .mockResolvedValueOnce(mockListResult);
+      const detailSpy = vi.spyOn(vehicleService, 'getVehicleById');
+
+      const token = generateValidToken(mockDriverId);
+      const res = await request(app)
+        .get('/api/v1/vehicles/me')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(listSpy).toHaveBeenCalledTimes(1);
+      expect(detailSpy).not.toHaveBeenCalled();
+    });
+
+    it('should forward unexpected service errors to error handler (500)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+      vi.spyOn(vehicleService, 'getVehicleById').mockRejectedValueOnce(
+        new Error('Unexpected DB timeout')
+      );
+
+      const token = generateValidToken(mockDriverId);
+      const res = await request(app)
+        .get(`/api/v1/vehicles/${validVehicleId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('INTERNAL_SERVER_ERROR');
     });
   });
 });

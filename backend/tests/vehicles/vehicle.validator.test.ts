@@ -3,6 +3,7 @@ import {
   createVehicleSchema,
   updateVehicleSchema,
   vehicleIdParamSchema,
+  vehicleQuerySchema,
   VEHICLE_TYPES,
 } from '../../src/validators/vehicleValidator.js';
 
@@ -315,6 +316,108 @@ describe('Vehicle Request Validation Schemas (M5.2)', () => {
         vehicleId: '123e4567-e89b-12d3-a456-426614174000',
         extra: 'unexpected',
       });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('4. Vehicle Query Schema (vehicleQuerySchema)', () => {
+    it('should apply default page=1 and limit=20 when query is empty', () => {
+      const result = vehicleQuerySchema.safeParse({});
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.page).toBe(1);
+        expect(result.data.limit).toBe(20);
+        expect(result.data.isActive).toBeUndefined();
+        expect(result.data.includeInactive).toBeUndefined();
+      }
+    });
+
+    it('should coerce valid string numbers for page and limit', () => {
+      const result = vehicleQuerySchema.safeParse({ page: '3', limit: '15' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.page).toBe(3);
+        expect(result.data.limit).toBe(15);
+      }
+    });
+
+    it('should parse boolean string "true" and "false" for isActive and includeInactive', () => {
+      const result1 = vehicleQuerySchema.safeParse({ isActive: 'true', includeInactive: 'false' });
+      expect(result1.success).toBe(true);
+      if (result1.success) {
+        expect(result1.data.isActive).toBe(true);
+        expect(result1.data.includeInactive).toBe(false);
+      }
+
+      const result2 = vehicleQuerySchema.safeParse({ isActive: 'false', includeInactive: 'true' });
+      expect(result2.success).toBe(true);
+      if (result2.success) {
+        expect(result2.data.isActive).toBe(false);
+        expect(result2.data.includeInactive).toBe(true);
+      }
+    });
+
+    it('should correctly parse "false" as boolean false (not true as z.coerce.boolean would do)', () => {
+      const parsedIsActiveFalse = vehicleQuerySchema.safeParse({ isActive: 'false' });
+      expect(parsedIsActiveFalse.success).toBe(true);
+      if (parsedIsActiveFalse.success) {
+        expect(parsedIsActiveFalse.data.isActive).toBe(false);
+        expect(parsedIsActiveFalse.data.isActive).not.toBe(true);
+      }
+
+      const parsedIncludeInactiveFalse = vehicleQuerySchema.safeParse({ includeInactive: 'false' });
+      expect(parsedIncludeInactiveFalse.success).toBe(true);
+      if (parsedIncludeInactiveFalse.success) {
+        expect(parsedIncludeInactiveFalse.data.includeInactive).toBe(false);
+        expect(parsedIncludeInactiveFalse.data.includeInactive).not.toBe(true);
+      }
+    });
+
+    it('should handle case-insensitive strings and whitespace trimming for boolean query parameters', () => {
+      const parsed = vehicleQuerySchema.safeParse({
+        isActive: '  TRUE  ',
+        includeInactive: '  FALSE  ',
+      });
+      expect(parsed.success).toBe(true);
+      if (parsed.success) {
+        expect(parsed.data.isActive).toBe(true);
+        expect(parsed.data.includeInactive).toBe(false);
+      }
+    });
+
+    it('should leave optional boolean parameters undefined when omitted', () => {
+      const parsed = vehicleQuerySchema.safeParse({ page: 1, limit: 10 });
+      expect(parsed.success).toBe(true);
+      if (parsed.success) {
+        expect(parsed.data.isActive).toBeUndefined();
+        expect(parsed.data.includeInactive).toBeUndefined();
+      }
+    });
+
+    it('should reject invalid non-boolean strings such as "yes", "no", "1", "0", "invalid"', () => {
+      const invalidValues = ['yes', 'no', '1', '0', 'TRUE_VALUE', 'none', 'active'];
+
+      for (const val of invalidValues) {
+        const resultIsActive = vehicleQuerySchema.safeParse({ isActive: val });
+        expect(resultIsActive.success).toBe(false);
+
+        const resultIncludeInactive = vehicleQuerySchema.safeParse({ includeInactive: val });
+        expect(resultIncludeInactive.success).toBe(false);
+      }
+    });
+
+    it('should reject invalid page numbers (0 or negative)', () => {
+      expect(vehicleQuerySchema.safeParse({ page: 0 }).success).toBe(false);
+      expect(vehicleQuerySchema.safeParse({ page: -1 }).success).toBe(false);
+    });
+
+    it('should reject invalid limits (0 or exceeding 100)', () => {
+      expect(vehicleQuerySchema.safeParse({ limit: 0 }).success).toBe(false);
+      expect(vehicleQuerySchema.safeParse({ limit: 101 }).success).toBe(false);
+    });
+
+    it('should reject unexpected query parameters like driverId (strict mode)', () => {
+      const result = vehicleQuerySchema.safeParse({ driverId: 'some-id' });
       expect(result.success).toBe(false);
     });
   });

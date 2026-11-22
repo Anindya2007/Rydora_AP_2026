@@ -133,3 +133,51 @@ export const vehicleIdParamSchema = z
   .strict();
 
 export type VehicleIdParam = z.infer<typeof vehicleIdParamSchema>;
+
+/**
+ * Validation schema for listing vehicles with pagination and status filtering (GET /api/v1/vehicles/me).
+ *
+ * Rules:
+ * - page: Positive integer, defaults to 1.
+ * - limit: Integer between 1 and 100, defaults to 20.
+ * - isActive: Optional boolean filter.
+ * - includeInactive: Optional boolean filter.
+ * - strict: Rejects unexpected query parameters (such as client-supplied driverId).
+ */
+export const vehicleQuerySchema = z
+  .object({
+    page: z.coerce
+      .number({ message: 'Page must be a valid number' })
+      .int('Page must be an integer')
+      .positive('Page must be greater than 0')
+      .default(1),
+    limit: z.coerce
+      .number({ message: 'Limit must be a valid number' })
+      .int('Limit must be an integer')
+      .min(1, 'Limit must be at least 1')
+      .max(100, 'Limit cannot exceed 100')
+      .default(20),
+    isActive: z
+      .preprocess((val) => {
+        if (typeof val === 'string') {
+          const lower = val.trim().toLowerCase();
+          if (lower === 'true') return true;
+          if (lower === 'false') return false;
+        }
+        return val;
+      }, z.boolean({ message: 'isActive must be a boolean' }).optional())
+      .optional(),
+    includeInactive: z
+      .preprocess((val) => {
+        if (typeof val === 'string') {
+          const lower = val.trim().toLowerCase();
+          if (lower === 'true') return true;
+          if (lower === 'false') return false;
+        }
+        return val;
+      }, z.boolean({ message: 'includeInactive must be a boolean' }).optional())
+      .optional(),
+  })
+  .strict();
+
+export type VehicleQueryInput = z.infer<typeof vehicleQuerySchema>;
