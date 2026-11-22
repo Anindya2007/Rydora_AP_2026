@@ -1,11 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import request from 'supertest';
 import express, { type Application, type Request, type Response, type NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import { requireRoles } from '../../src/middleware/rbac.js';
+import { authenticate } from '../../src/middleware/auth.js';
 import { UserRole } from '../../src/generated/prisma/client.js';
 import { errorHandler } from '../../src/middleware/errorHandler.js';
 import { requestIdMiddleware } from '../../src/middleware/requestId.js';
 import { UnauthorizedError, ForbiddenError } from '../../src/utils/errors.js';
+import { prisma } from '../../src/config/prisma.js';
+import { env } from '../../src/config/env.js';
 import type { AuthenticatedUser } from '../../src/middleware/auth.js';
 
 /**
@@ -70,8 +74,12 @@ function createRbacTestApp(): Application {
   return app;
 }
 
-describe('Rydora RBAC Middleware Test Suite (Milestone 4.2)', () => {
+describe('Rydora RBAC Middleware Test Suite (Milestone 4.2 & 4.4)', () => {
   const app = createRbacTestApp();
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   describe('1. Missing Authentication Context (req.user is undefined)', () => {
     it('should return HTTP 401 UNAUTHORIZED when req.user is missing', async () => {
@@ -340,6 +348,179 @@ describe('Rydora RBAC Middleware Test Suite (Milestone 4.2)', () => {
 
       expect(next).toHaveBeenCalledTimes(1);
       expect(next).toHaveBeenCalledWith(); // No error passed
+    });
+
+    it('should pass ForbiddenError to next() when user.roles is null or undefined', () => {
+      const middleware = requireRoles(UserRole.DRIVER);
+      const req = { user: { ...createMockUser([]), roles: null as any } } as Request;
+      const res = {} as Response;
+      const next = vi.fn();
+
+      middleware(req, res, next);
+
+      expect(next).toHaveBeenCalledTimes(1);
+      const err = next.mock.calls[0][0];
+      expect(err).toBeInstanceOf(ForbiddenError);
+      expect(err.statusCode).toBe(403);
+      expect(err.errorCode).toBe('FORBIDDEN');
+    });
+
+    it('should never invoke next() without an error when access is denied', () => {
+      const middleware = requireRoles(UserRole.DRIVER);
+      const req = { user: createMockUser([UserRole.USER]) } as Request;
+      const res = {} as Response;
+      const next = vi.fn();
+
+      middleware(req, res, next);
+
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(next).not.toHaveBeenCalledWith();
+      expect(next).toHaveBeenCalledWith(expect.any(ForbiddenError));
+    });
+  });
+
+  describe('7. Chained Middleware Integration (authenticate → requireRoles → controller)', () => {
+    const validUserId = '22222222-3333-4444-5555-666666666666';
+    const mockController = vi.fn((_req: Request, res: Response) => {
+      res.status(200).json({ success: true, message: 'Driver controller reached' });
+    });
+
+    function createChainedTestApp(): Application {
+      const chainedApp = express();
+      chainedApp.disable('x-powered-by');
+      chainedApp.use(requestIdMiddleware);
+      chainedApp.use(express.json());
+
+      // Realistic route mounting authenticate followed by requireRoles
+      chainedApp.get(
+        '/api/v1/driver/secure-action',
+        authenticate,
+        requireRoles(UserRole.DRIVER),
+        mockController
+      );
+
+      chainedApp.use(errorHandler);
+      return chainedApp;
+    }
+
+    const chainedApp = createChainedTestApp();
+
+    it('should reject unauthenticated request with 401 without executing requireRoles or controller', async () => {
+      mockController.mockClear();
+
+      const res = await request(chainedApp).get('/api/v1/driver/secure-action');
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+      expect(mockController).not.toHaveBeenCalled();
+    });
+
+    it('should reject invalid JWT token with 401 without executing requireRoles or controller', async () => {
+      mockController.mockClear();
+
+      const res = await request(chainedApp)
+        .get('/api/v1/driver/secure-action')
+        .set('Authorization', 'Bearer invalid.token.payload');
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+      expect(mockController).not.toHaveBeenCalled();
+    });
+
+    it('should reject authenticated USER with 403 and never reach controller', async () => {
+      mockController.mockClear();
+      const validToken = jwt.sign({ sub: validUserId }, env.JWT_SECRET, { expiresIn: '1h' });
+
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce({
+        userId: validUserId,
+        name: 'Normal User',
+        email: 'user@example.com',
+        phone: '+919876543211',
+        roles: [UserRole.USER],
+        profileImage: null,
+        licenseNumber: null,
+        licenseExpiry: null,
+        driverVerified: false,
+        walletBalance: '0.00',
+        averageRating: '5.00',
+        ratingCount: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+
+      const res = await request(chainedApp)
+        .get('/api/v1/driver/secure-action')
+        .set('Authorization', `Bearer ${validToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+      expect(res.body.error.message).toBe('Forbidden: Insufficient permissions');
+      expect(mockController).not.toHaveBeenCalled();
+    });
+
+    it('should allow authenticated DRIVER to reach controller and return 200', async () => {
+      mockController.mockClear();
+      const validToken = jwt.sign({ sub: validUserId }, env.JWT_SECRET, { expiresIn: '1h' });
+
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce({
+        userId: validUserId,
+        name: 'Verified Driver',
+        email: 'driver@example.com',
+        phone: '+919876543212',
+        roles: [UserRole.DRIVER],
+        profileImage: null,
+        licenseNumber: 'DL1234567890',
+        licenseExpiry: new Date('2030-01-01'),
+        driverVerified: true,
+        walletBalance: '50.00',
+        averageRating: '4.90',
+        ratingCount: 25,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+
+      const res = await request(chainedApp)
+        .get('/api/v1/driver/secure-action')
+        .set('Authorization', `Bearer ${validToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Driver controller reached');
+      expect(mockController).toHaveBeenCalledTimes(1);
+    });
+
+    it('should allow authenticated dual-role user (USER + DRIVER) to reach controller and return 200', async () => {
+      mockController.mockClear();
+      const validToken = jwt.sign({ sub: validUserId }, env.JWT_SECRET, { expiresIn: '1h' });
+
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce({
+        userId: validUserId,
+        name: 'Dual Role User',
+        email: 'dual@example.com',
+        phone: '+919876543213',
+        roles: [UserRole.USER, UserRole.DRIVER],
+        profileImage: null,
+        licenseNumber: 'DL9876543210',
+        licenseExpiry: new Date('2030-01-01'),
+        driverVerified: true,
+        walletBalance: '100.00',
+        averageRating: '4.95',
+        ratingCount: 40,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+
+      const res = await request(chainedApp)
+        .get('/api/v1/driver/secure-action')
+        .set('Authorization', `Bearer ${validToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Driver controller reached');
+      expect(mockController).toHaveBeenCalledTimes(1);
     });
   });
 });
