@@ -61,6 +61,16 @@ Detailed specification available in [COMMUNITIES_API.md](docs/COMMUNITIES_API.md
 
 ---
 
+## 🛡️ Role-Based Access Control (RBAC) (Milestone 4)
+
+Detailed architecture and integration guide available in [RBAC_AUTHORIZATION.md](docs/RBAC_AUTHORIZATION.md).
+
+- **Global Platform Roles (`UserRole`):** `USER`, `DRIVER` enforced via `requireRoles(...allowedRoles)` middleware.
+- **Community-Scoped Roles (`CommunityMemberRole`):** `MEMBER`, `ADMIN` enforced via tenancy membership checks.
+- **Zero Route Regressions:** Preserves open rider access across all authentication and community endpoints while providing the security foundation for upcoming vehicle and ride features.
+
+---
+
 ## ⚡ Quick Start & Development
 
 ### 1. Prerequisites
