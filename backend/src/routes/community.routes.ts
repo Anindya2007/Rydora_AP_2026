@@ -17,6 +17,13 @@ communityRouter.get('/', CommunityController.getCommunities);
 communityRouter.get('/:communityId', CommunityController.getCommunityById);
 
 /**
+ * GET /api/v1/communities/:communityId/members
+ * Protected endpoint to retrieve paginated directory of active members for a community.
+ * Requires requester to be an ACTIVE member or ADMIN of the community.
+ */
+communityRouter.get('/:communityId/members', authenticate, CommunityController.getCommunityMembers);
+
+/**
  * POST /api/v1/communities
  * Protected endpoint to create a new community and atomically register the creator as an ADMIN.
  */

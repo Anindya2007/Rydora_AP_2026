@@ -4,6 +4,7 @@ import {
   communityQuerySchema,
   communityIdParamSchema,
   joinCommunitySchema,
+  communityMembersQuerySchema,
 } from '../validators/communityValidator.js';
 import { communityService } from '../services/community.service.js';
 import { sendSuccess } from '../utils/response.js';
@@ -108,9 +109,46 @@ export async function joinCommunity(
   }
 }
 
+/**
+ * Controller handling community members directory retrieval (GET /api/v1/communities/:communityId/members).
+ * Enforces mandatory authentication, validates communityId parameter as UUID, parses pagination parameters,
+ * and passes the authenticated req.user.userId to the service layer for active membership verification.
+ */
+export async function getCommunityMembers(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required to view community members');
+    }
+
+    const { communityId } = communityIdParamSchema.parse(req.params);
+    const validatedQuery = communityMembersQuerySchema.parse(req.query);
+
+    const result = await communityService.getCommunityMembers(
+      req.user.userId,
+      communityId,
+      validatedQuery
+    );
+
+    sendSuccess(
+      res,
+      { members: result.members },
+      'Community members retrieved successfully',
+      200,
+      result.pagination
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const CommunityController = {
   createCommunity,
   getCommunities,
   getCommunityById,
   joinCommunity,
+  getCommunityMembers,
 };

@@ -870,3 +870,219 @@ describe('Community Membership Join Controller & Route Test Suite (M3.9: POST /a
     expect(detailRes.body.data.community.communityId).toBe(mockCommunityId);
   });
 });
+
+describe('Community Members Directory Controller & Route Test Suite (M3.10: GET /api/v1/communities/:communityId/members)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const mockDate = new Date('2026-11-22T04:30:00.000Z');
+  const mockCommunityId = '99999999-8888-7777-6666-555555555555';
+  const mockRequesterUserId = mockUserId;
+
+  const mockMembersResult = {
+    members: [
+      {
+        membershipId: 'mem-1111-2222-3333-4444',
+        memberRole: 'ADMIN' as const,
+        joinedAt: mockDate,
+        user: {
+          userId: mockRequesterUserId,
+          name: 'Badal Khandelwal',
+          profileImage: 'https://example.com/avatar.jpg',
+        },
+      },
+      {
+        membershipId: 'mem-5555-6666-7777-8888',
+        memberRole: 'MEMBER' as const,
+        joinedAt: mockDate,
+        user: {
+          userId: '33333333-4444-5555-6666-777777777777',
+          name: 'Student Member',
+          profileImage: null,
+        },
+      },
+    ],
+    pagination: {
+      page: 1,
+      limit: 20,
+      total: 2,
+      totalPages: 1,
+      hasNext: false,
+      hasPrev: false,
+    },
+  };
+
+  it('1. should return HTTP 200 with members and pagination when authenticated user has active membership', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    const serviceSpy = vi
+      .spyOn(communityService, 'getCommunityMembers')
+      .mockResolvedValueOnce(mockMembersResult);
+
+    const token = generateValidToken(mockRequesterUserId);
+    const res = await request(app)
+      .get(`/api/v1/communities/${mockCommunityId}/members?page=1&limit=20`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.message).toBe('Community members retrieved successfully');
+    expect(res.body.data.members).toHaveLength(2);
+    expect(res.body.data.members[0]).toEqual({
+      membershipId: 'mem-1111-2222-3333-4444',
+      memberRole: 'ADMIN',
+      joinedAt: mockDate.toISOString(),
+      user: {
+        userId: mockRequesterUserId,
+        name: 'Badal Khandelwal',
+        profileImage: 'https://example.com/avatar.jpg',
+      },
+    });
+    expect(res.body.meta.pagination).toEqual({
+      page: 1,
+      limit: 20,
+      total: 2,
+      totalPages: 1,
+      hasNext: false,
+      hasPrev: false,
+    });
+
+    expect(serviceSpy).toHaveBeenCalledWith(mockRequesterUserId, mockCommunityId, {
+      page: 1,
+      limit: 20,
+    });
+  });
+
+  it('2. should reject request with HTTP 401 when Authorization header is missing', async () => {
+    const res = await request(app).get(`/api/v1/communities/${mockCommunityId}/members`);
+
+    expect(res.status).toBe(401);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNAUTHORIZED');
+  });
+
+  it('3. should reject request with HTTP 401 when Authorization token is invalid', async () => {
+    const res = await request(app)
+      .get(`/api/v1/communities/${mockCommunityId}/members`)
+      .set('Authorization', 'Bearer invalid.token.value');
+
+    expect(res.status).toBe(401);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNAUTHORIZED');
+  });
+
+  it('4. should reject request with HTTP 422 when communityId route param is invalid UUID', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    const token = generateValidToken(mockRequesterUserId);
+
+    const res = await request(app)
+      .get('/api/v1/communities/not-a-valid-uuid/members')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+  });
+
+  it('5. should forward ForbiddenError as HTTP 403 when user is not an active member', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    vi.spyOn(communityService, 'getCommunityMembers').mockRejectedValueOnce(
+      new ForbiddenError('Access denied. You must be an active member of this community to view the directory')
+    );
+
+    const token = generateValidToken(mockRequesterUserId);
+    const res = await request(app)
+      .get(`/api/v1/communities/${mockCommunityId}/members`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('FORBIDDEN');
+    expect(res.body.error.message).toMatch(/active member/i);
+  });
+
+  it('6. should forward NotFoundError as HTTP 404 when community does not exist', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    vi.spyOn(communityService, 'getCommunityMembers').mockRejectedValueOnce(
+      new NotFoundError('Community not found')
+    );
+
+    const token = generateValidToken(mockRequesterUserId);
+    const res = await request(app)
+      .get('/api/v1/communities/00000000-0000-0000-0000-000000000000/members')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+    expect(res.body.error.message).toBe('Community not found');
+  });
+
+  it('7. should reject invalid page <= 0 with HTTP 422', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    const token = generateValidToken(mockRequesterUserId);
+
+    const res = await request(app)
+      .get(`/api/v1/communities/${mockCommunityId}/members?page=0`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+  });
+
+  it('8. should reject limit exceeding 100 with HTTP 422', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    const token = generateValidToken(mockRequesterUserId);
+
+    const res = await request(app)
+      .get(`/api/v1/communities/${mockCommunityId}/members?limit=101`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+  });
+
+  it('9. should reject negative limit with HTTP 422', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    const token = generateValidToken(mockRequesterUserId);
+
+    const res = await request(app)
+      .get(`/api/v1/communities/${mockCommunityId}/members?limit=-5`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+  });
+
+  it('10. should strictly reject unexpected injected query parameters with HTTP 422', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    const token = generateValidToken(mockRequesterUserId);
+
+    const res = await request(app)
+      .get(`/api/v1/communities/${mockCommunityId}/members?status=INACTIVE`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(422);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+  });
+
+  it('11. should forward unexpected service errors as HTTP 500', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    vi.spyOn(communityService, 'getCommunityMembers').mockRejectedValueOnce(
+      new Error('PostgreSQL unexpected connection terminate')
+    );
+
+    const token = generateValidToken(mockRequesterUserId);
+    const res = await request(app)
+      .get(`/api/v1/communities/${mockCommunityId}/members`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(500);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error.code).toBe('INTERNAL_SERVER_ERROR');
+  });
+});

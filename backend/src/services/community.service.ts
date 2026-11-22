@@ -7,7 +7,11 @@ import {
   NotFoundError,
 } from '../utils/errors.js';
 import type { PaginationMeta } from '../utils/response.js';
-import type { CommunityQueryInput, CreateCommunityInput } from '../validators/communityValidator.js';
+import type {
+  CommunityMembersQueryInput,
+  CommunityQueryInput,
+  CreateCommunityInput,
+} from '../validators/communityValidator.js';
 
 export interface CommunityOutput {
   communityId: string;
@@ -52,6 +56,24 @@ export interface CommunityMembershipOutput {
 
 export interface PaginatedCommunitiesResult {
   communities: CommunityOutput[];
+  pagination: PaginationMeta;
+}
+
+export interface CommunityMemberUserOutput {
+  userId: string;
+  name: string;
+  profileImage: string | null;
+}
+
+export interface CommunityMemberItemOutput {
+  membershipId: string;
+  memberRole: 'MEMBER' | 'ADMIN';
+  joinedAt: Date;
+  user: CommunityMemberUserOutput;
+}
+
+export interface PaginatedCommunityMembersResult {
+  members: CommunityMemberItemOutput[];
   pagination: PaginationMeta;
 }
 
@@ -437,9 +459,120 @@ export async function joinCommunity(
   });
 }
 
+/**
+ * Retrieves a paginated directory of active members for a specific community.
+ *
+ * Enforces strict authorization and privacy rules:
+ * 1. Checks that the community exists; throws NotFoundError (404) if not found.
+ * 2. Checks that the requesting user is an ACTIVE member or ADMIN of the community;
+ *    throws ForbiddenError (403) if the user has no membership or has an INACTIVE membership.
+ * 3. Filters exclusively by status: 'ACTIVE'. Clients cannot override or view INACTIVE memberships.
+ * 4. Strictly projects safe user fields (userId, name, profileImage), explicitly excluding
+ *    email, phone, passwordHash, walletBalance, licenseNumber, roles, and averageRating.
+ * 5. Returns paginated results with standard PaginationMeta.
+ */
+export async function getCommunityMembers(
+  requestingUserId: string,
+  communityId: string,
+  query: CommunityMembersQueryInput
+): Promise<PaginatedCommunityMembersResult> {
+  // 1. Verify community exists
+  const community = await prisma.community.findUnique({
+    where: { communityId },
+    select: { communityId: true },
+  });
+
+  if (!community) {
+    throw new NotFoundError('Community not found');
+  }
+
+  // 2. Verify requesting user has an ACTIVE membership in this community
+  const requesterMembership = await prisma.communityMembership.findUnique({
+    where: {
+      communityId_userId: {
+        communityId,
+        userId: requestingUserId,
+      },
+    },
+    select: {
+      status: true,
+      memberRole: true,
+    },
+  });
+
+  if (!requesterMembership || requesterMembership.status !== 'ACTIVE') {
+    throw new ForbiddenError(
+      'Access denied. You must be an active member of this community to view the directory'
+    );
+  }
+
+  // 3. Setup pagination parameters
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 20;
+  const skip = (page - 1) * limit;
+
+  const whereClause: Prisma.CommunityMembershipWhereInput = {
+    communityId,
+    status: 'ACTIVE',
+  };
+
+  // 4. Retrieve total count and sanitized member rows
+  const [total, memberships] = await Promise.all([
+    prisma.communityMembership.count({
+      where: whereClause,
+    }),
+    prisma.communityMembership.findMany({
+      where: whereClause,
+      skip,
+      take: limit,
+      orderBy: {
+        joinedAt: 'asc',
+      },
+      select: {
+        membershipId: true,
+        memberRole: true,
+        joinedAt: true,
+        user: {
+          select: {
+            userId: true,
+            name: true,
+            profileImage: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  const pagination: PaginationMeta = {
+    page,
+    limit,
+    total,
+    totalPages,
+    hasNext: page < totalPages,
+    hasPrev: page > 1,
+  };
+
+  return {
+    members: memberships.map((m) => ({
+      membershipId: m.membershipId,
+      memberRole: m.memberRole as 'MEMBER' | 'ADMIN',
+      joinedAt: m.joinedAt,
+      user: {
+        userId: m.user.userId,
+        name: m.user.name,
+        profileImage: m.user.profileImage,
+      },
+    })),
+    pagination,
+  };
+}
+
 export const communityService = {
   createCommunity,
   getCommunities,
   getCommunityById,
   joinCommunity,
+  getCommunityMembers,
 };

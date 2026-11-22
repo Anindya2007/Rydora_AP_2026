@@ -106,3 +106,26 @@ export const joinCommunitySchema = z
   .default({});
 
 export type JoinCommunityInput = z.infer<typeof joinCommunitySchema>;
+
+/**
+ * Validation schema for community members directory query parameters (GET /api/v1/communities/:communityId/members).
+ * Supports standard pagination (page, limit) while strictly rejecting any query-level status or role injection.
+ */
+export const communityMembersQuerySchema = z
+  .object({
+    page: z.coerce
+      .number({ message: 'Page must be a valid number' })
+      .int('Page must be an integer')
+      .positive('Page must be greater than 0')
+      .default(1),
+    limit: z.coerce
+      .number({ message: 'Limit must be a valid number' })
+      .int('Limit must be an integer')
+      .min(1, 'Limit must be at least 1')
+      .max(100, 'Limit cannot exceed 100')
+      .default(20),
+  })
+  .strict();
+
+export type CommunityMembersQueryInput = z.infer<typeof communityMembersQuerySchema>;
+

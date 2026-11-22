@@ -1281,6 +1281,199 @@ async function main() {
         });
     }
 
+    // ----------------------------------------------------
+    // M3.10 Community Members Directory Endpoint Tests
+    // ----------------------------------------------------
+
+    // 42. Community members directory without authentication returns 401
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Members Directory - Without Authentication Rejection",
+        method: "GET",
+        path: `/communities/${comm?.communityId || "00000000-0000-0000-0000-000000000000"}/members`,
+        expectedStatus: 401
+    });
+
+    // 43. Community members directory with invalid token returns 401
+    await runTest({
+        section: "Community API Tests",
+        milestone: "M3",
+        name: "Community Members Directory - Invalid Token Rejection",
+        method: "GET",
+        path: `/communities/${comm?.communityId || "00000000-0000-0000-0000-000000000000"}/members`,
+        token: "invalid.jwt.token",
+        expectedStatus: 401
+    });
+
+    // 44. User who is NOT an active member of the community receives HTTP 403 Forbidden
+    if (comm && comm.communityId && token2) {
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - Non-Member Forbidden Rejection",
+            method: "GET",
+            path: `/communities/${comm.communityId}/members`,
+            token: token2,
+            expectedStatus: 403
+        });
+    }
+
+    // 45. Active creator (ADMIN) successfully retrieves community members directory
+    if (comm && comm.communityId && token1) {
+        const membersRes = await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - Active Admin Retrieves Directory",
+            method: "GET",
+            path: `/communities/${comm.communityId}/members`,
+            token: token1,
+            expectedStatus: 200
+        });
+
+        // 46. Response structure and member field validation
+        const membersList = membersRes?.data?.members;
+        const hasValidDirectoryStructure = Boolean(
+            membersRes &&
+            membersRes.success === true &&
+            membersRes.statusCode === 200 &&
+            Array.isArray(membersList) &&
+            membersList.length >= 1 &&
+            typeof membersList[0].membershipId === "string" &&
+            typeof membersList[0].memberRole === "string" &&
+            typeof membersList[0].joinedAt === "string" &&
+            membersList[0].user &&
+            typeof membersList[0].user.userId === "string" &&
+            typeof membersList[0].user.name === "string" &&
+            membersRes.meta?.pagination &&
+            typeof membersRes.meta.pagination.total === "number" &&
+            membersRes.meta.pagination.page === 1
+        );
+        recordAssertion({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - Response Structure & Field Validation",
+            passed: hasValidDirectoryStructure,
+            expectedStatus: 200,
+            actualStatus: hasValidDirectoryStructure ? 200 : "Invalid Directory Structure",
+            details: `Count: ${membersList?.length}, First Member Role: ${membersList?.[0]?.memberRole}, Total: ${membersRes?.meta?.pagination?.total}`
+        });
+
+        // 47. Privacy check: Ensure response excludes email, phone, passwordHash, and financial data
+        const membersRawString = JSON.stringify(membersRes || {});
+        const exposesSensitiveData = /password|passwordHash|"salt"|walletBalance|licenseNumber|"phone"/i.test(membersRawString);
+        recordAssertion({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - No Sensitive PII Data Exposure",
+            passed: !exposesSensitiveData,
+            expectedStatus: 200,
+            actualStatus: !exposesSensitiveData ? 200 : "Exposed Sensitive PII Data",
+            details: "Confirmed no phone, passwordHash, walletBalance, licenseNumber in directory payload"
+        });
+    }
+
+    // 48. Active joined member (MEMBER role) retrieves community members directory
+    if (comm && comm.communityId && eligibleMemberToken) {
+        const memberRoleRes = await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - Active Joined Member Retrieves Directory",
+            method: "GET",
+            path: `/communities/${comm.communityId}/members`,
+            token: eligibleMemberToken,
+            expectedStatus: 200
+        });
+
+        const activeMembersCount = memberRoleRes?.data?.members?.length;
+        const hasBothMembers = Boolean(activeMembersCount >= 2);
+        recordAssertion({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - Verify Multiple Active Members",
+            passed: hasBothMembers,
+            expectedStatus: 200,
+            actualStatus: hasBothMembers ? 200 : "Missing Members",
+            details: `Total active members found: ${activeMembersCount}`
+        });
+
+        // 49. Custom pagination (page=1, limit=1)
+        const paginatedRes = await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - Custom Pagination Limit 1",
+            method: "GET",
+            path: `/communities/${comm.communityId}/members?page=1&limit=1`,
+            token: eligibleMemberToken,
+            expectedStatus: 200
+        });
+
+        const hasPaginationMeta = Boolean(
+            paginatedRes?.data?.members?.length === 1 &&
+            paginatedRes?.meta?.pagination?.limit === 1 &&
+            paginatedRes?.meta?.pagination?.hasNext === true
+        );
+        recordAssertion({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - Pagination Metadata Verification",
+            passed: hasPaginationMeta,
+            expectedStatus: 200,
+            actualStatus: hasPaginationMeta ? 200 : "Invalid Pagination Meta",
+            details: `Limit: ${paginatedRes?.meta?.pagination?.limit}, hasNext: ${paginatedRes?.meta?.pagination?.hasNext}`
+        });
+    }
+
+    // 50. Non-existent community UUID returns HTTP 404
+    if (token1) {
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - Non-Existent Community Rejection",
+            method: "GET",
+            path: "/communities/00000000-0000-0000-0000-000000000000/members",
+            token: token1,
+            expectedStatus: 404
+        });
+    }
+
+    // 51. Invalid UUID format in URL parameter returns HTTP 422
+    if (token1) {
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - Invalid UUID Route Parameter Rejection",
+            method: "GET",
+            path: "/communities/not-a-valid-uuid-format/members",
+            token: token1,
+            expectedStatus: 422
+        });
+    }
+
+    // 52. Client attempting to inject status or unexpected filter returns HTTP 422
+    if (comm && comm.communityId && token1) {
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - Reject Injected Query Parameters",
+            method: "GET",
+            path: `/communities/${comm.communityId}/members?status=INACTIVE`,
+            token: token1,
+            expectedStatus: 422
+        });
+
+        // 53. Client attempting limit exceeding 100 returns HTTP 422
+        await runTest({
+            section: "Community API Tests",
+            milestone: "M3",
+            name: "Community Members Directory - Reject Limit Exceeding Maximum",
+            method: "GET",
+            path: `/communities/${comm.communityId}/members?limit=150`,
+            token: token1,
+            expectedStatus: 422
+        });
+    }
+
     // ============================================
     // FINAL REPORT & SUMMARY
     // ============================================

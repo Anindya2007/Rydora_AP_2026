@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { prisma } from '../../src/config/prisma.js';
 import { communityService } from '../../src/services/community.service.js';
-import { NotFoundError } from '../../src/utils/errors.js';
+import { ForbiddenError, NotFoundError } from '../../src/utils/errors.js';
 
 describe('Community Service - Listing & Filtering (M3.4)', () => {
   afterEach(() => {
@@ -441,5 +441,318 @@ describe('Community Service - Community Detail (M3.6: getCommunityById)', () => 
     await expect(
       communityService.getCommunityById(mockCommunityId)
     ).rejects.toThrow('Neon database unreachable');
+  });
+});
+
+describe('Community Members Directory Service (M3.10)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const mockCommunityId = '11111111-2222-3333-4444-555555555555';
+  const mockRequesterUserId = '99999999-8888-7777-6666-555555555555';
+  const mockJoinDate = new Date('2026-11-22T04:00:00Z');
+
+  const mockDbMembers = [
+    {
+      membershipId: 'mem-1',
+      memberRole: 'ADMIN',
+      status: 'ACTIVE',
+      joinedAt: mockJoinDate,
+      user: {
+        userId: mockRequesterUserId,
+        name: 'Admin User',
+        profileImage: 'https://example.com/avatar1.png',
+      },
+    },
+    {
+      membershipId: 'mem-2',
+      memberRole: 'MEMBER',
+      status: 'ACTIVE',
+      joinedAt: mockJoinDate,
+      user: {
+        userId: '22222222-3333-4444-5555-666666666666',
+        name: 'Member Two',
+        profileImage: null,
+      },
+    },
+  ];
+
+  it('1. should successfully retrieve directory when requester is an ACTIVE MEMBER', async () => {
+    vi.spyOn(prisma.community, 'findUnique').mockResolvedValueOnce({
+      communityId: mockCommunityId,
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValueOnce({
+      status: 'ACTIVE',
+      memberRole: 'MEMBER',
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'count').mockResolvedValueOnce(2);
+    vi.spyOn(prisma.communityMembership, 'findMany').mockResolvedValueOnce(mockDbMembers as any);
+
+    const result = await communityService.getCommunityMembers(
+      mockRequesterUserId,
+      mockCommunityId,
+      { page: 1, limit: 20 }
+    );
+
+    expect(result.members).toHaveLength(2);
+    expect(result.members[0]).toEqual({
+      membershipId: 'mem-1',
+      memberRole: 'ADMIN',
+      joinedAt: mockJoinDate,
+      user: {
+        userId: mockRequesterUserId,
+        name: 'Admin User',
+        profileImage: 'https://example.com/avatar1.png',
+      },
+    });
+    expect(result.pagination).toEqual({
+      page: 1,
+      limit: 20,
+      total: 2,
+      totalPages: 1,
+      hasNext: false,
+      hasPrev: false,
+    });
+  });
+
+  it('2. should successfully retrieve directory when requester is an ACTIVE ADMIN', async () => {
+    vi.spyOn(prisma.community, 'findUnique').mockResolvedValueOnce({
+      communityId: mockCommunityId,
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValueOnce({
+      status: 'ACTIVE',
+      memberRole: 'ADMIN',
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'count').mockResolvedValueOnce(1);
+    vi.spyOn(prisma.communityMembership, 'findMany').mockResolvedValueOnce([mockDbMembers[0]] as any);
+
+    const result = await communityService.getCommunityMembers(
+      mockRequesterUserId,
+      mockCommunityId,
+      { page: 1, limit: 20 }
+    );
+
+    expect(result.members).toHaveLength(1);
+    expect(result.pagination.total).toBe(1);
+  });
+
+  it('3. should throw ForbiddenError when requester is not a member of the community', async () => {
+    vi.spyOn(prisma.community, 'findUnique').mockResolvedValue({
+      communityId: mockCommunityId,
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValue(null);
+
+    await expect(
+      communityService.getCommunityMembers(mockRequesterUserId, mockCommunityId, {
+        page: 1,
+        limit: 20,
+      })
+    ).rejects.toThrow(ForbiddenError);
+  });
+
+  it('4. should throw ForbiddenError when requester has an INACTIVE membership', async () => {
+    vi.spyOn(prisma.community, 'findUnique').mockResolvedValue({
+      communityId: mockCommunityId,
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValue({
+      status: 'INACTIVE',
+      memberRole: 'MEMBER',
+    } as any);
+
+    await expect(
+      communityService.getCommunityMembers(mockRequesterUserId, mockCommunityId, {
+        page: 1,
+        limit: 20,
+      })
+    ).rejects.toThrow(ForbiddenError);
+  });
+
+  it('5. should throw NotFoundError when community does not exist', async () => {
+    vi.spyOn(prisma.community, 'findUnique').mockResolvedValue(null);
+
+    await expect(
+      communityService.getCommunityMembers(
+        mockRequesterUserId,
+        '00000000-0000-0000-0000-000000000000',
+        { page: 1, limit: 20 }
+      )
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it('6. should handle empty community directory gracefully', async () => {
+    vi.spyOn(prisma.community, 'findUnique').mockResolvedValueOnce({
+      communityId: mockCommunityId,
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValueOnce({
+      status: 'ACTIVE',
+      memberRole: 'ADMIN',
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'count').mockResolvedValueOnce(0);
+    vi.spyOn(prisma.communityMembership, 'findMany').mockResolvedValueOnce([]);
+
+    const result = await communityService.getCommunityMembers(
+      mockRequesterUserId,
+      mockCommunityId,
+      { page: 1, limit: 20 }
+    );
+
+    expect(result.members).toEqual([]);
+    expect(result.pagination).toEqual({
+      page: 1,
+      limit: 20,
+      total: 0,
+      totalPages: 0,
+      hasNext: false,
+      hasPrev: false,
+    });
+  });
+
+  it('7. should query with custom pagination (page=2, limit=5)', async () => {
+    vi.spyOn(prisma.community, 'findUnique').mockResolvedValueOnce({
+      communityId: mockCommunityId,
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValueOnce({
+      status: 'ACTIVE',
+      memberRole: 'MEMBER',
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'count').mockResolvedValueOnce(12);
+    const findManySpy = vi
+      .spyOn(prisma.communityMembership, 'findMany')
+      .mockResolvedValueOnce(mockDbMembers as any);
+
+    const result = await communityService.getCommunityMembers(
+      mockRequesterUserId,
+      mockCommunityId,
+      { page: 2, limit: 5 }
+    );
+
+    expect(findManySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 5,
+        take: 5,
+      })
+    );
+    expect(result.pagination).toEqual({
+      page: 2,
+      limit: 5,
+      total: 12,
+      totalPages: 3,
+      hasNext: true,
+      hasPrev: true,
+    });
+  });
+
+  it('8. should enforce status: ACTIVE in both count and findMany queries', async () => {
+    vi.spyOn(prisma.community, 'findUnique').mockResolvedValueOnce({
+      communityId: mockCommunityId,
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValueOnce({
+      status: 'ACTIVE',
+      memberRole: 'MEMBER',
+    } as any);
+
+    const countSpy = vi.spyOn(prisma.communityMembership, 'count').mockResolvedValueOnce(2);
+    const findManySpy = vi
+      .spyOn(prisma.communityMembership, 'findMany')
+      .mockResolvedValueOnce(mockDbMembers as any);
+
+    await communityService.getCommunityMembers(mockRequesterUserId, mockCommunityId, {
+      page: 1,
+      limit: 20,
+    });
+
+    const expectedWhere = {
+      communityId: mockCommunityId,
+      status: 'ACTIVE',
+    };
+
+    expect(countSpy).toHaveBeenCalledWith({ where: expectedWhere });
+    expect(findManySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expectedWhere,
+      })
+    );
+  });
+
+  it('9. should project only safe fields and exclude sensitive user data', async () => {
+    vi.spyOn(prisma.community, 'findUnique').mockResolvedValueOnce({
+      communityId: mockCommunityId,
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValueOnce({
+      status: 'ACTIVE',
+      memberRole: 'MEMBER',
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'count').mockResolvedValueOnce(1);
+    const findManySpy = vi
+      .spyOn(prisma.communityMembership, 'findMany')
+      .mockResolvedValueOnce([mockDbMembers[0]] as any);
+
+    const result = await communityService.getCommunityMembers(
+      mockRequesterUserId,
+      mockCommunityId,
+      { page: 1, limit: 20 }
+    );
+
+    expect(findManySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: {
+          membershipId: true,
+          memberRole: true,
+          joinedAt: true,
+          user: {
+            select: {
+              userId: true,
+              name: true,
+              profileImage: true,
+            },
+          },
+        },
+      })
+    );
+
+    // Verify sanitized result object
+    const member = result.members[0];
+    expect(member).toHaveProperty('membershipId');
+    expect(member).toHaveProperty('memberRole');
+    expect(member).toHaveProperty('joinedAt');
+    expect(member.user).toHaveProperty('userId');
+    expect(member.user).toHaveProperty('name');
+    expect(member.user).toHaveProperty('profileImage');
+
+    // Confirm sensitive fields are undefined
+    expect((member.user as any).email).toBeUndefined();
+    expect((member.user as any).phone).toBeUndefined();
+    expect((member.user as any).passwordHash).toBeUndefined();
+    expect((member.user as any).walletBalance).toBeUndefined();
+    expect((member.user as any).licenseNumber).toBeUndefined();
+    expect((member.user as any).roles).toBeUndefined();
+    expect((member.user as any).averageRating).toBeUndefined();
+  });
+
+  it('10. should propagate unexpected database failures', async () => {
+    vi.spyOn(prisma.community, 'findUnique').mockRejectedValueOnce(
+      new Error('PostgreSQL timeout error')
+    );
+
+    await expect(
+      communityService.getCommunityMembers(mockRequesterUserId, mockCommunityId, {
+        page: 1,
+        limit: 20,
+      })
+    ).rejects.toThrow('PostgreSQL timeout error');
   });
 });
