@@ -67,7 +67,20 @@ Detailed architecture and integration guide available in [RBAC_AUTHORIZATION.md]
 
 - **Global Platform Roles (`UserRole`):** `USER`, `DRIVER` enforced via `requireRoles(...allowedRoles)` middleware.
 - **Community-Scoped Roles (`CommunityMemberRole`):** `MEMBER`, `ADMIN` enforced via tenancy membership checks.
-- **Zero Route Regressions:** Preserves open rider access across all authentication and community endpoints while providing the security foundation for upcoming vehicle and ride features.
+- **Zero Route Regressions:** Preserves open rider access across all authentication and community endpoints while providing the security foundation for vehicle and ride operations.
+
+---
+
+## 🚗 Vehicle Fleet Management API (Milestone 5)
+
+Detailed specification available in [VEHICLES_API.md](docs/VEHICLES_API.md).
+
+| Method | Endpoint | Access | Summary |
+| :--- | :--- | :---: | :--- |
+| `POST` | `/api/v1/vehicles` | DRIVER | Register a new vehicle to the driver's personal fleet. |
+| `GET` | `/api/v1/vehicles/me` | DRIVER | List driver's vehicles with pagination and status filters. |
+| `GET` | `/api/v1/vehicles/:vehicleId` | DRIVER | Retrieve individual vehicle specifications (zero-knowledge privacy). |
+| `PATCH` | `/api/v1/vehicles/:vehicleId` | DRIVER | Update vehicle mutable attributes (`make`, `model`, `color`, `isActive`). |
 
 ---
 
