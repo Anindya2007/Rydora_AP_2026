@@ -2,7 +2,11 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { authenticate } from '../middleware/auth.js';
 import { requireRoles } from '../middleware/rbac.js';
 import { UserRole } from '../generated/prisma/client.js';
-import { createVehicleSchema } from '../validators/vehicleValidator.js';
+import {
+  createVehicleSchema,
+  vehicleIdParamSchema,
+  updateVehicleSchema,
+} from '../validators/vehicleValidator.js';
 import { VehicleController } from '../controllers/vehicle.controller.js';
 
 export const vehicleRouter = Router();
@@ -18,6 +22,24 @@ export const validateCreateVehicle = (
 ): void => {
   try {
     req.body = createVehicleSchema.parse(req.body);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Request parameter and body validation middleware for vehicle updates.
+ * Parses req.params against vehicleIdParamSchema and req.body against updateVehicleSchema.
+ */
+export const validateUpdateVehicle = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    vehicleIdParamSchema.parse(req.params);
+    req.body = updateVehicleSchema.parse(req.body);
     next();
   } catch (error) {
     next(error);
@@ -73,4 +95,22 @@ vehicleRouter.post(
   requireRoles(UserRole.DRIVER),
   validateCreateVehicle,
   VehicleController.createVehicle
+);
+
+/**
+ * PATCH /api/v1/vehicles/:vehicleId
+ * Protected endpoint to update a vehicle belonging to the authenticated DRIVER.
+ *
+ * Security & Middleware Execution Sequence:
+ * 1. authenticate - Validates JWT Bearer token and attaches fresh user state to req.user.
+ * 2. requireRoles(UserRole.DRIVER) - Enforces global DRIVER role on req.user.roles.
+ * 3. validateUpdateVehicle - Validates vehicleId parameter and update request body.
+ * 4. VehicleController.updateVehicle - Invokes vehicle update service and returns 200 OK.
+ */
+vehicleRouter.patch(
+  '/:vehicleId',
+  authenticate,
+  requireRoles(UserRole.DRIVER),
+  validateUpdateVehicle,
+  VehicleController.updateVehicle
 );

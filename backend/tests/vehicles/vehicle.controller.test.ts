@@ -841,4 +841,387 @@ describe('Vehicle Controller & API Route Test Suite (M5.4: POST /api/v1/vehicles
       expect(res.body.error.code).toBe('INTERNAL_SERVER_ERROR');
     });
   });
+
+  describe('Vehicle Update API (M5.8: PATCH /api/v1/vehicles/:vehicleId)', () => {
+    const validVehicleId = '88888888-7777-6666-5555-444444444444';
+
+    describe('1. Authentication & RBAC Authorization', () => {
+      it('should reject unauthenticated request when Authorization header is missing (401)', async () => {
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .send({ make: 'Honda' });
+
+        expect(res.status).toBe(401);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('UNAUTHORIZED');
+      });
+
+      it('should reject request when user does not have DRIVER role (403)', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockPassengerDbUser as any);
+
+        const token = generateValidToken(mockUserId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ make: 'Honda' });
+
+        expect(res.status).toBe(403);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('FORBIDDEN');
+      });
+    });
+
+    describe('2. Parameter & Request Body Validation', () => {
+      it('should reject malformed or non-UUID vehicleId route parameter (422)', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch('/api/v1/vehicles/not-a-valid-uuid')
+          .set('Authorization', `Bearer ${token}`)
+          .send({ make: 'Honda' });
+
+        expect(res.status).toBe(422);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+      });
+
+      it('should reject empty update payload body (422)', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({});
+
+        expect(res.status).toBe(422);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+      });
+
+      it('should reject attempts to update registrationNumber (422)', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ registrationNumber: 'DL99ZZ9999' });
+
+        expect(res.status).toBe(422);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+      });
+
+      it('should reject attempts to update vehicleType (422)', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ vehicleType: 'SUV' });
+
+        expect(res.status).toBe(422);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+      });
+
+      it('should reject attempts to update seatCapacity (422)', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ seatCapacity: 7 });
+
+        expect(res.status).toBe(422);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+      });
+
+      it('should reject client attempts to inject driverId in request body (422)', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ make: 'Honda', driverId: 'spoofed-driver-id' });
+
+        expect(res.status).toBe(422);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+      });
+
+      it('should reject client attempts to inject vehicleId in request body (422)', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ make: 'Honda', vehicleId: '11111111-2222-3333-4444-555555555555' });
+
+        expect(res.status).toBe(422);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+      });
+
+      it('should reject arbitrary unknown fields due to strict schema (422)', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ make: 'Honda', unexpectedProperty: 'bad' });
+
+        expect(res.status).toBe(422);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+      });
+
+      it('should reject invalid field types (422)', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ isActive: 'not-a-boolean' });
+
+        expect(res.status).toBe(422);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+      });
+    });
+
+    describe('3. Successful Vehicle Updates (200 OK)', () => {
+      it('should update vehicle make and model successfully', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const updatedVehicleData = {
+          ...mockCreatedVehicle,
+          make: 'Toyota',
+          model: 'Corolla',
+        };
+
+        const updateSpy = vi
+          .spyOn(vehicleService, 'updateVehicle')
+          .mockResolvedValueOnce(updatedVehicleData);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ make: 'Toyota', model: 'Corolla' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.statusCode).toBe(200);
+        expect(res.body.message).toMatch(/vehicle updated successfully/i);
+        expect(res.body.data.vehicle.make).toBe('Toyota');
+        expect(res.body.data.vehicle.model).toBe('Corolla');
+
+        expect(updateSpy).toHaveBeenCalledWith(
+          mockDriverId,
+          validVehicleId,
+          expect.objectContaining({ make: 'Toyota', model: 'Corolla' })
+        );
+      });
+
+      it('should deactivate vehicle by setting isActive to false', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const deactivatedVehicle = {
+          ...mockCreatedVehicle,
+          isActive: false,
+        };
+
+        const updateSpy = vi
+          .spyOn(vehicleService, 'updateVehicle')
+          .mockResolvedValueOnce(deactivatedVehicle);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ isActive: false });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.vehicle.isActive).toBe(false);
+        expect(updateSpy).toHaveBeenCalledWith(
+          mockDriverId,
+          validVehicleId,
+          expect.objectContaining({ isActive: false })
+        );
+      });
+
+      it('should reactivate vehicle by setting isActive to true', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const reactivatedVehicle = {
+          ...mockCreatedVehicle,
+          isActive: true,
+        };
+
+        vi.spyOn(vehicleService, 'updateVehicle').mockResolvedValueOnce(reactivatedVehicle);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ isActive: true });
+
+        expect(res.status).toBe(200);
+        expect(res.body.data.vehicle.isActive).toBe(true);
+      });
+
+      it('should update color to null when color is explicitly null (200 OK)', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const nullColorVehicle = {
+          ...mockCreatedVehicle,
+          color: null,
+        };
+
+        const updateSpy = vi
+          .spyOn(vehicleService, 'updateVehicle')
+          .mockResolvedValueOnce(nullColorVehicle);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ color: null });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.vehicle.color).toBeNull();
+        expect(updateSpy).toHaveBeenCalledWith(
+          mockDriverId,
+          validVehicleId,
+          expect.objectContaining({ color: null })
+        );
+      });
+
+      it('should normalize whitespace-only color string to null and update successfully (200 OK)', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+
+        const nullColorVehicle = {
+          ...mockCreatedVehicle,
+          color: null,
+        };
+
+        const updateSpy = vi
+          .spyOn(vehicleService, 'updateVehicle')
+          .mockResolvedValueOnce(nullColorVehicle);
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ color: '   ' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.data.vehicle.color).toBeNull();
+        expect(updateSpy).toHaveBeenCalledWith(
+          mockDriverId,
+          validVehicleId,
+          expect.objectContaining({ color: null })
+        );
+      });
+    });
+
+    describe('4. Ownership & Zero-Knowledge Privacy (404 Not Found)', () => {
+      it('should return 404 when vehicle does not exist', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+        vi.spyOn(vehicleService, 'updateVehicle').mockRejectedValueOnce(
+          new NotFoundError('Vehicle not found')
+        );
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ make: 'Honda' });
+
+        expect(res.status).toBe(404);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('NOT_FOUND');
+      });
+
+      it('should return 404 when vehicle belongs to another driver (Zero-Knowledge Privacy)', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+        vi.spyOn(vehicleService, 'updateVehicle').mockRejectedValueOnce(
+          new NotFoundError('Vehicle not found')
+        );
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ make: 'Honda' });
+
+        expect(res.status).toBe(404);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('NOT_FOUND');
+      });
+    });
+
+    describe('5. Error Handling & Controller Unit Invariants', () => {
+      it('should return 400 when service throws BadRequestError', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+        vi.spyOn(vehicleService, 'updateVehicle').mockRejectedValueOnce(
+          new (await import('../../src/utils/errors.js')).BadRequestError(
+            'At least one field must be provided for update'
+          )
+        );
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ make: 'Honda' });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('BAD_REQUEST');
+      });
+
+      it('should return 500 when unexpected service error occurs', async () => {
+        vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockDriverDbUser as any);
+        vi.spyOn(vehicleService, 'updateVehicle').mockRejectedValueOnce(
+          new Error('Database deadlock on update')
+        );
+
+        const token = generateValidToken(mockDriverId);
+        const res = await request(app)
+          .patch(`/api/v1/vehicles/${validVehicleId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ make: 'Honda' });
+
+        expect(res.status).toBe(500);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('INTERNAL_SERVER_ERROR');
+      });
+
+      it('should throw UnauthorizedError when req.user is missing in direct controller invocation', async () => {
+        const req = {
+          params: { vehicleId: validVehicleId },
+          body: { make: 'Honda' },
+        } as unknown as Request;
+        const res = {} as Response;
+        const next = vi.fn() as NextFunction;
+
+        await VehicleController.updateVehicle(req, res, next);
+
+        expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      });
+    });
+  });
 });

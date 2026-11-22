@@ -3,6 +3,7 @@ import {
   createVehicleSchema,
   vehicleQuerySchema,
   vehicleIdParamSchema,
+  updateVehicleSchema,
 } from '../validators/vehicleValidator.js';
 import { vehicleService } from '../services/vehicle.service.js';
 import { sendSuccess } from '../utils/response.js';
@@ -98,4 +99,35 @@ export const VehicleController = {
   createVehicle,
   listVehicles,
   getVehicleById,
+  updateVehicle,
 };
+
+/**
+ * Controller handling vehicle updates (PATCH /api/v1/vehicles/:vehicleId).
+ * Obtains the driver identity strictly from authenticated req.user.userId.
+ * Validates vehicleId route parameter as a UUID and request body against updateVehicleSchema.
+ */
+export async function updateVehicle(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const { vehicleId } = vehicleIdParamSchema.parse(req.params);
+    const validatedData = updateVehicleSchema.parse(req.body);
+
+    const vehicle = await vehicleService.updateVehicle(
+      req.user.userId,
+      vehicleId,
+      validatedData
+    );
+
+    sendSuccess(res, { vehicle }, 'Vehicle updated successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+}
