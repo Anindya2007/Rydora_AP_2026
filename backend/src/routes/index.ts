@@ -4,6 +4,7 @@ import { sendSuccess } from '../utils/response.js';
 import { authRouter } from './auth.routes.js';
 import { userRouter } from './user.routes.js';
 import { communityRouter } from './community.routes.js';
+import { vehicleRouter } from './vehicle.routes.js';
 
 export const apiV1Router = Router();
 
@@ -86,3 +87,6 @@ apiV1Router.get('/ready', async (req, res) => {
 apiV1Router.use('/auth', authRouter);
 apiV1Router.use('/users', userRouter);
 apiV1Router.use('/communities', communityRouter);
+
+// Fleet & Vehicles (M5):
+apiV1Router.use('/vehicles', vehicleRouter);
