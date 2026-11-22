@@ -12,6 +12,7 @@ import {
   communityQuerySchema,
   communityIdParamSchema,
   joinCommunitySchema,
+  communityMembersQuerySchema,
 } from '../../src/validators/communityValidator.js';
 
 describe('Community Request Validation Schemas (M3.1)', () => {
@@ -304,7 +305,59 @@ describe('Community Request Validation Schemas (M3.1)', () => {
     });
   });
 
-  describe('5. Community Creation Service (M3.2 - communityService.createCommunity)', () => {
+  describe('5. Community Members Directory Query Schema (communityMembersQuerySchema)', () => {
+    it('should provide default pagination (page=1, limit=20) for empty query', () => {
+      const result = communityMembersQuerySchema.safeParse({});
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.page).toBe(1);
+        expect(result.data.limit).toBe(20);
+      }
+    });
+
+    it('should coerce valid numeric strings for page and limit', () => {
+      const result = communityMembersQuerySchema.safeParse({
+        page: '3',
+        limit: '50',
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.page).toBe(3);
+        expect(result.data.limit).toBe(50);
+      }
+    });
+
+    it('should reject non-positive or non-integer page', () => {
+      expect(communityMembersQuerySchema.safeParse({ page: 0 }).success).toBe(false);
+      expect(communityMembersQuerySchema.safeParse({ page: -1 }).success).toBe(false);
+      expect(communityMembersQuerySchema.safeParse({ page: 1.5 }).success).toBe(false);
+      expect(communityMembersQuerySchema.safeParse({ page: 'abc' }).success).toBe(false);
+    });
+
+    it('should reject limit < 1 or limit > 100', () => {
+      expect(communityMembersQuerySchema.safeParse({ limit: 0 }).success).toBe(false);
+      expect(communityMembersQuerySchema.safeParse({ limit: -10 }).success).toBe(false);
+      expect(communityMembersQuerySchema.safeParse({ limit: 101 }).success).toBe(false);
+      expect(communityMembersQuerySchema.safeParse({ limit: 'hundred' }).success).toBe(false);
+    });
+
+    it('should strictly reject unauthorized query keys (e.g. status, role, search)', () => {
+      expect(
+        communityMembersQuerySchema.safeParse({ status: 'ACTIVE' }).success
+      ).toBe(false);
+      expect(
+        communityMembersQuerySchema.safeParse({ role: 'ADMIN' }).success
+      ).toBe(false);
+      expect(
+        communityMembersQuerySchema.safeParse({ search: 'query' }).success
+      ).toBe(false);
+      expect(
+        communityMembersQuerySchema.safeParse({ unexpected: 'value' }).success
+      ).toBe(false);
+    });
+  });
+
+  describe('6. Community Creation Service (M3.2 - communityService.createCommunity)', () => {
     afterEach(() => {
       vi.restoreAllMocks();
     });

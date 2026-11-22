@@ -1085,4 +1085,30 @@ describe('Community Members Directory Controller & Route Test Suite (M3.10: GET 
     expect(res.body.success).toBe(false);
     expect(res.body.error.code).toBe('INTERNAL_SERVER_ERROR');
   });
+
+  it('12. should return HTTP 200 with empty members array and total 0 when directory is empty', async () => {
+    vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+    vi.spyOn(communityService, 'getCommunityMembers').mockResolvedValueOnce({
+      members: [],
+      pagination: {
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false,
+      },
+    });
+
+    const token = generateValidToken(mockRequesterUserId);
+    const res = await request(app)
+      .get(`/api/v1/communities/${mockCommunityId}/members`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.members).toEqual([]);
+    expect(res.body.meta.pagination.total).toBe(0);
+    expect(res.body.meta.pagination.totalPages).toBe(0);
+  });
 });

@@ -755,4 +755,63 @@ describe('Community Members Directory Service (M3.10)', () => {
       })
     ).rejects.toThrow('PostgreSQL timeout error');
   });
+
+  it('11. should explicitly sort members chronologically by joinedAt in ascending order', async () => {
+    vi.spyOn(prisma.community, 'findUnique').mockResolvedValueOnce({
+      communityId: mockCommunityId,
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValueOnce({
+      status: 'ACTIVE',
+      memberRole: 'MEMBER',
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'count').mockResolvedValueOnce(2);
+    const findManySpy = vi
+      .spyOn(prisma.communityMembership, 'findMany')
+      .mockResolvedValueOnce(mockDbMembers as any);
+
+    await communityService.getCommunityMembers(mockRequesterUserId, mockCommunityId, {
+      page: 1,
+      limit: 20,
+    });
+
+    expect(findManySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: {
+          joinedAt: 'asc',
+        },
+      })
+    );
+  });
+
+  it('12. should handle requested page beyond total pages with hasNext=false and hasPrev=true', async () => {
+    vi.spyOn(prisma.community, 'findUnique').mockResolvedValueOnce({
+      communityId: mockCommunityId,
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValueOnce({
+      status: 'ACTIVE',
+      memberRole: 'MEMBER',
+    } as any);
+
+    vi.spyOn(prisma.communityMembership, 'count').mockResolvedValueOnce(15);
+    vi.spyOn(prisma.communityMembership, 'findMany').mockResolvedValueOnce([]);
+
+    const result = await communityService.getCommunityMembers(
+      mockRequesterUserId,
+      mockCommunityId,
+      { page: 3, limit: 10 }
+    );
+
+    expect(result.members).toHaveLength(0);
+    expect(result.pagination).toEqual({
+      page: 3,
+      limit: 10,
+      total: 15,
+      totalPages: 2,
+      hasNext: false,
+      hasPrev: true,
+    });
+  });
 });
