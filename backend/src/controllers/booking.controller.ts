@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import {
   bookingIdParamSchema,
+  cancelBookingSchema,
   createBookingSchema,
   myBookingsQuerySchema,
   rejectBookingSchema,
@@ -178,6 +179,37 @@ export async function rejectBooking(
   }
 }
 
+/**
+ * Controller handling passenger booking cancellation (PATCH /api/v1/bookings/:bookingId/cancel).
+ * Enforces rider ownership or platform admin permissions.
+ */
+export async function cancelBooking(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const { bookingId } = bookingIdParamSchema.parse(req.params);
+    const validatedBody = cancelBookingSchema.parse(req.body ?? {});
+    const isAdmin = req.user.roles.includes('ADMIN');
+
+    const booking = await bookingService.cancelPassengerBooking(
+      req.user.userId,
+      bookingId,
+      validatedBody.reason,
+      isAdmin
+    );
+
+    sendSuccess(res, { booking }, 'Booking cancelled successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const BookingController = {
   createBooking,
   getBookingById,
@@ -185,4 +217,5 @@ export const BookingController = {
   getRideBookings,
   approveBooking,
   rejectBooking,
+  cancelBooking,
 };

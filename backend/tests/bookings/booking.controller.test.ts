@@ -1545,4 +1545,513 @@ describe('Milestone 7A: Booking Creation API (POST /api/v1/bookings)', () => {
       expect(rideUpdateSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe('Milestone 7D: Passenger Booking Cancellation (PATCH /api/v1/bookings/:bookingId/cancel)', () => {
+    const mockAdminId = '99999999-9999-9999-9999-999999999999';
+    const mockAdminDbUser = {
+      userId: mockAdminId,
+      name: 'System Admin',
+      email: 'admin@rydora.in',
+      phone: '+919999999999',
+      roles: [UserRole.USER, 'ADMIN'],
+      profileImage: null,
+      licenseNumber: null,
+      licenseExpiry: null,
+      driverVerified: false,
+      walletBalance: '0.00',
+      averageRating: '5.00',
+      ratingCount: 0,
+      createdAt: mockTimestamp,
+      updatedAt: mockTimestamp,
+    };
+
+    const mockPendingBookingForCancel = {
+      bookingId: mockBookingId,
+      rideId: mockRideId,
+      riderId: mockRiderId,
+      seatsBooked: 2,
+      status: BookingStatus.PENDING,
+      totalAmount: { toString: () => '300.00' },
+      ride: {
+        rideId: mockRideId,
+        driverId: mockDriverId,
+        status: RideStatus.SCHEDULED,
+        totalSeats: 4,
+        availableSeats: 2, // 2 available, returning 2 brings back to 4
+        departureTime: futureDepartureTime, // 24 hours in future (>= 120 mins)
+      },
+    };
+
+    const mockConfirmedBookingForCancel = {
+      ...mockPendingBookingForCancel,
+      status: BookingStatus.CONFIRMED,
+    };
+
+    const mockCancelledBookingResult = {
+      bookingId: mockBookingId,
+      rideId: mockRideId,
+      riderId: mockRiderId,
+      seatsBooked: 2,
+      status: BookingStatus.CANCELLED,
+      totalAmount: { toString: () => '300.00' },
+      bookedAt: mockTimestamp,
+      updatedAt: mockTimestamp,
+      cancelledAt: mockTimestamp,
+      cancelledById: mockRiderId,
+      cancellationReason: '[CANCELLED_BY_RIDER: FULL_REFUND] Change of plans',
+      rider: {
+        userId: mockRiderId,
+        name: 'Aarav Patel',
+        email: 'aarav.rider@rydora.in',
+        profileImage: null,
+      },
+      ride: {
+        rideId: mockRideId,
+        driverId: mockDriverId,
+        source: 'SRM University Main Gate',
+        destination: 'Chennai Central Railway Station',
+        departureTime: futureDepartureTime,
+        farePerSeat: { toString: () => '150.00' },
+        status: RideStatus.SCHEDULED,
+      },
+    };
+
+    it('should successfully cancel a PENDING booking in the full refund window (>2 hours) (200 OK)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique')
+        .mockResolvedValueOnce(mockPendingBookingForCancel as any)
+        .mockResolvedValueOnce(mockCancelledBookingResult as any);
+      const bookingUpdateManySpy = vi
+        .spyOn(prisma.booking, 'updateMany')
+        .mockResolvedValue({ count: 1 });
+      const rideUpdateManySpy = vi
+        .spyOn(prisma.ride, 'updateMany')
+        .mockResolvedValue({ count: 1 });
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ reason: 'Change of plans' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Booking cancelled successfully');
+      expect(res.body.data.booking.status).toBe(BookingStatus.CANCELLED);
+      expect(bookingUpdateManySpy).toHaveBeenCalledWith({
+        where: {
+          bookingId: mockBookingId,
+          status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+        },
+        data: expect.objectContaining({
+          status: BookingStatus.CANCELLED,
+          cancelledById: mockRiderId,
+          cancellationReason: expect.stringContaining('[CANCELLED_BY_RIDER: FULL_REFUND] Change of plans'),
+        }),
+      });
+      expect(rideUpdateManySpy).toHaveBeenCalledWith({
+        where: {
+          rideId: mockRideId,
+          availableSeats: {
+            lte: 4 - 2,
+          },
+        },
+        data: {
+          availableSeats: {
+            increment: 2,
+          },
+        },
+      });
+    });
+
+    it('should successfully cancel a CONFIRMED booking and restore seats (200 OK)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique')
+        .mockResolvedValueOnce(mockConfirmedBookingForCancel as any)
+        .mockResolvedValueOnce(mockCancelledBookingResult as any);
+      const bookingUpdateManySpy = vi
+        .spyOn(prisma.booking, 'updateMany')
+        .mockResolvedValue({ count: 1 });
+      const rideUpdateManySpy = vi
+        .spyOn(prisma.ride, 'updateMany')
+        .mockResolvedValue({ count: 1 });
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Booking cancelled successfully');
+      expect(bookingUpdateManySpy).toHaveBeenCalled();
+      expect(rideUpdateManySpy).toHaveBeenCalled();
+    });
+
+    it('should apply late cancellation policy when cancelling within 2 hours of departure (<120 mins) (200 OK)', async () => {
+      const lateDepartureTime = new Date(Date.now() + 60 * 60 * 1000); // 1 hour in future
+      const lateBooking = {
+        ...mockConfirmedBookingForCancel,
+        ride: {
+          ...mockConfirmedBookingForCancel.ride,
+          departureTime: lateDepartureTime,
+        },
+      };
+
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique')
+        .mockResolvedValueOnce(lateBooking as any)
+        .mockResolvedValueOnce({
+          ...mockCancelledBookingResult,
+          cancellationReason: '[CANCELLED_BY_RIDER: LATE_CANCEL_50_PERCENT] Passenger cancelled booking (< 2 hours prior to departure; 50% refund policy applies)',
+        } as any);
+      const bookingUpdateManySpy = vi
+        .spyOn(prisma.booking, 'updateMany')
+        .mockResolvedValue({ count: 1 });
+      vi.spyOn(prisma.ride, 'updateMany').mockResolvedValue({ count: 1 });
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(bookingUpdateManySpy).toHaveBeenCalledWith({
+        where: {
+          bookingId: mockBookingId,
+          status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+        },
+        data: expect.objectContaining({
+          status: BookingStatus.CANCELLED,
+          cancellationReason: expect.stringContaining('[CANCELLED_BY_RIDER: LATE_CANCEL_50_PERCENT]'),
+        }),
+      });
+    });
+
+    it('should allow platform ADMIN to cancel booking on behalf of rider (200 OK)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockAdminDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique')
+        .mockResolvedValueOnce(mockPendingBookingForCancel as any)
+        .mockResolvedValueOnce({
+          ...mockCancelledBookingResult,
+          cancelledById: mockAdminId,
+          cancellationReason: '[CANCELLED_BY_ADMIN] Safety incident reported',
+        } as any);
+      const bookingUpdateManySpy = vi
+        .spyOn(prisma.booking, 'updateMany')
+        .mockResolvedValue({ count: 1 });
+      vi.spyOn(prisma.ride, 'updateMany').mockResolvedValue({ count: 1 });
+
+      const token = generateToken(mockAdminId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ reason: 'Safety incident reported' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(bookingUpdateManySpy).toHaveBeenCalledWith({
+        where: {
+          bookingId: mockBookingId,
+          status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+        },
+        data: expect.objectContaining({
+          status: BookingStatus.CANCELLED,
+          cancelledById: mockAdminId,
+          cancellationReason: expect.stringContaining('[CANCELLED_BY_ADMIN] Safety incident reported'),
+        }),
+      });
+    });
+
+    it('should support POST /api/v1/bookings/:bookingId/cancel as an alias (200 OK)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique')
+        .mockResolvedValueOnce(mockPendingBookingForCancel as any)
+        .mockResolvedValueOnce(mockCancelledBookingResult as any);
+      vi.spyOn(prisma.booking, 'updateMany').mockResolvedValue({ count: 1 });
+      vi.spyOn(prisma.ride, 'updateMany').mockResolvedValue({ count: 1 });
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .post(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.message).toBe('Booking cancelled successfully');
+    });
+
+    it('should reject unauthenticated request with 401 Unauthorized', async () => {
+      const res = await request(app).patch(`/api/v1/bookings/${mockBookingId}/cancel`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+
+    it('should reject invalid UUID bookingId with 422 Unprocessable Entity', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch('/api/v1/bookings/invalid-uuid/cancel')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should reject cancellation payload exceeding 500 characters with 422 Unprocessable Entity', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ reason: 'A'.repeat(501) });
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should reject cancellation payload with unexpected fields with 422 Unprocessable Entity', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ status: 'CANCELLED', injectedField: true });
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should reject unauthorized user attempting to cancel someone elses booking (403 Forbidden)', async () => {
+      const mockUnrelatedUser = {
+        userId: mockOtherRiderId,
+        name: 'Sneha Rao',
+        email: 'sneha@rydora.in',
+        phone: '+919876543222',
+        roles: [UserRole.USER],
+        profileImage: null,
+        licenseNumber: null,
+        licenseExpiry: null,
+        driverVerified: false,
+        walletBalance: '0.00',
+        averageRating: '5.00',
+        ratingCount: 0,
+        createdAt: mockTimestamp,
+        updatedAt: mockTimestamp,
+      };
+
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUnrelatedUser as any);
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue(mockPendingBookingForCancel as any);
+
+      const token = generateToken(mockOtherRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+      expect(res.body.error.message).toContain('Only the passenger who booked this seat can cancel');
+    });
+
+    it('should return 404 Not Found when booking does not exist', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue(null);
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('NOT_FOUND');
+    });
+
+    it('should reject already cancelled booking with 400 Bad Request and not restore seats twice', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue({
+        ...mockPendingBookingForCancel,
+        status: BookingStatus.CANCELLED,
+      } as any);
+      const bookingUpdateSpy = vi.spyOn(prisma.booking, 'updateMany');
+      const rideUpdateSpy = vi.spyOn(prisma.ride, 'updateMany');
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('BAD_REQUEST');
+      expect(res.body.error.message).toBe('Booking has already been cancelled');
+      expect(bookingUpdateSpy).not.toHaveBeenCalled();
+      expect(rideUpdateSpy).not.toHaveBeenCalled();
+    });
+
+    it('should reject completed booking with 400 Bad Request', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue({
+        ...mockPendingBookingForCancel,
+        status: BookingStatus.COMPLETED,
+      } as any);
+      const bookingUpdateSpy = vi.spyOn(prisma.booking, 'updateMany');
+      const rideUpdateSpy = vi.spyOn(prisma.ride, 'updateMany');
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('BAD_REQUEST');
+      expect(res.body.error.message).toBe('Cannot cancel a completed booking');
+      expect(bookingUpdateSpy).not.toHaveBeenCalled();
+      expect(rideUpdateSpy).not.toHaveBeenCalled();
+    });
+
+    it('should reject cancellation when ride status is CANCELLED (400 Bad Request)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue({
+        ...mockPendingBookingForCancel,
+        ride: {
+          ...mockPendingBookingForCancel.ride,
+          status: RideStatus.CANCELLED,
+        },
+      } as any);
+      const bookingUpdateSpy = vi.spyOn(prisma.booking, 'updateMany');
+      const rideUpdateSpy = vi.spyOn(prisma.ride, 'updateMany');
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('BAD_REQUEST');
+      expect(res.body.error.message).toContain('Only SCHEDULED rides can be managed');
+      expect(bookingUpdateSpy).not.toHaveBeenCalled();
+      expect(rideUpdateSpy).not.toHaveBeenCalled();
+    });
+
+    it('should reject cancellation when ride status is COMPLETED (400 Bad Request)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue({
+        ...mockPendingBookingForCancel,
+        ride: {
+          ...mockPendingBookingForCancel.ride,
+          status: RideStatus.COMPLETED,
+        },
+      } as any);
+      const bookingUpdateSpy = vi.spyOn(prisma.booking, 'updateMany');
+      const rideUpdateSpy = vi.spyOn(prisma.ride, 'updateMany');
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('BAD_REQUEST');
+      expect(res.body.error.message).toContain('Only SCHEDULED rides can be managed');
+      expect(bookingUpdateSpy).not.toHaveBeenCalled();
+      expect(rideUpdateSpy).not.toHaveBeenCalled();
+    });
+
+    it('should reject cancellation when ride status is IN_PROGRESS (400 Bad Request)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue({
+        ...mockPendingBookingForCancel,
+        ride: {
+          ...mockPendingBookingForCancel.ride,
+          status: RideStatus.IN_PROGRESS,
+        },
+      } as any);
+      const bookingUpdateSpy = vi.spyOn(prisma.booking, 'updateMany');
+      const rideUpdateSpy = vi.spyOn(prisma.ride, 'updateMany');
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('BAD_REQUEST');
+      expect(res.body.error.message).toContain('Only SCHEDULED rides can be managed');
+      expect(bookingUpdateSpy).not.toHaveBeenCalled();
+      expect(rideUpdateSpy).not.toHaveBeenCalled();
+    });
+
+    it('should reject cancellation when ride departure time has already passed (400 Bad Request)', async () => {
+      const pastDepartureTime = new Date(Date.now() - 3600 * 1000);
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue({
+        ...mockPendingBookingForCancel,
+        ride: {
+          ...mockPendingBookingForCancel.ride,
+          departureTime: pastDepartureTime,
+        },
+      } as any);
+      const bookingUpdateSpy = vi.spyOn(prisma.booking, 'updateMany');
+      const rideUpdateSpy = vi.spyOn(prisma.ride, 'updateMany');
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('BAD_REQUEST');
+      expect(res.body.error.message).toContain('departure time has passed');
+      expect(bookingUpdateSpy).not.toHaveBeenCalled();
+      expect(rideUpdateSpy).not.toHaveBeenCalled();
+    });
+
+    it('should reject with 400 when concurrent updateMany detects status conflict', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue(mockPendingBookingForCancel as any);
+      vi.spyOn(prisma.booking, 'updateMany').mockResolvedValue({ count: 0 }); // concurrent update occurred
+      const rideUpdateSpy = vi.spyOn(prisma.ride, 'updateMany');
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('BAD_REQUEST');
+      expect(res.body.error.message).toContain('conflict');
+      expect(rideUpdateSpy).not.toHaveBeenCalled();
+    });
+
+    it('should fail with 409 Conflict when seat restoration would exceed totalSeats', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRiderDbUser as any);
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue(mockPendingBookingForCancel as any);
+      vi.spyOn(prisma.booking, 'updateMany').mockResolvedValue({ count: 1 });
+      vi.spyOn(prisma.ride, 'updateMany').mockResolvedValue({ count: 0 }); // seat restoration guard failed
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .patch(`/api/v1/bookings/${mockBookingId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('CONFLICT');
+      expect(res.body.error.message).toContain('Seat restoration failed');
+    });
+  });
 });

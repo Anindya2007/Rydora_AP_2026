@@ -92,3 +92,23 @@ export const rejectBookingSchema = z
   .strict();
 
 export type RejectBookingInput = z.infer<typeof rejectBookingSchema>;
+
+/**
+ * Validation schema for passenger booking cancellation (PATCH /api/v1/bookings/:bookingId/cancel).
+ *
+ * Rules:
+ * - reason: Optional string up to 500 characters.
+ * - strict: Rejects attempts to inject status, cancelledAt, cancelledById, etc.
+ */
+export const cancelBookingSchema = z
+  .object({
+    reason: z
+      .string()
+      .trim()
+      .min(1, 'Cancellation reason must not be empty')
+      .max(500, 'Cancellation reason must not exceed 500 characters')
+      .optional(),
+  })
+  .strict();
+
+export type CancelBookingInput = z.infer<typeof cancelBookingSchema>;

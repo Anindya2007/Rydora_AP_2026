@@ -2,6 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { authenticate } from '../middleware/auth.js';
 import {
   bookingIdParamSchema,
+  cancelBookingSchema,
   createBookingSchema,
   myBookingsQuerySchema,
   rejectBookingSchema,
@@ -69,6 +70,22 @@ export const validateRejectBooking = (
 ): void => {
   try {
     req.body = rejectBookingSchema.parse(req.body ?? {});
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Request body validation middleware for passenger booking cancellation.
+ */
+export const validateCancelBooking = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    req.body = cancelBookingSchema.parse(req.body ?? {});
     next();
   } catch (error) {
     next(error);
@@ -157,6 +174,33 @@ bookingRouter.post(
   validateBookingIdParam,
   validateRejectBooking,
   BookingController.rejectBooking
+);
+
+/**
+ * PATCH /api/v1/bookings/:bookingId/cancel
+ * POST  /api/v1/bookings/:bookingId/cancel
+ * Protected endpoint for authenticated passengers or platform admins to cancel a booking.
+ *
+ * Security & Middleware Execution Sequence:
+ * 1. authenticate - Validates JWT Bearer token and attaches fresh user state to req.user.
+ * 2. validateBookingIdParam - Validates bookingId parameter as a well-formed UUID.
+ * 3. validateCancelBooking - Validates optional cancellation reason payload.
+ * 4. BookingController.cancelBooking - Enforces passenger/admin ownership, checks lifecycle, restores seats atomically.
+ */
+bookingRouter.patch(
+  '/:bookingId/cancel',
+  authenticate,
+  validateBookingIdParam,
+  validateCancelBooking,
+  BookingController.cancelBooking
+);
+
+bookingRouter.post(
+  '/:bookingId/cancel',
+  authenticate,
+  validateBookingIdParam,
+  validateCancelBooking,
+  BookingController.cancelBooking
 );
 
 /**

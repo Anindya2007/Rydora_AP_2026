@@ -727,6 +727,160 @@ export async function rejectBooking(
   });
 }
 
+/**
+ * Cancels an active passenger booking (PATCH /api/v1/bookings/:bookingId/cancel).
+ *
+ * Requirements & Lifecycle Invariants (Decision 11 & Issue 9):
+ * 1. Authorization: Only the passenger who created the booking (riderId) or a platform ADMIN can cancel.
+ * 2. Eligible State: Only PENDING or CONFIRMED bookings can be cancelled.
+ * 3. Terminal/Duplicate Guard: Already CANCELLED bookings reject with 400 Bad Request and do not restore seats twice.
+ * 4. Completion Guard: COMPLETED bookings cannot be cancelled (400 Bad Request).
+ * 5. Ride Lifecycle: Ride must be in SCHEDULED status and departure time must be in the future (> now).
+ * 6. Cancellation Window & Policy:
+ *    - If Δt >= 120 minutes: 100% full refund policy window.
+ *    - If Δt < 120 minutes: 50% late cancellation policy window.
+ *    - Policy metadata is stored in cancellationReason audit trail.
+ * 7. Atomic Seat Restoration: Reserved seats are restored to availableSeats, guarded by totalSeats capacity.
+ * 8. Concurrency Safety: Atomic updateMany on booking status ensures concurrent cancellations do not double-restore seats.
+ */
+export async function cancelPassengerBooking(
+  userId: string,
+  bookingId: string,
+  reason?: string,
+  isAdmin: boolean = false
+): Promise<BookingOutput> {
+  return await prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({
+      where: { bookingId },
+      select: {
+        bookingId: true,
+        rideId: true,
+        riderId: true,
+        seatsBooked: true,
+        status: true,
+        totalAmount: true,
+        ride: {
+          select: {
+            rideId: true,
+            driverId: true,
+            status: true,
+            totalSeats: true,
+            availableSeats: true,
+            departureTime: true,
+          },
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundError('Booking not found');
+    }
+
+    if (booking.riderId !== userId && !isAdmin) {
+      throw new ForbiddenError(
+        'Only the passenger who booked this seat can cancel this booking'
+      );
+    }
+
+    if (booking.status === BookingStatus.CANCELLED) {
+      throw new BadRequestError('Booking has already been cancelled');
+    }
+    if (booking.status === BookingStatus.COMPLETED) {
+      throw new BadRequestError('Cannot cancel a completed booking');
+    }
+    if (
+      booking.status !== BookingStatus.PENDING &&
+      booking.status !== BookingStatus.CONFIRMED
+    ) {
+      throw new BadRequestError(`Cannot cancel booking with status ${booking.status}`);
+    }
+
+    if (booking.ride.status !== RideStatus.SCHEDULED) {
+      throw new BadRequestError(
+        `Cannot cancel booking for a ride with status ${booking.ride.status}. Only SCHEDULED rides can be managed.`
+      );
+    }
+
+    const now = Date.now();
+    const departureTimeMs = new Date(booking.ride.departureTime).getTime();
+    const diffMs = departureTimeMs - now;
+
+    if (diffMs <= 0) {
+      throw new BadRequestError(
+        'Cannot cancel booking for a ride whose scheduled departure time has passed'
+      );
+    }
+
+    const isFullRefund = diffMs >= 120 * 60 * 1000;
+    let prefix: string;
+    if (isAdmin && booking.riderId !== userId) {
+      prefix = '[CANCELLED_BY_ADMIN]';
+    } else if (isFullRefund) {
+      prefix = '[CANCELLED_BY_RIDER: FULL_REFUND]';
+    } else {
+      prefix = '[CANCELLED_BY_RIDER: LATE_CANCEL_50_PERCENT]';
+    }
+
+    const userReason = reason?.trim();
+    const formattedReason = userReason
+      ? `${prefix} ${userReason}`
+      : `${prefix} Passenger cancelled booking${
+          isFullRefund
+            ? ' (> 2 hours prior to departure; 100% refund policy)'
+            : ' (< 2 hours prior to departure; 50% refund policy applies)'
+        }`;
+
+    const updateResult = await tx.booking.updateMany({
+      where: {
+        bookingId,
+        status: {
+          in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+        },
+      },
+      data: {
+        status: BookingStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancelledById: userId,
+        cancellationReason: formattedReason,
+      },
+    });
+
+    if (updateResult.count === 0) {
+      throw new BadRequestError(
+        'Booking status transition conflict. Booking is no longer active.'
+      );
+    }
+
+    // Atomic seat restoration: capped at totalSeats to prevent overflow
+    const seatRestore = await tx.ride.updateMany({
+      where: {
+        rideId: booking.rideId,
+        availableSeats: {
+          lte: booking.ride.totalSeats - booking.seatsBooked,
+        },
+      },
+      data: {
+        availableSeats: {
+          increment: booking.seatsBooked,
+        },
+      },
+    });
+
+    if (seatRestore.count === 0) {
+      throw new ConflictError(
+        'Seat restoration failed: available seats on the ride cannot exceed total vehicle capacity'
+      );
+    }
+
+    const updatedBooking = await tx.booking.findUnique({
+      where: { bookingId },
+      select: bookingDetailSelectProjection,
+    });
+
+    return formatBookingOutput(updatedBooking);
+  });
+}
+
 export const bookingService = {
   createBooking,
   getBookingById,
@@ -734,4 +888,5 @@ export const bookingService = {
   listRideBookings,
   approveBooking,
   rejectBooking,
+  cancelPassengerBooking,
 };
