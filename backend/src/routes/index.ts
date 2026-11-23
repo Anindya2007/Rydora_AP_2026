@@ -7,6 +7,7 @@ import { communityRouter } from './community.routes.js';
 import { vehicleRouter } from './vehicle.routes.js';
 import { rideRouter } from './ride.routes.js';
 import { bookingRouter } from './booking.routes.js';
+import { emergencyContactRouter } from './emergency-contact.routes.js';
 
 export const apiV1Router = Router();
 
@@ -98,3 +99,6 @@ apiV1Router.use('/rides', rideRouter);
 
 // Bookings Management (M7):
 apiV1Router.use('/bookings', bookingRouter);
+
+// Safety & Emergency Contacts (M8.1):
+apiV1Router.use('/emergency-contacts', emergencyContactRouter);
