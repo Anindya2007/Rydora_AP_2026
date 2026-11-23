@@ -73,7 +73,10 @@ export const SignupPage = ({ onNavigateHome, onNavigateLogin, onLoginSuccess }) 
     } catch (err) {
       const msg =
         err.response?.data?.error?.message ||
-        'Registration failed. Please verify your details or use a different email/phone.';
+        err.response?.data?.message ||
+        (err.response?.status === 403 || err.response?.status === 502 || err.response?.status === 504 || !err.response
+          ? 'Unable to connect to backend server. Please ensure the backend is running.'
+          : 'Registration failed. Please verify your details or use a different email/phone.');
       setErrorMsg(msg);
     } finally {
       setLoading(false);

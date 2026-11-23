@@ -46,7 +46,10 @@ export const LoginPage = ({ onNavigateHome, onNavigateSignup, onLoginSuccess }) 
     } catch (err) {
       const msg =
         err.response?.data?.error?.message ||
-        'Login failed. Please check your credentials and try again.';
+        err.response?.data?.message ||
+        (err.response?.status === 403 || err.response?.status === 502 || err.response?.status === 504 || !err.response
+          ? 'Unable to connect to backend server. Please ensure the backend is running.'
+          : 'Login failed. Please check your credentials and try again.');
       setErrorMsg(msg);
     } finally {
       setLoading(false);
