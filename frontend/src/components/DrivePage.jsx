@@ -34,6 +34,28 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
     seatCapacity: 4,
   });
 
+  // Carpool Ride Publishing & Manifest State
+  const [driverRides, setDriverRides] = useState([]);
+  const [communities, setCommunities] = useState([]);
+  const [showRideForm, setShowRideForm] = useState(false);
+  const [ridePublishMsg, setRidePublishMsg] = useState('');
+  const [ridePublishError, setRidePublishError] = useState('');
+  const [rideSubmitting, setRideSubmitting] = useState(false);
+  const [newRide, setNewRide] = useState({
+    communityId: '',
+    vehicleId: '',
+    source: '',
+    destination: '',
+    departureTime: '',
+    totalSeats: 3,
+    farePerSeat: 150,
+  });
+  const [expandedManifestRideId, setExpandedManifestRideId] = useState(null);
+  const [manifestMap, setManifestMap] = useState({});
+  const [manifestLoading, setManifestLoading] = useState(false);
+  const [manifestActionLoading, setManifestActionLoading] = useState(null);
+  const [manifestActionMsg, setManifestActionMsg] = useState('');
+
   const isDriver = user?.roles?.includes('DRIVER') || user?.driverVerified;
 
   useEffect(() => {
@@ -44,7 +66,27 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
         .catch(() => {});
       api.driver
         .getVehicles()
-        .then((data) => setVehicles(Array.isArray(data) ? data : []))
+        .then((data) => {
+          const list = Array.isArray(data) ? data : [];
+          setVehicles(list);
+          if (list.length > 0) {
+            setNewRide((prev) => ({ ...prev, vehicleId: prev.vehicleId || list[0].vehicleId }));
+          }
+        })
+        .catch(() => {});
+      api.rides
+        .getDriverRides()
+        .then((data) => setDriverRides(Array.isArray(data) ? data : []))
+        .catch(() => {});
+      api.communities
+        .list()
+        .then((data) => {
+          const commList = Array.isArray(data) ? data : (data?.items || []);
+          setCommunities(commList);
+          if (commList.length > 0) {
+            setNewRide((prev) => ({ ...prev, communityId: prev.communityId || commList[0].communityId }));
+          }
+        })
         .catch(() => {});
     }
   }, [user, isDriver]);
@@ -79,9 +121,122 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
       alert('Vehicle registered successfully!');
       setShowVehicleForm(false);
       const v = await api.driver.getVehicles();
-      setVehicles(Array.isArray(v) ? v : []);
+      const list = Array.isArray(v) ? v : [];
+      setVehicles(list);
+      if (list.length > 0) {
+        setNewRide((prev) => ({ ...prev, vehicleId: prev.vehicleId || list[0].vehicleId }));
+      }
     } catch (err) {
       alert(err.response?.data?.error?.message || 'Could not register vehicle.');
+    }
+  };
+
+  const handlePublishRide = async (e) => {
+    e.preventDefault();
+    if (!newRide.source.trim() || !newRide.destination.trim() || !newRide.departureTime || !newRide.vehicleId || !newRide.communityId) {
+      setRidePublishError('Please specify route, departure time, vehicle, and community.');
+      return;
+    }
+    setRideSubmitting(true);
+    setRidePublishError('');
+    setRidePublishMsg('');
+    try {
+      try {
+        await api.communities.join(newRide.communityId);
+      } catch {}
+
+      await api.rides.publish({
+        communityId: newRide.communityId,
+        vehicleId: newRide.vehicleId,
+        source: newRide.source.trim(),
+        destination: newRide.destination.trim(),
+        departureTime: new Date(newRide.departureTime).toISOString(),
+        totalSeats: Number(newRide.totalSeats),
+        farePerSeat: Number(newRide.farePerSeat),
+      });
+
+      setRidePublishMsg('Carpool ride published successfully! Riders can now reserve seats.');
+      setShowRideForm(false);
+      setNewRide((prev) => ({
+        ...prev,
+        source: '',
+        destination: '',
+        departureTime: '',
+      }));
+      const updatedRides = await api.rides.getDriverRides();
+      setDriverRides(Array.isArray(updatedRides) ? updatedRides : []);
+    } catch (err) {
+      setRidePublishError(err.response?.data?.error?.message || 'Could not publish carpool ride.');
+    } finally {
+      setRideSubmitting(false);
+    }
+  };
+
+  const handleToggleManifest = async (rideId) => {
+    if (expandedManifestRideId === rideId) {
+      setExpandedManifestRideId(null);
+      return;
+    }
+    setExpandedManifestRideId(rideId);
+    setManifestLoading(true);
+    setManifestActionMsg('');
+    try {
+      const res = await api.bookings.getRideManifest(rideId);
+      const bookings = Array.isArray(res) ? res : (res?.bookings || []);
+      setManifestMap((prev) => ({ ...prev, [rideId]: bookings }));
+    } catch (err) {
+      setManifestActionMsg(err.response?.data?.error?.message || 'Could not fetch passenger manifest.');
+    } finally {
+      setManifestLoading(false);
+    }
+  };
+
+  const handleApproveBooking = async (rideId, bookingId) => {
+    setManifestActionLoading(bookingId);
+    setManifestActionMsg('');
+    try {
+      await api.bookings.approve(bookingId);
+      setManifestActionMsg('Passenger booking approved! Seat confirmed.');
+      const res = await api.bookings.getRideManifest(rideId);
+      const bookings = Array.isArray(res) ? res : (res?.bookings || []);
+      setManifestMap((prev) => ({ ...prev, [rideId]: bookings }));
+      const updatedRides = await api.rides.getDriverRides();
+      setDriverRides(Array.isArray(updatedRides) ? updatedRides : []);
+    } catch (err) {
+      setManifestActionMsg(err.response?.data?.error?.message || 'Failed to approve booking.');
+    } finally {
+      setManifestActionLoading(null);
+    }
+  };
+
+  const handleRejectBooking = async (rideId, bookingId) => {
+    if (!confirm('Decline this passenger seat reservation?')) return;
+    setManifestActionLoading(bookingId);
+    setManifestActionMsg('');
+    try {
+      await api.bookings.reject(bookingId, 'Driver schedule or seat limitation');
+      setManifestActionMsg('Passenger reservation declined.');
+      const res = await api.bookings.getRideManifest(rideId);
+      const bookings = Array.isArray(res) ? res : (res?.bookings || []);
+      setManifestMap((prev) => ({ ...prev, [rideId]: bookings }));
+      const updatedRides = await api.rides.getDriverRides();
+      setDriverRides(Array.isArray(updatedRides) ? updatedRides : []);
+    } catch (err) {
+      setManifestActionMsg(err.response?.data?.error?.message || 'Failed to decline booking.');
+    } finally {
+      setManifestActionLoading(null);
+    }
+  };
+
+  const handleCancelDriverRide = async (rideId) => {
+    if (!confirm('Are you sure you want to cancel this entire scheduled ride?')) return;
+    try {
+      await api.rides.cancel(rideId);
+      alert('Ride cancelled successfully.');
+      const updatedRides = await api.rides.getDriverRides();
+      setDriverRides(Array.isArray(updatedRides) ? updatedRides : []);
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Could not cancel ride.');
     }
   };
 
@@ -651,6 +806,486 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Carpool Ride Publishing Action Header */}
+                <div
+                  style={{
+                    marginTop: '36px',
+                    paddingTop: '28px',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '14px',
+                  }}
+                >
+                  <div>
+                    <h4 style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff', margin: '0 0 4px 0' }}>
+                      Publish Scheduled Carpool Ride
+                    </h4>
+                    <span style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.65)' }}>
+                      Offer empty vehicle seats to riders within your verified community corridors.
+                    </span>
+                  </div>
+
+                  <LiquidGlassButton
+                    scale={0.9}
+                    onClick={() => setShowRideForm((prev) => !prev)}
+                    style={{
+                      background: showRideForm ? 'rgba(239, 68, 68, 0.2)' : 'rgba(99, 102, 241, 0.35)',
+                      border: showRideForm ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(99, 102, 241, 0.5)',
+                      color: '#ffffff',
+                    }}
+                  >
+                    {showRideForm ? 'Cancel Publish' : '+ Publish New Ride'}
+                  </LiquidGlassButton>
+                </div>
+
+                {ridePublishMsg && (
+                  <div
+                    style={{
+                      marginTop: '16px',
+                      padding: '12px 18px',
+                      borderRadius: '14px',
+                      background: 'rgba(34, 197, 94, 0.15)',
+                      border: '1px solid rgba(34, 197, 94, 0.35)',
+                      color: '#86efac',
+                      fontSize: '13.5px',
+                    }}
+                  >
+                    {ridePublishMsg}
+                  </div>
+                )}
+
+                {ridePublishError && (
+                  <div
+                    style={{
+                      marginTop: '16px',
+                      padding: '12px 18px',
+                      borderRadius: '14px',
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      border: '1px solid rgba(239, 68, 68, 0.35)',
+                      color: '#fca5a5',
+                      fontSize: '13.5px',
+                    }}
+                  >
+                    {ridePublishError}
+                  </div>
+                )}
+
+                {/* Ride Publishing Form */}
+                {showRideForm && (
+                  <form
+                    onSubmit={handlePublishRide}
+                    style={{
+                      marginTop: '18px',
+                      background: 'rgba(0, 0, 0, 0.35)',
+                      borderRadius: '20px',
+                      padding: '24px',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
+                      gap: '16px',
+                    }}
+                  >
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
+                        Origin / Pickup Point
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. IIT Delhi, Hauz Khas"
+                        value={newRide.source}
+                        onChange={(e) => setNewRide((prev) => ({ ...prev, source: e.target.value }))}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.16)',
+                          borderRadius: '12px',
+                          color: '#ffffff',
+                          fontSize: '13.5px',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
+                        Destination Point
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Cyber Hub, Gurugram"
+                        value={newRide.destination}
+                        onChange={(e) => setNewRide((prev) => ({ ...prev, destination: e.target.value }))}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.16)',
+                          borderRadius: '12px',
+                          color: '#ffffff',
+                          fontSize: '13.5px',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
+                        Departure Time
+                      </label>
+                      <input
+                        type="datetime-local"
+                        required
+                        value={newRide.departureTime}
+                        onChange={(e) => setNewRide((prev) => ({ ...prev, departureTime: e.target.value }))}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.16)',
+                          borderRadius: '12px',
+                          color: '#ffffff',
+                          fontSize: '13.5px',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
+                        Vehicle
+                      </label>
+                      <select
+                        required
+                        value={newRide.vehicleId}
+                        onChange={(e) => setNewRide((prev) => ({ ...prev, vehicleId: e.target.value }))}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'rgba(30, 27, 46, 0.95)',
+                          border: '1px solid rgba(255, 255, 255, 0.16)',
+                          borderRadius: '12px',
+                          color: '#ffffff',
+                          fontSize: '13.5px',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        {vehicles.length === 0 && <option value="">No vehicles registered</option>}
+                        {vehicles.map((v) => (
+                          <option key={v.vehicleId} value={v.vehicleId}>
+                            {v.make} {v.model} ({v.registrationNumber}) - {v.seatCapacity} seats
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
+                        Community
+                      </label>
+                      <select
+                        required
+                        value={newRide.communityId}
+                        onChange={(e) => setNewRide((prev) => ({ ...prev, communityId: e.target.value }))}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'rgba(30, 27, 46, 0.95)',
+                          border: '1px solid rgba(255, 255, 255, 0.16)',
+                          borderRadius: '12px',
+                          color: '#ffffff',
+                          fontSize: '13.5px',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        {communities.length === 0 && <option value="">General Rydora Corridor</option>}
+                        {communities.map((c) => (
+                          <option key={c.communityId} value={c.communityId}>
+                            {c.name} ({c.type || 'Open'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
+                        Available Seats Offered
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="8"
+                        required
+                        value={newRide.totalSeats}
+                        onChange={(e) => setNewRide((prev) => ({ ...prev, totalSeats: Number(e.target.value) }))}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.16)',
+                          borderRadius: '12px',
+                          color: '#ffffff',
+                          fontSize: '13.5px',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
+                        Fare Per Seat (₹)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="10000"
+                        required
+                        value={newRide.farePerSeat}
+                        onChange={(e) => setNewRide((prev) => ({ ...prev, farePerSeat: Number(e.target.value) }))}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.16)',
+                          borderRadius: '12px',
+                          color: '#ffffff',
+                          fontSize: '13.5px',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                      <LiquidGlassButton
+                        scale={0.92}
+                        variant="primary"
+                        disabled={rideSubmitting || vehicles.length === 0}
+                      >
+                        {rideSubmitting ? 'Publishing Ride...' : 'Confirm & Publish Ride'}
+                      </LiquidGlassButton>
+                    </div>
+                  </form>
+                )}
+
+                {/* Published Driver Rides & Passenger Manifest Section */}
+                <div style={{ marginTop: '36px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                    <h4 style={{ fontSize: '16px', fontWeight: 600, color: '#ffffff', margin: 0 }}>
+                      Your Published Carpool Rides ({driverRides.length})
+                    </h4>
+                    {manifestActionMsg && (
+                      <span style={{ fontSize: '12px', color: '#86efac' }}>{manifestActionMsg}</span>
+                    )}
+                  </div>
+
+                  {driverRides.length === 0 ? (
+                    <div style={{ fontSize: '13.5px', color: 'rgba(255, 255, 255, 0.6)' }}>
+                      No rides published yet. Publish a carpool above to start accepting riders.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {driverRides.map((ride) => {
+                        const isExpanded = expandedManifestRideId === ride.rideId;
+                        const manifest = manifestMap[ride.rideId] || [];
+                        return (
+                          <div
+                            key={ride.rideId}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.04)',
+                              borderRadius: '18px',
+                              padding: '18px 20px',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                              <div>
+                                <div style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span>{ride.source} → {ride.destination}</span>
+                                  <span
+                                    style={{
+                                      fontSize: '11px',
+                                      padding: '2px 8px',
+                                      borderRadius: '9999px',
+                                      fontWeight: 600,
+                                      background:
+                                        ride.status === 'SCHEDULED'
+                                          ? 'rgba(56, 189, 248, 0.15)'
+                                          : ride.status === 'COMPLETED'
+                                          ? 'rgba(34, 197, 94, 0.15)'
+                                          : 'rgba(239, 68, 68, 0.15)',
+                                      color:
+                                        ride.status === 'SCHEDULED'
+                                          ? '#38bdf8'
+                                          : ride.status === 'COMPLETED'
+                                          ? '#4ade80'
+                                          : '#f87171',
+                                    }}
+                                  >
+                                    {ride.status}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.65)', marginTop: '4px' }}>
+                                  Departure: {new Date(ride.departureTime).toLocaleString()} • {ride.availableSeats} of {ride.totalSeats} seats open • ₹{ride.farePerSeat}/seat
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <LiquidGlassButton
+                                  scale={0.84}
+                                  onClick={() => handleToggleManifest(ride.rideId)}
+                                  style={{
+                                    background: isExpanded ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                                    color: '#ffffff',
+                                    padding: '0 14px',
+                                  }}
+                                >
+                                  {isExpanded ? 'Hide Manifest ▲' : 'Passenger Manifest ▼'}
+                                </LiquidGlassButton>
+
+                                {ride.status === 'SCHEDULED' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCancelDriverRide(ride.rideId)}
+                                    style={{
+                                      background: 'rgba(239, 68, 68, 0.12)',
+                                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                                      borderRadius: '9999px',
+                                      padding: '4px 10px',
+                                      color: '#f87171',
+                                      fontSize: '11px',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Cancel Ride
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Passenger Manifest Panel */}
+                            {isExpanded && (
+                              <div
+                                style={{
+                                  marginTop: '16px',
+                                  paddingTop: '14px',
+                                  borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                                }}
+                              >
+                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', marginBottom: '10px' }}>
+                                  Passengers & Booking Manifest
+                                </div>
+
+                                {manifestLoading ? (
+                                  <div style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.6)' }}>
+                                    Loading manifest...
+                                  </div>
+                                ) : manifest.length === 0 ? (
+                                  <div style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.5)' }}>
+                                    No passengers have reserved seats on this ride yet.
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {manifest.map((b) => (
+                                      <div
+                                        key={b.bookingId}
+                                        style={{
+                                          background: 'rgba(0, 0, 0, 0.25)',
+                                          borderRadius: '12px',
+                                          padding: '10px 14px',
+                                          display: 'flex',
+                                          justifyContent: 'space-between',
+                                          alignItems: 'center',
+                                          flexWrap: 'wrap',
+                                          gap: '8px',
+                                        }}
+                                      >
+                                        <div>
+                                          <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#ffffff' }}>
+                                            {b.passenger?.name || 'Community Rider'}
+                                            <span
+                                              style={{
+                                                marginLeft: '8px',
+                                                fontSize: '10.5px',
+                                                padding: '2px 6px',
+                                                borderRadius: '9999px',
+                                                fontWeight: 600,
+                                                background:
+                                                  b.status === 'CONFIRMED'
+                                                    ? 'rgba(34, 197, 94, 0.2)'
+                                                    : b.status === 'PENDING'
+                                                    ? 'rgba(234, 179, 8, 0.2)'
+                                                    : 'rgba(239, 68, 68, 0.2)',
+                                                color:
+                                                  b.status === 'CONFIRMED'
+                                                    ? '#86efac'
+                                                    : b.status === 'PENDING'
+                                                    ? '#fde047'
+                                                    : '#fca5a5',
+                                              }}
+                                            >
+                                              {b.status}
+                                            </span>
+                                          </div>
+                                          <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)', marginTop: '2px' }}>
+                                            Seats: {b.seatsBooked} • Total: ₹{b.totalAmount}
+                                          </div>
+                                        </div>
+
+                                        {b.status === 'PENDING' && (
+                                          <div style={{ display: 'flex', gap: '6px' }}>
+                                            <button
+                                              type="button"
+                                              disabled={manifestActionLoading === b.bookingId}
+                                              onClick={() => handleApproveBooking(ride.rideId, b.bookingId)}
+                                              style={{
+                                                background: 'rgba(34, 197, 94, 0.2)',
+                                                border: '1px solid rgba(34, 197, 94, 0.4)',
+                                                borderRadius: '9999px',
+                                                padding: '4px 12px',
+                                                color: '#86efac',
+                                                fontSize: '11.5px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                              }}
+                                            >
+                                              {manifestActionLoading === b.bookingId ? 'Processing...' : 'Approve'}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              disabled={manifestActionLoading === b.bookingId}
+                                              onClick={() => handleRejectBooking(ride.rideId, b.bookingId)}
+                                              style={{
+                                                background: 'rgba(239, 68, 68, 0.15)',
+                                                border: '1px solid rgba(239, 68, 68, 0.35)',
+                                                borderRadius: '9999px',
+                                                padding: '4px 12px',
+                                                color: '#fca5a5',
+                                                fontSize: '11.5px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                              }}
+                                            >
+                                              Decline
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

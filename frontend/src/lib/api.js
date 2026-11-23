@@ -140,6 +140,30 @@ export const api = {
       return response.data.data;
     },
 
+    async approve(bookingId) {
+      const response = await apiClient.patch(`/bookings/${bookingId}/approve`);
+      return response.data.data;
+    },
+
+    async reject(bookingId, reason = '') {
+      const response = await apiClient.patch(`/bookings/${bookingId}/reject`, {
+        reason,
+      });
+      return response.data.data;
+    },
+
+    async getRideManifest(rideId) {
+      const response = await apiClient.get(`/rides/${rideId}/bookings`);
+      return response.data.data;
+    },
+
+    async requestRefund(bookingId, reason = '') {
+      const response = await apiClient.post(`/bookings/${bookingId}/refund`, {
+        reason: reason || 'Passenger requested refund for cancelled booking',
+      });
+      return response.data.data;
+    },
+
     async pay(bookingId, amount, paymentMethod = 'UPI') {
       const response = await apiClient.post(`/bookings/${bookingId}/payments`, {
         bookingId,

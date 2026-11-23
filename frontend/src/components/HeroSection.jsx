@@ -134,6 +134,17 @@ export const HeroSection = ({ user, onLoginClick }) => {
   const [sosLoading, setSosLoading] = useState(false);
   const [sosStatusMsg, setSosStatusMsg] = useState('');
 
+  // Refund & Emergency Contacts State
+  const [refundLoadingId, setRefundLoadingId] = useState(null);
+  const [refundStatusMsg, setRefundStatusMsg] = useState('');
+  const [emergencyContacts, setEmergencyContacts] = useState([]);
+  const [showContactsPanel, setShowContactsPanel] = useState(false);
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactRelationship, setContactRelationship] = useState('Family');
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactMsg, setContactMsg] = useState('');
+
   const canSeePrices = pickup.trim().length > 0 && dropoff.trim().length > 0;
 
   const handleUseCurrentLocation = () => {
@@ -177,9 +188,18 @@ export const HeroSection = ({ user, onLoginClick }) => {
           if (alert) setActiveSOS(alert);
         })
         .catch(() => {});
+
+      api.safety
+        .getEmergencyContacts()
+        .then((res) => {
+          const list = Array.isArray(res) ? res : (res?.contacts || []);
+          setEmergencyContacts(list);
+        })
+        .catch(() => {});
     } else {
       setMyBookings([]);
       setActiveSOS(null);
+      setEmergencyContacts([]);
     }
   }, [user]);
 
@@ -277,6 +297,55 @@ export const HeroSection = ({ user, onLoginClick }) => {
       setSosStatusMsg('SOS Alert resolved.');
     } catch (err) {
       alert(err.response?.data?.error?.message || 'Could not resolve SOS alert.');
+    }
+  };
+
+  const handleRequestRefund = async (bookingId) => {
+    setRefundLoadingId(bookingId);
+    setRefundStatusMsg('');
+    try {
+      await api.bookings.requestRefund(bookingId, 'Passenger requested refund on cancelled booking');
+      setRefundStatusMsg('Refund initiated successfully! Funds will credit back to your account.');
+      const updated = await api.bookings.getMyBookings();
+      setMyBookings(Array.isArray(updated) ? updated : []);
+    } catch (err) {
+      setRefundStatusMsg(err.response?.data?.error?.message || 'Refund request could not be processed.');
+    } finally {
+      setRefundLoadingId(null);
+    }
+  };
+
+  const handleAddEmergencyContact = async (e) => {
+    e.preventDefault();
+    if (!contactName.trim() || !contactPhone.trim()) return;
+    setContactLoading(true);
+    setContactMsg('');
+    try {
+      await api.safety.addEmergencyContact({
+        name: contactName.trim(),
+        phone: contactPhone.trim(),
+        relationship: contactRelationship.trim() || 'Family',
+      });
+      setContactMsg('Emergency contact added successfully!');
+      setContactName('');
+      setContactPhone('');
+      const res = await api.safety.getEmergencyContacts();
+      setEmergencyContacts(Array.isArray(res) ? res : (res?.contacts || []));
+    } catch (err) {
+      setContactMsg(err.response?.data?.error?.message || 'Could not add emergency contact.');
+    } finally {
+      setContactLoading(false);
+    }
+  };
+
+  const handleDeleteEmergencyContact = async (contactId) => {
+    if (!confirm('Remove this emergency contact?')) return;
+    try {
+      await api.safety.deleteEmergencyContact(contactId);
+      const res = await api.safety.getEmergencyContacts();
+      setEmergencyContacts(Array.isArray(res) ? res : (res?.contacts || []));
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Could not delete contact.');
     }
   };
 
@@ -687,6 +756,22 @@ export const HeroSection = ({ user, onLoginClick }) => {
             </LiquidGlassButton>
           )}
 
+          {user && (
+            <LiquidGlassButton
+              scale={0.92}
+              onClick={() => setShowContactsPanel((prev) => !prev)}
+              style={{
+                background: showContactsPanel ? 'rgba(99, 102, 241, 0.3)' : 'rgba(255, 255, 255, 0.08)',
+                border: showContactsPanel ? '1px solid rgba(99, 102, 241, 0.5)' : '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                height: '42px',
+                padding: '0 16px',
+              }}
+            >
+              <span>Safety Guardians ({emergencyContacts.length})</span>
+            </LiquidGlassButton>
+          )}
+
           {!user && (
             <a
               href="#login"
@@ -757,6 +842,170 @@ export const HeroSection = ({ user, onLoginClick }) => {
             >
               Resolve Alert
             </button>
+          </div>
+        )}
+
+        {/* Emergency Contacts Management Panel */}
+        {user && showContactsPanel && (
+          <div style={{ marginTop: '18px' }}>
+            <LiquidGlassPanel
+              radius={24}
+              frosted={true}
+              style={{
+                padding: '20px',
+                background: 'rgba(20, 16, 36, 0.75)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
+                  Emergency Contacts & Safety Guardians
+                </span>
+                <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)' }}>
+                  Notified automatically with GPS telemetry during SOS
+                </span>
+              </div>
+
+              {contactMsg && (
+                <div
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '10px',
+                    background: contactMsg.includes('success') ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                    color: contactMsg.includes('success') ? '#86efac' : '#fca5a5',
+                    fontSize: '12.5px',
+                  }}
+                >
+                  {contactMsg}
+                </div>
+              )}
+
+              {/* Add Contact Form */}
+              <form
+                onSubmit={handleAddEmergencyContact}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))',
+                  gap: '10px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  padding: '12px',
+                  borderRadius: '14px',
+                }}
+              >
+                <input
+                  type="text"
+                  required
+                  placeholder="Contact Name"
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#ffffff',
+                    fontSize: '12.5px',
+                    outline: 'none',
+                  }}
+                />
+                <input
+                  type="tel"
+                  required
+                  placeholder="Phone (+91...)"
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#ffffff',
+                    fontSize: '12.5px',
+                    outline: 'none',
+                  }}
+                />
+                <select
+                  value={contactRelationship}
+                  onChange={(e) => setContactRelationship(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(30, 27, 46, 0.95)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#ffffff',
+                    fontSize: '12.5px',
+                    outline: 'none',
+                  }}
+                >
+                  <option value="Family">Family</option>
+                  <option value="Parent">Parent</option>
+                  <option value="Spouse">Spouse</option>
+                  <option value="Friend">Friend</option>
+                  <option value="Colleague">Colleague</option>
+                </select>
+                <button
+                  type="submit"
+                  disabled={contactLoading || !contactName.trim() || !contactPhone.trim()}
+                  style={{
+                    background: '#6366f1',
+                    border: 'none',
+                    borderRadius: '10px',
+                    color: '#ffffff',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: '8px 14px',
+                  }}
+                >
+                  {contactLoading ? 'Adding...' : '+ Add Guardian'}
+                </button>
+              </form>
+
+              {/* Contacts List */}
+              {emergencyContacts.length === 0 ? (
+                <div style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.5)', padding: '6px 0' }}>
+                  No safety guardians registered yet. Add at least one contact above for instant SOS dispatch.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {emergencyContacts.map((c) => (
+                    <div
+                      key={c.contactId}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '8px 12px',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        borderRadius: '10px',
+                      }}
+                    >
+                      <div>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>{c.name}</span>
+                        <span style={{ fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.6)', marginLeft: '8px' }}>
+                          ({c.relationship || 'Guardian'}) • {c.phone}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteEmergencyContact(c.contactId)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#f87171',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ✕ Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </LiquidGlassPanel>
           </div>
         )}
 
@@ -868,13 +1117,18 @@ export const HeroSection = ({ user, onLoginClick }) => {
                 gap: '12px',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                 <span style={{ fontSize: '13.5px', fontWeight: 600, color: '#ffffff' }}>
                   Your Recent Bookings ({myBookings.length})
                 </span>
-                {ratingStatusMsg && (
-                  <span style={{ fontSize: '12px', color: '#86efac' }}>{ratingStatusMsg}</span>
-                )}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  {ratingStatusMsg && (
+                    <span style={{ fontSize: '12px', color: '#86efac' }}>{ratingStatusMsg}</span>
+                  )}
+                  {refundStatusMsg && (
+                    <span style={{ fontSize: '12px', color: '#38bdf8' }}>{refundStatusMsg}</span>
+                  )}
+                </div>
               </div>
 
               {myBookings.slice(0, 3).map((b) => (
@@ -940,6 +1194,26 @@ export const HeroSection = ({ user, onLoginClick }) => {
                         }}
                       >
                         Cancel Ride
+                      </button>
+                    )}
+
+                    {b.status === 'CANCELLED' && (
+                      <button
+                        type="button"
+                        disabled={refundLoadingId === b.bookingId}
+                        onClick={() => handleRequestRefund(b.bookingId)}
+                        style={{
+                          background: 'rgba(56, 189, 248, 0.15)',
+                          border: '1px solid rgba(56, 189, 248, 0.3)',
+                          borderRadius: '9999px',
+                          padding: '4px 10px',
+                          color: '#38bdf8',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {refundLoadingId === b.bookingId ? 'Processing...' : 'Request Refund'}
                       </button>
                     )}
 
