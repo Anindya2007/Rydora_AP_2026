@@ -68,15 +68,23 @@ Rydora operates two distinct role tiers that must **never** be conflated:
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### A. Global Platform Roles (`UserRole`)
-- **`USER`**: Base role granted to every registered account by default. Allows finding rides, joining communities, managing personal profiles, and requesting carpools.
-- **`DRIVER`**: Elevated platform capability granted to verified drivers with valid driver licenses and vehicle registrations. Allows publishing rides, offering seats, and receiving driver payouts.
-- **Multi-Role Capability**: Stored as a PostgreSQL enum array (`UserRole[]`). A user can be both a rider and a driver simultaneously (`['USER', 'DRIVER']`).
+### A. Global Platform Roles (`PlatformRole`)
+- **`USER`**: Base role granted to every registered account by default in PostgreSQL (`UserRole.USER`). Allows finding rides, joining communities, managing personal profiles, and requesting carpools.
+- **`DRIVER`**: Elevated platform capability granted to verified drivers with valid driver licenses and vehicle registrations (`UserRole.DRIVER`). Allows publishing rides, offering seats, and receiving driver payouts.
+- **`ADMIN` (Platform Administrator)**: Administrative capability governing platform verification and moderation.
+  - **Resolution Mechanism (M5.10.2):** Because the current database schema preserves `UserRole { USER, DRIVER }` pending deferred migration recovery, platform `ADMIN` identity is securely derived during `authenticate` middleware execution via the environment variable allowlist:
+    `ADMIN_USER_IDS="<uuid1>,<uuid2>"`
+  - **Zero Trust Security:** The client cannot supply, forge, or manipulate `ADMIN` claims. The caller MUST be a real, authenticated database user whose verified database `userId` matches `ADMIN_USER_IDS`.
+  - **Future Native Migration:** When database migration recovery is executed, `ADMIN` will be added to native PostgreSQL enum: `ALTER TYPE "UserRole" ADD VALUE 'ADMIN';`.
+- **Multi-Role Capability**: Stored and resolved as an array (`PlatformRole[]`). A user can be both a rider, driver, and platform admin (`['USER', 'DRIVER', 'ADMIN']`).
 
 ### B. Community-Scoped Roles (`CommunityMemberRole`)
 - **`MEMBER`**: Default membership role for users who join an active community matching their institutional email domain.
-- **`ADMIN`**: Granted to the creator of a community or designated community moderators. Confined strictly to managing that specific community.
-- **Crucial Rule**: `requireRoles()` must **never** be used for community `ADMIN` authorization. A user who is an `ADMIN` of Community A has no special administrative rights over Community B. Community-level permissions are evaluated per-community in the service layer against `CommunityMembership`.
+- **`ADMIN` (Community Moderator)**: Granted to the creator of a community or designated community moderators. Confined strictly to managing that specific community.
+- **Crucial Separation Rule**: Platform `ADMIN` and Community `ADMIN` are completely distinct scopes:
+  - `requireRoles('ADMIN')` enforces **Platform Admin** (e.g. driver verification, global moderation).
+  - Community moderation checks evaluate `CommunityMembership.memberRole === 'ADMIN'` scoped strictly to a specific `communityId`.
+  - A user who is an `ADMIN` of Community A has zero platform administrative authority and cannot approve driver verifications or access other communities.
 
 ---
 

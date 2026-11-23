@@ -4,12 +4,28 @@ import { z } from 'zod';
 // Load environment variables from .env file
 dotenv.config();
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters long'),
   CORS_ORIGIN: z.string().default('*'),
+  ADMIN_USER_IDS: z
+    .string()
+    .default('')
+    .transform((val) => {
+      if (!val || !val.trim()) return [] as string[];
+      return val
+        .split(',')
+        .map((id) => id.trim().toLowerCase())
+        .filter(Boolean);
+    })
+    .refine(
+      (ids) => ids.every((id) => UUID_REGEX.test(id)),
+      { message: 'ADMIN_USER_IDS contains one or more invalid UUID values' }
+    ),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

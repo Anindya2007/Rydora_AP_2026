@@ -3,14 +3,14 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
 import { UnauthorizedError } from '../utils/errors.js';
-import type { UserRole } from '../generated/prisma/client.js';
+import type { PlatformRole } from './rbac.js';
 
 export interface AuthenticatedUser {
   userId: string;
   name: string;
   email: string;
   phone: string | null;
-  roles: (UserRole | 'ADMIN' | string)[];
+  roles: PlatformRole[];
   profileImage: string | null;
   licenseNumber: string | null;
   licenseExpiry: Date | null;
@@ -110,13 +110,21 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       throw new UnauthorizedError('User not found or account no longer exists');
     }
 
+    // Determine platform roles:
+    // Persisted roles originate strictly from PostgreSQL ('USER', 'DRIVER').
+    // Application-level 'ADMIN' role is safely derived when verified database userId is in env.ADMIN_USER_IDS.
+    const resolvedRoles: PlatformRole[] = [...user.roles];
+    if (env.ADMIN_USER_IDS.includes(user.userId.toLowerCase())) {
+      resolvedRoles.push('ADMIN');
+    }
+
     // Attach sanitized user to Request object
     req.user = {
       userId: user.userId,
       name: user.name,
       email: user.email,
       phone: user.phone,
-      roles: user.roles,
+      roles: resolvedRoles,
       profileImage: user.profileImage,
       licenseNumber: user.licenseNumber,
       licenseExpiry: user.licenseExpiry,

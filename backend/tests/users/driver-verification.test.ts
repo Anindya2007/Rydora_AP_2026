@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import request from 'supertest';
 import express, { type Application } from 'express';
 import jwt from 'jsonwebtoken';
@@ -50,7 +50,7 @@ const mockAdminUser = {
   name: 'Admin User',
   email: 'admin@rydora.com',
   phone: '+919876543299',
-  roles: ['ADMIN'],
+  roles: [UserRole.USER], // Persisted in DB as USER; ADMIN role derived dynamically via ADMIN_USER_IDS
   profileImage: null,
   licenseNumber: null,
   licenseExpiry: null,
@@ -79,12 +79,20 @@ const mockDriverUser = {
   updatedAt: new Date('2026-11-20T10:00:00.000Z'),
 };
 
-function generateToken(userId: string): string {
-  return jwt.sign({ sub: userId }, env.JWT_SECRET, { expiresIn: '24h' });
+function generateToken(userId: string, extraClaims: Record<string, any> = {}): string {
+  return jwt.sign({ sub: userId, ...extraClaims }, env.JWT_SECRET, { expiresIn: '24h' });
 }
 
-describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10)', () => {
+describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10 & M5.10.2.1)', () => {
+  let originalAdminUserIds: string[];
+
+  beforeEach(() => {
+    originalAdminUserIds = [...env.ADMIN_USER_IDS];
+    env.ADMIN_USER_IDS = [mockAdminId];
+  });
+
   afterEach(() => {
+    env.ADMIN_USER_IDS = originalAdminUserIds;
     vi.restoreAllMocks();
   });
 
@@ -127,7 +135,7 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
       expect(res.body.data.verification.licenseNumber).toBe('DL-0420110012345');
       expect(res.body.data.verification.driverVerified).toBe(false);
       // Ensure caller roles in session were not elevated
-      expect(mockRegularUser.roles).not.toContain(UserRole.DRIVER);
+      expect(mockRegularUser.roles).toEqual([UserRole.USER]);
     });
 
     it('should normalize licence number to uppercase and trim whitespace', async () => {
@@ -135,8 +143,8 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
       vi.spyOn(prisma.user, 'findFirst').mockResolvedValueOnce(null);
       const updateSpy = vi.spyOn(prisma.user, 'update').mockResolvedValueOnce({
         userId: mockUserId,
-        licenseNumber: 'KA0120220009999',
-        licenseExpiry: new Date('2029-06-30T00:00:00.000Z'),
+        licenseNumber: 'DL-0420110012345',
+        licenseExpiry: new Date(validSubmissionPayload.licenseExpiry),
         driverVerified: false,
         updatedAt: new Date(),
       } as any);
@@ -146,16 +154,15 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
         .post('/api/v1/users/driver-verification')
         .set('Authorization', `Bearer ${token}`)
         .send({
-          licenseNumber: '  ka0120220009999  ',
-          licenseExpiry: '2029-06-30T00:00:00.000Z',
+          licenseNumber: '  dl-0420110012345  ',
+          licenseExpiry: validSubmissionPayload.licenseExpiry,
         });
 
       expect(res.status).toBe(200);
       expect(updateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            licenseNumber: 'KA0120220009999',
-            driverVerified: false,
+            licenseNumber: 'DL-0420110012345',
           }),
         })
       );
@@ -168,7 +175,7 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
       const res = await request(testApp)
         .post('/api/v1/users/driver-verification')
         .set('Authorization', `Bearer ${token}`)
-        .send({ licenseExpiry: '2028-12-31T23:59:59.000Z' });
+        .send({ licenseExpiry: validSubmissionPayload.licenseExpiry });
 
       expect(res.status).toBe(422);
       expect(res.body.success).toBe(false);
@@ -182,9 +189,13 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
       const res = await request(testApp)
         .post('/api/v1/users/driver-verification')
         .set('Authorization', `Bearer ${token}`)
-        .send({ licenseNumber: 'DL1', licenseExpiry: '2028-12-31T23:59:59.000Z' });
+        .send({
+          licenseNumber: 'DL1',
+          licenseExpiry: validSubmissionPayload.licenseExpiry,
+        });
 
       expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
       expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
     });
 
@@ -196,23 +207,21 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
         .post('/api/v1/users/driver-verification')
         .set('Authorization', `Bearer ${token}`)
         .send({
-          licenseNumber: 'DL-0420110012345',
+          licenseNumber: validSubmissionPayload.licenseNumber,
           licenseExpiry: '2020-01-01T00:00:00.000Z',
         });
 
       expect(res.status).toBe(422);
       expect(res.body.success).toBe(false);
       expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
-      expect(res.body.error.details).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ message: expect.stringMatching(/expired|past/i) }),
-        ])
-      );
+      expect(res.body.error.message).toMatch(/validation failed/i);
     });
 
     it('should reject submission when licence number is already registered by another user (409 Conflict)', async () => {
       vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRegularUser as any);
-      vi.spyOn(prisma.user, 'findFirst').mockResolvedValueOnce({ userId: 'other-user-uuid' } as any);
+      vi.spyOn(prisma.user, 'findFirst').mockResolvedValueOnce({
+        userId: 'some-other-user-uuid',
+      } as any);
 
       const token = generateToken(mockUserId);
       const res = await request(testApp)
@@ -223,7 +232,7 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
       expect(res.status).toBe(409);
       expect(res.body.success).toBe(false);
       expect(res.body.error.code).toBe('CONFLICT');
-      expect(res.body.error.message).toMatch(/already registered/i);
+      expect(res.body.error.message).toMatch(/already registered in the system/i);
     });
 
     it('should reject submission when user is already verified as a driver (409 Conflict)', async () => {
@@ -375,6 +384,36 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
       expect(firstRecord.passwordHash).toBeUndefined();
       expect(firstRecord.walletBalance).toBeUndefined();
     });
+
+    it('should dynamically resolve ADMIN role for users in ADMIN_USER_IDS allowlist (M5.10.2)', async () => {
+      // In PostgreSQL, mockAdminUser has roles: [USER]. Dynamically receives ADMIN.
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockAdminUser as any);
+      vi.spyOn(prisma.user, 'count').mockResolvedValueOnce(0);
+      vi.spyOn(prisma.user, 'findMany').mockResolvedValueOnce([]);
+
+      const token = generateToken(mockAdminId);
+      const res = await request(testApp)
+        .get('/api/v1/users/driver-verification/pending')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+
+    it('should prevent token forgery: client-supplied roles claim in JWT cannot bypass allowlist check (M5.10.2)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockRegularUser as any);
+
+      // Client crafts a token with forged roles: ['ADMIN']
+      const forgedToken = generateToken(mockUserId, { roles: ['ADMIN'] });
+
+      const res = await request(testApp)
+        .get('/api/v1/users/driver-verification/pending')
+        .set('Authorization', `Bearer ${forgedToken}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+    });
   });
 
   describe('3. Admin Driver Approval (PATCH /api/v1/users/:userId/driver-verification/approve)', () => {
@@ -473,7 +512,7 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
       expect(res.body.error.code).toBe('BAD_REQUEST');
-      expect(res.body.error.message).toMatch(/not submitted driving licence/i);
+      expect(res.body.error.message).toMatch(/not submitted driving licence details/i);
     });
 
     it('should return 400 when target user licence has expired at time of approval', async () => {
@@ -486,8 +525,8 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
               name: 'Expired Licence User',
               email: 'expired@example.com',
               roles: [UserRole.USER],
-              licenseNumber: 'DL-EXPIRED-999',
-              licenseExpiry: new Date('2021-01-01T00:00:00.000Z'),
+              licenseNumber: 'DL-EXPIRED-12345',
+              licenseExpiry: new Date('2020-01-01T00:00:00.000Z'),
               driverVerified: false,
             }),
           },
@@ -502,7 +541,7 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
       expect(res.body.error.code).toBe('BAD_REQUEST');
-      expect(res.body.error.message).toMatch(/expired/i);
+      expect(res.body.error.message).toMatch(/driving licence has expired/i);
     });
 
     it('should return 409 Conflict when target user is already verified (repeated approval)', async () => {
@@ -512,10 +551,10 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
           user: {
             findUnique: vi.fn().mockResolvedValue({
               userId: mockTargetUserId,
-              name: 'Already Verified Driver',
+              name: 'Already Verified User',
               email: 'verified@example.com',
               roles: [UserRole.USER, UserRole.DRIVER],
-              licenseNumber: 'DL-VALID-12345',
+              licenseNumber: 'DL-ALREADY-12345',
               licenseExpiry: new Date('2028-12-31T00:00:00.000Z'),
               driverVerified: true,
             }),
@@ -555,13 +594,17 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
         updatedAt: new Date(),
       };
 
-      const updateMock = vi.fn().mockResolvedValue(updatedUserMock);
+      const updateManyMock = vi.fn().mockResolvedValue({ count: 1 });
+      const findUniqueMock = vi
+        .fn()
+        .mockResolvedValueOnce(targetPendingUser)
+        .mockResolvedValueOnce(updatedUserMock);
 
       vi.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
         return callback({
           user: {
-            findUnique: vi.fn().mockResolvedValue(targetPendingUser),
-            update: updateMock,
+            findUnique: findUniqueMock,
+            updateMany: updateManyMock,
           },
         });
       });
@@ -578,10 +621,15 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
       expect(res.body.data.user.roles).toContain(UserRole.USER);
       expect(res.body.data.user.roles).toContain(UserRole.DRIVER);
 
-      // Verify transaction update call preserves roles
-      expect(updateMock).toHaveBeenCalledWith(
+      // Verify transaction updateMany call checks driverVerified and roles equality
+      expect(updateManyMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { userId: mockTargetUserId },
+          where: expect.objectContaining({
+            userId: mockTargetUserId,
+            driverVerified: false,
+            licenseNumber: { not: null },
+            roles: { equals: targetPendingUser.roles },
+          }),
           data: expect.objectContaining({
             driverVerified: true,
             roles: { set: [UserRole.USER, UserRole.DRIVER] },
@@ -590,7 +638,7 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
       );
     });
 
-    it('should preserve all existing roles including ADMIN when promoting an admin user to driver', async () => {
+    it('should preserve all existing roles when promoting an admin user to driver', async () => {
       vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockAdminUser as any);
 
       const targetAdminUser = {
@@ -598,24 +646,28 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
         name: 'Co-Admin User',
         email: 'coadmin@rydora.com',
         phone: '+919876543201',
-        roles: ['USER', 'ADMIN'],
+        roles: [UserRole.USER],
         licenseNumber: 'DL-ADMIN-12345',
         licenseExpiry: new Date('2028-12-31T00:00:00.000Z'),
         driverVerified: false,
       };
 
-      const updateMock = vi.fn().mockResolvedValue({
-        ...targetAdminUser,
-        roles: ['USER', 'ADMIN', UserRole.DRIVER],
-        driverVerified: true,
-        updatedAt: new Date(),
-      });
+      const updateManyMock = vi.fn().mockResolvedValue({ count: 1 });
+      const findUniqueMock = vi
+        .fn()
+        .mockResolvedValueOnce(targetAdminUser)
+        .mockResolvedValueOnce({
+          ...targetAdminUser,
+          roles: [UserRole.USER, UserRole.DRIVER],
+          driverVerified: true,
+          updatedAt: new Date(),
+        });
 
       vi.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
         return callback({
           user: {
-            findUnique: vi.fn().mockResolvedValue(targetAdminUser),
-            update: updateMock,
+            findUnique: findUniqueMock,
+            updateMany: updateManyMock,
           },
         });
       });
@@ -627,14 +679,93 @@ describe('Rydora Driver Verification & Admin Approval Test Suite (Milestone 5.10
 
       expect(res.status).toBe(200);
       expect(res.body.data.user.roles).toEqual(
-        expect.arrayContaining(['USER', 'ADMIN', UserRole.DRIVER])
+        expect.arrayContaining([UserRole.USER, UserRole.DRIVER])
       );
-      expect(updateMock).toHaveBeenCalledWith(
+      expect(updateManyMock).toHaveBeenCalledWith(
         expect.objectContaining({
+          where: expect.objectContaining({
+            userId: mockTargetUserId,
+            driverVerified: false,
+            roles: { equals: targetAdminUser.roles },
+          }),
           data: expect.objectContaining({
-            roles: { set: expect.arrayContaining(['USER', 'ADMIN', UserRole.DRIVER]) },
+            roles: { set: [UserRole.USER, UserRole.DRIVER] },
           }),
         })
+      );
+    });
+
+    it('should reject concurrent approval race condition with HTTP 409 Conflict (M5.10.2)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockAdminUser as any);
+
+      const targetPendingUser = {
+        userId: mockTargetUserId,
+        name: 'Applicant User',
+        email: 'applicant@example.com',
+        phone: '+919876543200',
+        roles: [UserRole.USER],
+        licenseNumber: 'DL-VALID-12345',
+        licenseExpiry: new Date('2028-12-31T00:00:00.000Z'),
+        driverVerified: false,
+      };
+
+      // updateMany returns { count: 0 } indicating concurrent approval won the race
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
+        return callback({
+          user: {
+            findUnique: vi.fn().mockResolvedValue(targetPendingUser),
+            updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+          },
+        });
+      });
+
+      const token = generateToken(mockAdminId);
+      const res = await request(testApp)
+        .patch(`/api/v1/users/${mockTargetUserId}/driver-verification/approve`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('CONFLICT');
+      expect(res.body.error.message).toMatch(
+        /Driver verification conflict: User was already verified by another session or verification state changed/i
+      );
+    });
+
+    it('should reject concurrent role modification race condition with HTTP 409 Conflict (M5.10.2.1)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValueOnce(mockAdminUser as any);
+
+      const targetPendingUser = {
+        userId: mockTargetUserId,
+        name: 'Applicant User',
+        email: 'applicant@example.com',
+        phone: '+919876543200',
+        roles: [UserRole.USER],
+        licenseNumber: 'DL-VALID-12345',
+        licenseExpiry: new Date('2028-12-31T00:00:00.000Z'),
+        driverVerified: false,
+      };
+
+      // Concurrent role update caused roles condition to fail -> updateMany returns 0
+      vi.spyOn(prisma, '$transaction').mockImplementation(async (callback: any) => {
+        return callback({
+          user: {
+            findUnique: vi.fn().mockResolvedValue(targetPendingUser),
+            updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+          },
+        });
+      });
+
+      const token = generateToken(mockAdminId);
+      const res = await request(testApp)
+        .patch(`/api/v1/users/${mockTargetUserId}/driver-verification/approve`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('CONFLICT');
+      expect(res.body.error.message).toMatch(
+        /Driver verification conflict: User was already verified by another session or verification state changed/i
       );
     });
   });

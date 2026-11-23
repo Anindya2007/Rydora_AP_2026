@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { UserRole } from '../generated/prisma/client.js';
 import { UnauthorizedError, ForbiddenError } from '../utils/errors.js';
 
-export type PlatformRole = UserRole | 'ADMIN';
+export type PlatformRole = 'USER' | 'DRIVER' | 'ADMIN';
 
 export const ExtendedRole = {
   ...UserRole,
@@ -29,7 +29,7 @@ export const ExtendedRole = {
  * @param allowedRoles Global platform roles permitted to access the target route.
  * @returns Express middleware function.
  */
-export function requireRoles(...allowedRoles: (UserRole | 'ADMIN' | string)[]) {
+export function requireRoles(...allowedRoles: (PlatformRole | UserRole)[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     try {
       // 1. Missing authenticated user context -> 401
@@ -50,7 +50,7 @@ export function requireRoles(...allowedRoles: (UserRole | 'ADMIN' | string)[]) {
 
       // 4. Check for at least one matching role
       const hasMatchingRole = userRoles.some((role) =>
-        (allowedRoles as string[]).includes(role as string)
+        allowedRoles.includes(role as PlatformRole)
       );
       if (!hasMatchingRole) {
         throw new ForbiddenError('Forbidden: Insufficient permissions');

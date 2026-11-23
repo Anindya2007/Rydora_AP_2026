@@ -315,12 +315,31 @@ export async function approveDriverVerification(
     // Preserve all existing roles and add DRIVER exactly once
     const updatedRoles = Array.from(new Set([...targetUser.roles, UserRole.DRIVER]));
 
-    const approvedUser = await tx.user.update({
-      where: { userId: targetUserId },
+    // Concurrency-Safe Conditional Mutation:
+    // Only updates if driverVerified is STILL false and roles have not been mutated concurrently.
+    // If a competing concurrent transaction commits first, this update modifies 0 rows.
+    const updateResult = await tx.user.updateMany({
+      where: {
+        userId: targetUserId,
+        driverVerified: false,
+        licenseNumber: { not: null },
+        roles: { equals: targetUser.roles },
+      },
       data: {
         driverVerified: true,
         roles: { set: updatedRoles },
       },
+    });
+
+    if (updateResult.count === 0) {
+      throw new ConflictError(
+        'Driver verification conflict: User was already verified by another session or verification state changed'
+      );
+    }
+
+    // Retrieve and return fresh approved user representation
+    const approvedUser = await tx.user.findUnique({
+      where: { userId: targetUserId },
       select: {
         userId: true,
         name: true,
@@ -333,6 +352,10 @@ export async function approveDriverVerification(
         updatedAt: true,
       },
     });
+
+    if (!approvedUser) {
+      throw new NotFoundError('Target user not found after approval');
+    }
 
     return approvedUser;
   });
