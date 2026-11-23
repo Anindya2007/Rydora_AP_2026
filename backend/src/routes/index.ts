@@ -8,6 +8,7 @@ import { vehicleRouter } from './vehicle.routes.js';
 import { rideRouter } from './ride.routes.js';
 import { bookingRouter } from './booking.routes.js';
 import { emergencyContactRouter } from './emergency-contact.routes.js';
+import { sosRouter } from './sos.routes.js';
 
 export const apiV1Router = Router();
 
@@ -102,3 +103,6 @@ apiV1Router.use('/bookings', bookingRouter);
 
 // Safety & Emergency Contacts (M8.1):
 apiV1Router.use('/emergency-contacts', emergencyContactRouter);
+
+// Safety & SOS Activation (M8.2):
+apiV1Router.use('/sos', sosRouter);
