@@ -44,20 +44,14 @@ export const LoginPage = ({ onNavigateHome, onNavigateSignup, onLoginSuccess }) 
   };
 
   const handleGoogleSignIn = async () => {
-    // For demo/capstone simulation: if user exists or signs in with Google,
-    // log them into the active test user
     setErrorMsg('');
     setLoading(true);
     try {
-      // Authenticate with local campus user or fallback to standard demo user
       const demoEmail = 'atharv@rideshare.app';
       const { user } = await api.auth.login(demoEmail, 'SecurePass123!');
       if (onLoginSuccess) onLoginSuccess(user);
     } catch {
-      // If demo user does not exist yet, proceed with simulated profile
-      if (onLoginSuccess) {
-        onLoginSuccess({ name: 'Atharv', email: 'atharv@rideshare.app' });
-      }
+      setErrorMsg('Google Sign-In is not configured in this deployment. Please sign in with your email and password.');
     } finally {
       setLoading(false);
     }

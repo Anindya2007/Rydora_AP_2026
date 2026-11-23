@@ -69,9 +69,7 @@ export const SignupPage = ({ onNavigateHome, onNavigateLogin, onLoginSuccess }) 
       const { user } = await api.auth.login('atharv@rideshare.app', 'SecurePass123!');
       if (onLoginSuccess) onLoginSuccess(user);
     } catch {
-      if (onLoginSuccess) {
-        onLoginSuccess({ name: name.trim() || 'Atharv', email: 'atharv@google.com' });
-      }
+      setErrorMsg('Google Sign-Up is not configured in this deployment. Please register using your email and phone.');
     } finally {
       setLoading(false);
     }

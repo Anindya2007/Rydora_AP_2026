@@ -33,7 +33,8 @@ export default function App() {
     return 'ride';
   });
 
-  const handleLoginSuccess = (userData = { name: 'Atharv' }) => {
+  const handleLoginSuccess = (userData) => {
+    if (!userData) return;
     setUser(userData);
     try {
       localStorage.setItem('rideshare_user', JSON.stringify(userData));
