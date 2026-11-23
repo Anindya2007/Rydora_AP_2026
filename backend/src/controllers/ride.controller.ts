@@ -1,5 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
-import { createRideSchema } from '../validators/rideValidator.js';
+import {
+  createRideSchema,
+  driverRidesQuerySchema,
+  rideIdParamSchema,
+} from '../validators/rideValidator.js';
 import { rideService } from '../services/ride.service.js';
 import { sendSuccess } from '../utils/response.js';
 import { UnauthorizedError } from '../utils/errors.js';
@@ -27,6 +31,63 @@ export async function createRide(
   }
 }
 
+/**
+ * Controller handling authenticated driver's ride listing (GET /api/v1/rides/me).
+ * Supports status filter and pagination.
+ */
+export async function listDriverRides(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const validatedQuery = driverRidesQuerySchema.parse(req.query);
+    const result = await rideService.listDriverRides(
+      req.user.userId,
+      validatedQuery
+    );
+
+    sendSuccess(
+      res,
+      { rides: result.rides },
+      'Driver rides retrieved successfully',
+      200,
+      result.pagination
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Controller handling single ride retrieval by UUID (GET /api/v1/rides/:rideId).
+ * Enforces community membership / driver visibility checks.
+ */
+export async function getRideById(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const { rideId } = rideIdParamSchema.parse(req.params);
+    const ride = await rideService.getRideById(req.user.userId, rideId);
+
+    sendSuccess(res, { ride }, 'Ride retrieved successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const RideController = {
   createRide,
+  listDriverRides,
+  getRideById,
 };

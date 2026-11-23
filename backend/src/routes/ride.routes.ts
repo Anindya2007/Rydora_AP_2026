@@ -2,7 +2,11 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { authenticate } from '../middleware/auth.js';
 import { requireRoles } from '../middleware/rbac.js';
 import { UserRole } from '../generated/prisma/client.js';
-import { createRideSchema } from '../validators/rideValidator.js';
+import {
+  createRideSchema,
+  rideIdParamSchema,
+  driverRidesQuerySchema,
+} from '../validators/rideValidator.js';
 import { RideController } from '../controllers/ride.controller.js';
 
 export const rideRouter = Router();
@@ -23,6 +27,73 @@ export const validateCreateRide = (
     next(error);
   }
 };
+
+/**
+ * Request parameter validation middleware for single ride retrieval.
+ */
+export const validateRideIdParam = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    rideIdParamSchema.parse(req.params);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Request query validation middleware for driver rides listing.
+ */
+export const validateDriverRidesQuery = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    driverRidesQuerySchema.parse(req.query);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/v1/rides/me
+ * Protected endpoint for authenticated drivers to view their published rides.
+ * NOTE: Declared BEFORE /:rideId to prevent route parameter collision.
+ *
+ * Security & Middleware Execution Sequence:
+ * 1. authenticate - Validates JWT Bearer token and attaches fresh user state to req.user.
+ * 2. requireRoles(UserRole.DRIVER) - Enforces global DRIVER role on req.user.roles.
+ * 3. validateDriverRidesQuery - Validates pagination and status filters.
+ * 4. RideController.listDriverRides - Returns paginated list of driver's rides.
+ */
+rideRouter.get(
+  '/me',
+  authenticate,
+  requireRoles(UserRole.DRIVER),
+  validateDriverRidesQuery,
+  RideController.listDriverRides
+);
+
+/**
+ * GET /api/v1/rides/:rideId
+ * Protected endpoint to retrieve details of an individual ride.
+ *
+ * Security & Middleware Execution Sequence:
+ * 1. authenticate - Validates JWT Bearer token and attaches fresh user state to req.user.
+ * 2. validateRideIdParam - Validates rideId parameter as a well-formed UUID.
+ * 3. RideController.getRideById - Verifies community visibility and returns ride with safe driver/vehicle details.
+ */
+rideRouter.get(
+  '/:rideId',
+  authenticate,
+  validateRideIdParam,
+  RideController.getRideById
+);
 
 /**
  * POST /api/v1/rides

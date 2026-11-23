@@ -600,4 +600,359 @@ describe('Milestone 6.1: Ride Creation API (POST /api/v1/rides)', () => {
       expect(res.body.error.code).toBe('INTERNAL_SERVER_ERROR');
     });
   });
+
+  describe('Milestone 6.2: Single Ride Retrieval (GET /api/v1/rides/:rideId)', () => {
+    const mockAdminId = '99999999-8888-7777-6666-555555555555';
+
+    const mockRideWithRelations = {
+      rideId: mockRideId,
+      driverId: mockDriverId,
+      vehicleId: mockVehicleId,
+      communityId: mockCommunityId,
+      source: 'SRM University Main Gate',
+      destination: 'Chennai Central Railway Station',
+      departureTime: futureDepartureTime,
+      sourceLatitude: { toString: () => '12.823000' },
+      sourceLongitude: { toString: () => '80.044000' },
+      destinationLatitude: { toString: () => '13.082700' },
+      destinationLongitude: { toString: () => '80.270700' },
+      totalSeats: 3,
+      availableSeats: 3,
+      farePerSeat: { toString: () => '150.00' },
+      status: RideStatus.SCHEDULED,
+      createdAt: mockTimestamp,
+      updatedAt: mockTimestamp,
+      driver: {
+        userId: mockDriverId,
+        name: 'Rohan Sharma',
+        email: 'rohan.driver@rydora.in',
+        profileImage: null,
+        averageRating: { toString: () => '5.00' },
+        ratingCount: 10,
+      },
+      vehicle: {
+        vehicleId: mockVehicleId,
+        make: 'Honda',
+        model: 'City',
+        color: 'White',
+        vehicleType: 'SEDAN',
+        registrationNumber: 'DL01AB1234',
+        seatCapacity: 4,
+      },
+      community: {
+        communityId: mockCommunityId,
+        name: 'SRM University',
+        domain: 'srmist.edu.in',
+        status: CommunityStatus.ACTIVE,
+      },
+    };
+
+    it('should reject unauthenticated request when Authorization header is missing (401)', async () => {
+      const res = await request(app).get(`/api/v1/rides/${mockRideId}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+
+    it('should reject invalid UUID format for rideId (422 Unprocessable Entity)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRegularUser as any);
+
+      const token = generateToken(mockOtherUserId);
+      const res = await request(app)
+        .get('/api/v1/rides/invalid-uuid-format')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should return 404 Not Found when ride does not exist', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRegularUser as any);
+      vi.spyOn(prisma.ride, 'findUnique').mockResolvedValueOnce(null);
+
+      const token = generateToken(mockOtherUserId);
+      const res = await request(app)
+        .get(`/api/v1/rides/${mockRideId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('NOT_FOUND');
+      expect(res.body.error.message).toMatch(/ride not found/i);
+    });
+
+    it('should allow the publishing driver to retrieve their own ride (200 OK)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDriverDbUser as any);
+      vi.spyOn(prisma.ride, 'findUnique').mockResolvedValueOnce(mockRideWithRelations as any);
+
+      const token = generateToken(mockDriverId);
+      const res = await request(app)
+        .get(`/api/v1/rides/${mockRideId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.ride.rideId).toBe(mockRideId);
+      expect(res.body.data.ride.driverId).toBe(mockDriverId);
+      expect(res.body.data.ride.driver.name).toBe('Rohan Sharma');
+      expect(res.body.data.ride.vehicle.model).toBe('City');
+    });
+
+    it('should allow an active community member to retrieve ride details (200 OK)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRegularUser as any);
+      vi.spyOn(prisma.ride, 'findUnique').mockResolvedValueOnce(mockRideWithRelations as any);
+      // Member is active in ride's community
+      vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValueOnce(mockMembership as any);
+
+      const token = generateToken(mockOtherUserId);
+      const res = await request(app)
+        .get(`/api/v1/rides/${mockRideId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.ride.rideId).toBe(mockRideId);
+      expect(res.body.data.ride.community.name).toBe('SRM University');
+    });
+
+    it('should allow a platform ADMIN to retrieve any ride (200 OK)', async () => {
+      const mockAdminDbUser = {
+        userId: mockAdminId,
+        roles: [UserRole.USER],
+      };
+      env.ADMIN_USER_IDS = [mockAdminId];
+
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockAdminDbUser as any);
+      vi.spyOn(prisma.ride, 'findUnique').mockResolvedValueOnce(mockRideWithRelations as any);
+
+      const token = generateToken(mockAdminId);
+      const res = await request(app)
+        .get(`/api/v1/rides/${mockRideId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.ride.rideId).toBe(mockRideId);
+    });
+
+    it('should reject a user who is NOT an active member of the community with HTTP 403 Forbidden', async () => {
+      env.ADMIN_USER_IDS = [];
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRegularUser as any);
+      vi.spyOn(prisma.ride, 'findUnique').mockResolvedValueOnce(mockRideWithRelations as any);
+      // Non-member
+      vi.spyOn(prisma.communityMembership, 'findUnique').mockResolvedValueOnce(null);
+
+      const token = generateToken(mockOtherUserId);
+      const res = await request(app)
+        .get(`/api/v1/rides/${mockRideId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+      expect(res.body.error.message).toMatch(/active member of the community/i);
+    });
+
+    it('should never expose sensitive internal fields or driver credentials in response', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDriverDbUser as any);
+      vi.spyOn(prisma.ride, 'findUnique').mockResolvedValueOnce(mockRideWithRelations as any);
+
+      const token = generateToken(mockDriverId);
+      const res = await request(app)
+        .get(`/api/v1/rides/${mockRideId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      const ride = res.body.data.ride;
+      expect(ride.driver.passwordHash).toBeUndefined();
+      expect(ride.driver.walletBalance).toBeUndefined();
+      expect(ride.driver.licenseNumber).toBeUndefined();
+      expect(ride.driver.licenseExpiry).toBeUndefined();
+    });
+
+    it('should successfully retrieve completed or cancelled rides with accurate status', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDriverDbUser as any);
+      vi.spyOn(prisma.ride, 'findUnique').mockResolvedValueOnce({
+        ...mockRideWithRelations,
+        status: RideStatus.COMPLETED,
+      } as any);
+
+      const token = generateToken(mockDriverId);
+      const res = await request(app)
+        .get(`/api/v1/rides/${mockRideId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.ride.status).toBe('COMPLETED');
+    });
+  });
+
+  describe('Milestone 6.2: Driver Rides Listing (GET /api/v1/rides/me)', () => {
+    const mockDriverRidesList = [
+      {
+        rideId: mockRideId,
+        driverId: mockDriverId,
+        vehicleId: mockVehicleId,
+        communityId: mockCommunityId,
+        source: 'SRM University Main Gate',
+        destination: 'Chennai Central Railway Station',
+        departureTime: futureDepartureTime,
+        sourceLatitude: { toString: () => '12.823000' },
+        sourceLongitude: { toString: () => '80.044000' },
+        destinationLatitude: { toString: () => '13.082700' },
+        destinationLongitude: { toString: () => '80.270700' },
+        totalSeats: 3,
+        availableSeats: 3,
+        farePerSeat: { toString: () => '150.00' },
+        status: RideStatus.SCHEDULED,
+        createdAt: mockTimestamp,
+        updatedAt: mockTimestamp,
+        vehicle: {
+          vehicleId: mockVehicleId,
+          make: 'Honda',
+          model: 'City',
+          color: 'White',
+          vehicleType: 'SEDAN',
+          registrationNumber: 'DL01AB1234',
+          seatCapacity: 4,
+        },
+        community: {
+          communityId: mockCommunityId,
+          name: 'SRM University',
+          domain: 'srmist.edu.in',
+          status: CommunityStatus.ACTIVE,
+        },
+      },
+    ];
+
+    it('should reject unauthenticated request when Authorization header is missing (401)', async () => {
+      const res = await request(app).get('/api/v1/rides/me');
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
+    });
+
+    it('should reject non-driver user with HTTP 403 Forbidden', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRegularUser as any);
+
+      const token = generateToken(mockOtherUserId);
+      const res = await request(app)
+        .get('/api/v1/rides/me')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('FORBIDDEN');
+      expect(res.body.error.message).toMatch(/insufficient permissions/i);
+    });
+
+    it('should return paginated list of driver rides (200 OK)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDriverDbUser as any);
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+      vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce(mockDriverRidesList as any);
+
+      const token = generateToken(mockDriverId);
+      const res = await request(app)
+        .get('/api/v1/rides/me')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.rides).toHaveLength(1);
+      expect(res.body.data.rides[0].rideId).toBe(mockRideId);
+      expect(res.body.data.rides[0].driverId).toBe(mockDriverId);
+      expect(res.body.data.rides[0].vehicle.make).toBe('Honda');
+      expect(res.body.meta.pagination).toBeDefined();
+      expect(res.body.meta.pagination.total).toBe(1);
+      expect(res.body.meta.pagination.page).toBe(1);
+    });
+
+    it('should filter driver rides by status (200 OK)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDriverDbUser as any);
+      const countSpy = vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce(mockDriverRidesList as any);
+
+      const token = generateToken(mockDriverId);
+      const res = await request(app)
+        .get('/api/v1/rides/me?status=SCHEDULED')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(countSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            driverId: mockDriverId,
+            status: 'SCHEDULED',
+          }),
+        })
+      );
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            driverId: mockDriverId,
+            status: 'SCHEDULED',
+          }),
+        })
+      );
+    });
+
+    it('should return empty list when driver has no published rides (200 OK)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDriverDbUser as any);
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(0);
+      vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([]);
+
+      const token = generateToken(mockDriverId);
+      const res = await request(app)
+        .get('/api/v1/rides/me')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.rides).toEqual([]);
+      expect(res.body.meta.pagination.total).toBe(0);
+      expect(res.body.meta.pagination.totalPages).toBe(0);
+      expect(res.body.meta.pagination.hasNext).toBe(false);
+    });
+
+    it('should respect custom pagination parameters (page and limit)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDriverDbUser as any);
+      const countSpy = vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(25);
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([]);
+
+      const token = generateToken(mockDriverId);
+      const res = await request(app)
+        .get('/api/v1/rides/me?page=2&limit=10')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 10,
+          take: 10,
+        })
+      );
+      expect(res.body.meta.pagination.page).toBe(2);
+      expect(res.body.meta.pagination.limit).toBe(10);
+      expect(res.body.meta.pagination.total).toBe(25);
+      expect(res.body.meta.pagination.totalPages).toBe(3);
+      expect(res.body.meta.pagination.hasNext).toBe(true);
+      expect(res.body.meta.pagination.hasPrev).toBe(true);
+    });
+
+    it('should reject invalid query parameters such as limit=0 (422 Unprocessable Entity)', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDriverDbUser as any);
+
+      const token = generateToken(mockDriverId);
+      const res = await request(app)
+        .get('/api/v1/rides/me?limit=0')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+  });
 });

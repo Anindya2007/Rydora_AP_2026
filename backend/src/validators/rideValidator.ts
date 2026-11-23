@@ -125,6 +125,20 @@ export const rideQuerySchema = z
 export type RideQueryInput = z.infer<typeof rideQuerySchema>;
 
 /**
+ * Validation schema for driver's own published rides query (GET /api/v1/rides/me).
+ */
+export const driverRidesQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(100).default(20),
+    status: z.enum(['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
+    communityId: z.string().trim().regex(UUID_REGEX, 'Community ID must be a valid UUID').optional(),
+  })
+  .strict();
+
+export type DriverRidesQueryInput = z.infer<typeof driverRidesQuerySchema>;
+
+/**
  * Parameter schema for endpoints addressing rides by UUID.
  */
 export const rideIdParamSchema = z
