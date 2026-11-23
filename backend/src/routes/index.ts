@@ -10,6 +10,7 @@ import { bookingRouter } from './booking.routes.js';
 import { emergencyContactRouter } from './emergency-contact.routes.js';
 import { sosRouter } from './sos.routes.js';
 import { paymentRouter } from './payment.routes.js';
+import { ratingRouter } from './rating.routes.js';
 
 export const apiV1Router = Router();
 
@@ -111,3 +112,6 @@ apiV1Router.use('/sos', sosRouter);
 // Financial Transactions & Payments (M9.1):
 apiV1Router.use('/payments', paymentRouter);
 apiV1Router.use('/transactions', paymentRouter);
+
+// Ratings & Reviews Engine (M10):
+apiV1Router.use('/ratings', ratingRouter);

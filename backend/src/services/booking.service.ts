@@ -881,6 +881,103 @@ export async function cancelPassengerBooking(
   });
 }
 
+/**
+ * ============================================================================
+ * RELEASE EXPIRED PENDING BOOKINGS (Automated Cleanup & Deadlock Release)
+ * ============================================================================
+ * When a rider creates a booking reservation, seats are immediately decremented
+ * from `Ride.availableSeats` to prevent overselling.
+ *
+ * If a rider leaves the tab open, loses their internet connection, or abandons
+ * the payment flow without confirming within the expiry window (default: 10 minutes),
+ * this function automatically:
+ * 1. Finds all stale PENDING bookings created more than `expiryMinutes` ago.
+ * 2. Marks their status as CANCELLED with an '[EXPIRED]' audit reason.
+ * 3. Atomically restores the held seats back to the ride's `availableSeats`.
+ *
+ * This prevents ghost seat reservations and allows other genuine passengers to book.
+ *
+ * @param expiryMinutes - Inactivity threshold in minutes (default: 10 minutes)
+ * @returns Number of expired bookings successfully released
+ */
+export async function releaseExpiredPendingBookings(
+  expiryMinutes: number = 10
+): Promise<number> {
+  const cutoffTime = new Date(Date.now() - expiryMinutes * 60 * 1000);
+
+  // 1. Find all stale PENDING bookings created prior to the cutoff threshold
+  const staleBookings = await prisma.booking.findMany({
+    where: {
+      status: BookingStatus.PENDING,
+      bookedAt: {
+        lte: cutoffTime,
+      },
+    },
+    select: {
+      bookingId: true,
+      rideId: true,
+      seatsBooked: true,
+      ride: {
+        select: {
+          totalSeats: true,
+          availableSeats: true,
+        },
+      },
+    },
+  });
+
+  if (staleBookings.length === 0) {
+    return 0;
+  }
+
+  let releasedCount = 0;
+
+  // 2. Atomically cancel each stale booking and restore ride seats
+  for (const stale of staleBookings) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Atomic status transition from PENDING to CANCELLED
+        const cancelResult = await tx.booking.updateMany({
+          where: {
+            bookingId: stale.bookingId,
+            status: BookingStatus.PENDING,
+          },
+          data: {
+            status: BookingStatus.CANCELLED,
+            cancelledAt: new Date(),
+            cancellationReason: `[EXPIRED] Reservation timed out after ${expiryMinutes} minutes without payment confirmation`,
+          },
+        });
+
+        // Only restore seats if this transaction actually transitioned the booking status
+        if (cancelResult.count > 0) {
+          await tx.ride.updateMany({
+            where: {
+              rideId: stale.rideId,
+              availableSeats: {
+                lte: stale.ride.totalSeats - stale.seatsBooked,
+              },
+            },
+            data: {
+              availableSeats: {
+                increment: stale.seatsBooked,
+              },
+            },
+          });
+          releasedCount++;
+        }
+      });
+    } catch (err: any) {
+      console.warn(
+        `⚠️ [Booking Expiry] Failed to release stale booking ${stale.bookingId}:`,
+        err.message
+      );
+    }
+  }
+
+  return releasedCount;
+}
+
 export const bookingService = {
   createBooking,
   getBookingById,
@@ -889,4 +986,5 @@ export const bookingService = {
   approveBooking,
   rejectBooking,
   cancelPassengerBooking,
+  releaseExpiredPendingBookings,
 };

@@ -9,6 +9,7 @@ import {
 } from '../validators/bookingValidator.js';
 import { BookingController } from '../controllers/booking.controller.js';
 import { PaymentController } from '../controllers/payment.controller.js';
+import { RatingController } from '../controllers/rating.controller.js';
 import { validateProcessPayment, validateProcessRefund } from './payment.routes.js';
 
 export const bookingRouter = Router();
@@ -264,4 +265,31 @@ bookingRouter.post(
   },
   validateProcessRefund,
   PaymentController.processRefund
+);
+
+/**
+ * POST /api/v1/bookings/:bookingId/rating
+ * POST /api/v1/bookings/:bookingId/ratings
+ * Protected endpoint to rate a completed booking.
+ */
+bookingRouter.post(
+  '/:bookingId/rating',
+  authenticate,
+  validateBookingIdParam,
+  (req, _res, next) => {
+    req.body = { ...req.body, bookingId: req.params.bookingId };
+    next();
+  },
+  RatingController.submitRating
+);
+
+bookingRouter.post(
+  '/:bookingId/ratings',
+  authenticate,
+  validateBookingIdParam,
+  (req, _res, next) => {
+    req.body = { ...req.body, bookingId: req.params.bookingId };
+    next();
+  },
+  RatingController.submitRating
 );

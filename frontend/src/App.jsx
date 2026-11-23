@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Hero } from '@/components/ui/tailwind-css-background-snippet';
 import { Navbar } from '@/components/Navbar';
 import { RidePage } from '@/components/RidePage';
@@ -44,10 +45,23 @@ export default function App() {
 
   const handleSignOut = () => {
     setUser(null);
-    try {
-      localStorage.removeItem('rideshare_user');
-    } catch {}
+    api.auth.logout();
   };
+
+  useEffect(() => {
+    const token = api.auth.getToken();
+    if (token) {
+      api.auth
+        .getMe()
+        .then((freshUser) => {
+          if (freshUser) setUser(freshUser);
+        })
+        .catch(() => {
+          api.auth.logout();
+          setUser(null);
+        });
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {

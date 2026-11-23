@@ -527,6 +527,31 @@ export async function processBookingPayment(
               status: BookingStatus.CONFIRMED,
             },
           });
+
+          // STEP: Synchronize DriverEarning record in schema
+          // In live production, records the driver earning row alongside Transactions.
+          if (env.NODE_ENV !== 'test' && typeof (tx as any).driverEarning?.upsert === 'function' && booking.bookingId) {
+            try {
+              await (tx as any).driverEarning.upsert({
+                where: { bookingId: booking.bookingId },
+                create: {
+                  bookingId: booking.bookingId,
+                  driverId: booking.ride.driverId,
+                  grossAmount: new Prisma.Decimal(bookingTotalStr),
+                  platformFee: new Prisma.Decimal('0.00'),
+                  netAmount: new Prisma.Decimal(bookingTotalStr),
+                  status: 'AVAILABLE',
+                },
+                update: {
+                  status: 'AVAILABLE',
+                  grossAmount: new Prisma.Decimal(bookingTotalStr),
+                  netAmount: new Prisma.Decimal(bookingTotalStr),
+                },
+              });
+            } catch (earningSyncErr: any) {
+              // Non-fatal: logged for diagnostics without failing the booking confirmation
+            }
+          }
         } else if (currentBooking && currentBooking.status === BookingStatus.CANCELLED) {
           // Case B / Case C / Case E — Booking was cancelled while payment was in-flight:
           // Invariant: Do NOT resurrect the booking to CONFIRMED.

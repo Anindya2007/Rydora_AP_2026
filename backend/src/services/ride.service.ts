@@ -214,7 +214,11 @@ export async function createRide(
   driverId: string,
   input: CreateRideInput
 ): Promise<RideOutput> {
-  // 1. Verify driver existence, DRIVER role, and driverVerified status
+  // --------------------------------------------------------------------------
+  // STEP 1: Verify Driver Identity & Verification Status
+  // Only users who have been approved by an administrator and hold the DRIVER role
+  // are allowed to publish rides.
+  // --------------------------------------------------------------------------
   const driver = await prisma.user.findUnique({
     where: { userId: driverId },
     select: {
@@ -233,7 +237,10 @@ export async function createRide(
     throw new ForbiddenError('Forbidden: Must be an approved and verified driver to publish a ride');
   }
 
-  // 2. Verify vehicle ownership and active lifecycle status (zero-knowledge privacy)
+  // --------------------------------------------------------------------------
+  // STEP 2: Verify Vehicle Ownership & Active Lifecycle Status
+  // A driver cannot publish rides using another person's car or a deactivated vehicle.
+  // --------------------------------------------------------------------------
   const vehicle = await prisma.vehicle.findFirst({
     where: {
       vehicleId: input.vehicleId,
@@ -254,14 +261,21 @@ export async function createRide(
     throw new BadRequestError('Selected vehicle is inactive and cannot be used for rides');
   }
 
-  // 3. Validate seat capacity against vehicle bookable passenger capacity (Decision 06)
+  // --------------------------------------------------------------------------
+  // STEP 3: Enforce Vehicle Passenger Seat Capacity Limit
+  // Offerer cannot offer more seats than the vehicle physically supports.
+  // --------------------------------------------------------------------------
   if (input.totalSeats > vehicle.seatCapacity) {
     throw new BadRequestError(
       `Total seats offered (${input.totalSeats}) exceeds vehicle seat capacity (${vehicle.seatCapacity})`
     );
   }
 
-  // 4. Verify target community existence and active driver membership (Decision 07)
+  // --------------------------------------------------------------------------
+  // STEP 4: Verify Community Membership (Decision 07 - Strict Community Silo)
+  // Rides are private to communities. Drivers can only publish rides in
+  // communities where they hold an ACTIVE membership.
+  // --------------------------------------------------------------------------
   const community = await prisma.community.findUnique({
     where: { communityId: input.communityId },
     select: {
@@ -290,7 +304,10 @@ export async function createRide(
     throw new ForbiddenError('Forbidden: Driver must be an active member of the community to publish a ride');
   }
 
-  // 5. Prevent scheduling conflicts: driver or vehicle already committed at exact departure time
+  // --------------------------------------------------------------------------
+  // STEP 5: Scheduling Conflict Check
+  // A driver or vehicle cannot be committed to two overlapping rides simultaneously.
+  // --------------------------------------------------------------------------
   const existingConflict = await prisma.ride.findFirst({
     where: {
       departureTime: input.departureTime,
@@ -309,7 +326,10 @@ export async function createRide(
     );
   }
 
-  // 6. Create ride in PostgreSQL
+  // --------------------------------------------------------------------------
+  // STEP 6: Persist the New Ride to the Database
+  // Initial state: availableSeats = totalSeats, status = SCHEDULED
+  // --------------------------------------------------------------------------
   const ride = await prisma.ride.create({
     data: {
       driverId,

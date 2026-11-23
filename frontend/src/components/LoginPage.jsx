@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { api } from '../lib/api';
 import { LiquidGlassPanel } from './ui/LiquidGlassPanel';
 import { LiquidGlassButton } from './ui/LiquidGlassButton';
 import {
@@ -17,20 +18,48 @@ export const LoginPage = ({ onNavigateHome, onNavigateSignup, onLoginSuccess }) 
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const canSubmit = email.trim() && password.length >= 6;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!canSubmit) return;
-    if (onLoginSuccess) {
-      onLoginSuccess({ name: 'Atharv', email: email || 'atharv@rideshare.app' });
+    if (!canSubmit || loading) return;
+    setErrorMsg('');
+    setLoading(true);
+    try {
+      const { user } = await api.auth.login(email.trim(), password);
+      if (onLoginSuccess) {
+        onLoginSuccess(user);
+      }
+    } catch (err) {
+      const msg =
+        err.response?.data?.error?.message ||
+        'Login failed. Please check your credentials and try again.';
+      setErrorMsg(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleGoogleSignIn = () => {
-    if (onLoginSuccess) {
-      onLoginSuccess({ name: 'Atharv', email: 'atharv@google.com' });
+  const handleGoogleSignIn = async () => {
+    // For demo/capstone simulation: if user exists or signs in with Google,
+    // log them into the active test user
+    setErrorMsg('');
+    setLoading(true);
+    try {
+      // Authenticate with local campus user or fallback to standard demo user
+      const demoEmail = 'atharv@rideshare.app';
+      const { user } = await api.auth.login(demoEmail, 'SecurePass123!');
+      if (onLoginSuccess) onLoginSuccess(user);
+    } catch {
+      // If demo user does not exist yet, proceed with simulated profile
+      if (onLoginSuccess) {
+        onLoginSuccess({ name: 'Atharv', email: 'atharv@rideshare.app' });
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -386,6 +415,21 @@ export const LoginPage = ({ onNavigateHome, onNavigateSignup, onLoginSuccess }) 
 
             {/* Form Fields */}
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {errorMsg && (
+                <div
+                  style={{
+                    padding: '10px 16px',
+                    borderRadius: '14px',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    border: '1px solid rgba(239, 68, 68, 0.35)',
+                    color: '#fca5a5',
+                    fontSize: '13.5px',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {errorMsg}
+                </div>
+              )}
               {/* Email Input Capsule */}
               <LiquidGlassPanel
                 pill={true}
@@ -523,19 +567,20 @@ export const LoginPage = ({ onNavigateHome, onNavigateSignup, onLoginSuccess }) 
               {/* Submit Button */}
               <LiquidGlassButton
                 scale={1.02}
-                disabled={!canSubmit}
+                disabled={!canSubmit || loading}
                 style={{
                   height: '48px',
                   width: '100%',
                   fontSize: '15px',
                   fontWeight: 600,
-                  background: canSubmit ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.04)',
+                  background: canSubmit && !loading ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.04)',
                   border: 'none',
                   justifyContent: 'center',
                   marginTop: '6px',
+                  opacity: loading ? 0.7 : 1,
                 }}
               >
-                Sign In to RideShare →
+                {loading ? 'Signing In...' : 'Sign In to RideShare →'}
               </LiquidGlassButton>
             </form>
 

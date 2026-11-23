@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../lib/api';
 import { LiquidGlassPanel } from './ui/LiquidGlassPanel';
 import { LiquidGlassButton } from './ui/LiquidGlassButton';
 import {
@@ -15,6 +16,74 @@ import {
 
 export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
   const [weeklyHours, setWeeklyHours] = useState(30);
+
+  // Driver Pipeline & Dashboard State
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [licenseExpiry, setLicenseExpiry] = useState('');
+  const [verifLoading, setVerifLoading] = useState(false);
+  const [verifMessage, setVerifMessage] = useState('');
+  const [driverEarnings, setDriverEarnings] = useState(null);
+  const [vehicles, setVehicles] = useState([]);
+  const [showVehicleForm, setShowVehicleForm] = useState(false);
+  const [vehicleData, setVehicleData] = useState({
+    vehicleType: 'Sedan',
+    make: 'Hyundai',
+    model: 'Verna',
+    registrationNumber: '',
+    color: 'Silver',
+    seatCapacity: 4,
+  });
+
+  const isDriver = user?.roles?.includes('DRIVER') || user?.driverVerified;
+
+  useEffect(() => {
+    if (user && isDriver) {
+      api.driver
+        .getEarnings()
+        .then((data) => setDriverEarnings(data))
+        .catch(() => {});
+      api.driver
+        .getVehicles()
+        .then((data) => setVehicles(Array.isArray(data) ? data : []))
+        .catch(() => {});
+    }
+  }, [user, isDriver]);
+
+  const handleSubmitVerification = async (e) => {
+    e.preventDefault();
+    if (!licenseNumber.trim() || !licenseExpiry) return;
+    setVerifLoading(true);
+    setVerifMessage('');
+    try {
+      await api.driver.submitVerification(
+        licenseNumber.trim(),
+        new Date(licenseExpiry).toISOString()
+      );
+      setVerifMessage(
+        'Driving licence submitted successfully! Pending verification by Rydora fleet administration.'
+      );
+    } catch (err) {
+      setVerifMessage(
+        err.response?.data?.error?.message ||
+          'Submission failed. Please check licence details and future expiry date.'
+      );
+    } finally {
+      setVerifLoading(false);
+    }
+  };
+
+  const handleRegisterVehicle = async (e) => {
+    e.preventDefault();
+    try {
+      await api.driver.registerVehicle(vehicleData);
+      alert('Vehicle registered successfully!');
+      setShowVehicleForm(false);
+      const v = await api.driver.getVehicles();
+      setVehicles(Array.isArray(v) ? v : []);
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Could not register vehicle.');
+    }
+  };
 
   // Hourly base rate in ₹
   const hourlyRate = 620;
@@ -220,6 +289,376 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
           </div>
         </LiquidGlassPanel>
       </section>
+
+      {/* Driver Onboarding & Management Dashboard */}
+      {user && (
+        <section className="rs-section">
+          <LiquidGlassPanel
+            radius={28}
+            frosted={true}
+            style={{
+              padding: 'clamp(24px, 4vw, 40px)',
+              boxSizing: 'border-box',
+              background: 'rgba(20, 16, 36, 0.65)',
+            }}
+          >
+            {!isDriver ? (
+              <div>
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    display: 'block',
+                    marginBottom: '8px',
+                  }}
+                >
+                  Step 1 • Document Verification
+                </span>
+                <h2
+                  style={{
+                    fontSize: 'clamp(24px, 3.5vw, 32px)',
+                    fontWeight: 700,
+                    color: '#ffffff',
+                    margin: '0 0 12px 0',
+                    letterSpacing: '-0.025em',
+                  }}
+                >
+                  Submit your Driving Licence
+                </h2>
+                <p
+                  style={{
+                    fontSize: '15px',
+                    color: 'rgba(255, 255, 255, 0.72)',
+                    margin: '0 0 24px 0',
+                    maxWidth: '560px',
+                  }}
+                >
+                  Enter your official driving licence number and future expiry date to begin verified driver onboarding.
+                </p>
+
+                {verifMessage && (
+                  <div
+                    style={{
+                      padding: '12px 18px',
+                      borderRadius: '16px',
+                      background: verifMessage.includes('successfully')
+                        ? 'rgba(34, 197, 94, 0.15)'
+                        : 'rgba(239, 68, 68, 0.15)',
+                      border: verifMessage.includes('successfully')
+                        ? '1px solid rgba(34, 197, 94, 0.35)'
+                        : '1px solid rgba(239, 68, 68, 0.35)',
+                      color: verifMessage.includes('successfully') ? '#86efac' : '#fca5a5',
+                      fontSize: '13.5px',
+                      marginBottom: '20px',
+                    }}
+                  >
+                    {verifMessage}
+                  </div>
+                )}
+
+                <form
+                  onSubmit={handleSubmitVerification}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))',
+                    gap: '16px',
+                    maxWidth: '640px',
+                  }}
+                >
+                  <div>
+                    <label style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '6px' }}>
+                      Licence Number
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. DL-04-2022-0012345"
+                      value={licenseNumber}
+                      onChange={(e) => setLicenseNumber(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.16)',
+                        borderRadius: '14px',
+                        color: '#ffffff',
+                        fontSize: '14.5px',
+                        boxSizing: 'border-box',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '6px' }}>
+                      Licence Expiry Date
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={licenseExpiry}
+                      onChange={(e) => setLicenseExpiry(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.16)',
+                        borderRadius: '14px',
+                        color: '#ffffff',
+                        fontSize: '14.5px',
+                        boxSizing: 'border-box',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ gridColumn: '1 / -1', marginTop: '6px' }}>
+                    <LiquidGlassButton
+                      scale={1}
+                      disabled={verifLoading || !licenseNumber.trim() || !licenseExpiry}
+                      style={{
+                        height: '44px',
+                        padding: '0 24px',
+                        background: 'rgba(99, 102, 241, 0.35)',
+                        border: '1px solid rgba(99, 102, 241, 0.5)',
+                        color: '#ffffff',
+                      }}
+                    >
+                      {verifLoading ? 'Submitting...' : 'Submit Licence Details →'}
+                    </LiquidGlassButton>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '24px' }}>
+                  <div>
+                    <span
+                      style={{
+                        fontSize: '11.5px',
+                        fontWeight: 600,
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                        color: '#34d399',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: 'rgba(52, 211, 153, 0.15)',
+                        padding: '4px 10px',
+                        borderRadius: '9999px',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      ✓ Verified Driver Status
+                    </span>
+                    <h2
+                      style={{
+                        fontSize: 'clamp(24px, 3.5vw, 32px)',
+                        fontWeight: 700,
+                        color: '#ffffff',
+                        margin: '0 0 6px 0',
+                        letterSpacing: '-0.025em',
+                      }}
+                    >
+                      Driver Portal & Fleet
+                    </h2>
+                  </div>
+
+                  <LiquidGlassButton
+                    scale={0.9}
+                    onClick={() => setShowVehicleForm((prev) => !prev)}
+                    style={{ background: 'rgba(255, 255, 255, 0.1)' }}
+                  >
+                    {showVehicleForm ? 'Cancel Vehicle Entry' : '+ Register New Vehicle'}
+                  </LiquidGlassButton>
+                </div>
+
+                {/* Earnings Summary Cards */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
+                    gap: '16px',
+                    marginBottom: '28px',
+                  }}
+                >
+                  <div
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      borderRadius: '18px',
+                      padding: '20px',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                    }}
+                  >
+                    <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)' }}>Total Earnings</span>
+                    <div style={{ fontSize: '26px', fontWeight: 800, color: '#ffffff', marginTop: '4px' }}>
+                      ₹{driverEarnings?.summary?.netEarnings || '0.00'}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      borderRadius: '18px',
+                      padding: '20px',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                    }}
+                  >
+                    <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)' }}>Completed Trips</span>
+                    <div style={{ fontSize: '26px', fontWeight: 800, color: '#a78bfa', marginTop: '4px' }}>
+                      {driverEarnings?.summary?.completedTrips || 0}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      borderRadius: '18px',
+                      padding: '20px',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                    }}
+                  >
+                    <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)' }}>Registered Vehicles</span>
+                    <div style={{ fontSize: '26px', fontWeight: 800, color: '#38bdf8', marginTop: '4px' }}>
+                      {vehicles.length}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Add Vehicle Form */}
+                {showVehicleForm && (
+                  <form
+                    onSubmit={handleRegisterVehicle}
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.3)',
+                      borderRadius: '20px',
+                      padding: '20px',
+                      marginBottom: '28px',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
+                      gap: '14px',
+                    }}
+                  >
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
+                        Make & Model
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={`${vehicleData.make} ${vehicleData.model}`}
+                        onChange={(e) => {
+                          const parts = e.target.value.split(' ');
+                          setVehicleData((prev) => ({ ...prev, make: parts[0] || 'Car', model: parts.slice(1).join(' ') || 'Model' }));
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.16)',
+                          borderRadius: '12px',
+                          color: '#ffffff',
+                          fontSize: '13.5px',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
+                        Registration Number
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. DL-01-AB-1234"
+                        value={vehicleData.registrationNumber}
+                        onChange={(e) => setVehicleData((prev) => ({ ...prev, registrationNumber: e.target.value.toUpperCase() }))}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.16)',
+                          borderRadius: '12px',
+                          color: '#ffffff',
+                          fontSize: '13.5px',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
+                        Seat Capacity
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="8"
+                        required
+                        value={vehicleData.seatCapacity}
+                        onChange={(e) => setVehicleData((prev) => ({ ...prev, seatCapacity: Number(e.target.value) }))}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.16)',
+                          borderRadius: '12px',
+                          color: '#ffffff',
+                          fontSize: '13.5px',
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                      <LiquidGlassButton scale={0.9} variant="primary">
+                        Save Vehicle to Fleet
+                      </LiquidGlassButton>
+                    </div>
+                  </form>
+                )}
+
+                {/* Fleet List */}
+                <div>
+                  <h4 style={{ fontSize: '16px', fontWeight: 600, color: '#ffffff', margin: '0 0 12px 0' }}>
+                    Active Vehicles in Your Fleet ({vehicles.length})
+                  </h4>
+                  {vehicles.length === 0 ? (
+                    <div style={{ fontSize: '13.5px', color: 'rgba(255, 255, 255, 0.6)' }}>
+                      No vehicles registered yet. Register your vehicle above to start publishing carpools.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '12px' }}>
+                      {vehicles.map((vh) => (
+                        <div
+                          key={vh.vehicleId}
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            borderRadius: '16px',
+                            padding: '14px 18px',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                          }}
+                        >
+                          <div style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff' }}>
+                            {vh.make} {vh.model}
+                          </div>
+                          <div style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.65)', marginTop: '2px' }}>
+                            {vh.registrationNumber} • {vh.seatCapacity} seats • {vh.color || 'Standard'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </LiquidGlassPanel>
+        </section>
+      )}
 
       {/* 2. Interactive Earnings Estimator */}
       <section id="earnings-calculator" className="rs-section">

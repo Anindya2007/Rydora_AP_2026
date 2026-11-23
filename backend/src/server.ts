@@ -56,4 +56,32 @@ async function handleShutdown(signal: string): Promise<void> {
 process.on('SIGINT', () => handleShutdown('SIGINT'));
 process.on('SIGTERM', () => handleShutdown('SIGTERM'));
 
+/**
+ * ============================================================================
+ * PROCESS-LEVEL UNHANDLED EXCEPTION & REJECTION GUARDS
+ * ============================================================================
+ * Any asynchronous background task (e.g. detached SMS notification, payment probe)
+ * that fails without an explicit catch block will trigger an 'unhandledRejection'.
+ * In modern Node.js runtimes, this would abruptly terminate the whole server.
+ * These listeners capture the error, log structured diagnostic output, and keep
+ * the application operational or shut down gracefully without crashing mid-request.
+ */
+process.on('unhandledRejection', (reason: unknown) => {
+  console.error('💥 [Server Process] Unhandled Promise Rejection detected:');
+  if (reason instanceof Error) {
+    console.error(`   Message: ${reason.message}`);
+    console.error(`   Stack: ${reason.stack}`);
+  } else {
+    console.error('   Reason:', reason);
+  }
+});
+
+process.on('uncaughtException', (error: Error) => {
+  console.error('💥 [Server Process] Uncaught Exception occurred:');
+  console.error(`   Message: ${error.message}`);
+  console.error(`   Stack: ${error.stack}`);
+  // Attempt clean teardown before exiting so database connections aren't left hanging
+  handleShutdown('uncaughtException');
+});
+
 startServer();

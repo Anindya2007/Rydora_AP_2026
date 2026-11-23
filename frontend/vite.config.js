@@ -23,6 +23,12 @@ export default defineConfig({
     fs: {
       strict: false,
     },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
   },
   optimizeDeps: {
     include: ['@hashintel/refractive', 'react', 'react-dom', 'lucide-react'],

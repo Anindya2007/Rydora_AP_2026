@@ -2,6 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { authenticate } from '../middleware/auth.js';
 import { requireRoles } from '../middleware/rbac.js';
 import { UserController } from '../controllers/user.controller.js';
+import { RatingController } from '../controllers/rating.controller.js';
 import {
   driverVerificationSubmissionSchema,
   userIdParamSchema,
@@ -117,4 +118,15 @@ userRouter.patch(
   requireRoles('ADMIN'),
   validateUserIdParam,
   UserController.approveDriverVerification
+);
+
+/**
+ * GET /api/v1/users/:userId/ratings
+ * Public/authenticated endpoint to retrieve user's aggregate rating.
+ */
+userRouter.get(
+  '/:userId/ratings',
+  authenticate,
+  validateUserIdParam,
+  RatingController.getUserRatings
 );
