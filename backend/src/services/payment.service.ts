@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import { prisma } from '../config/prisma.js';
+import { env } from '../config/env.js';
 import {
+  Prisma,
   BookingStatus,
   RideStatus,
   TransactionType,
@@ -17,6 +19,7 @@ import {
   defaultPaymentProvider,
   type PaymentProvider,
   type ProcessPaymentResult,
+  type ProcessRefundResult,
 } from './payment-provider.js';
 import type {
   ProcessPaymentInput,
@@ -479,16 +482,74 @@ export async function processBookingPayment(
       });
 
       // 4. Atomically confirm booking ONLY when payment status is COMPLETED
-      if (
-        targetStatus === TransactionStatus.COMPLETED &&
-        booking.status === BookingStatus.PENDING
-      ) {
-        await tx.booking.update({
+      if (targetStatus === TransactionStatus.COMPLETED) {
+        // Concurrency Guard & Lock Order (M9.2.8):
+        // Acquire locks in consistent order across the system:
+        // 1. "rides" row first (FOR UPDATE)
+        // 2. "bookings" row second (FOR UPDATE)
+        // This strictly matches cancelRide's lock acquisition order (rides -> bookings)
+        // to eliminate check-then-update race conditions and mathematically prevent deadlocks.
+        const rideIdToLock = booking.ride?.rideId || booking.rideId;
+        await tx.$queryRaw`SELECT 1 FROM "rides" WHERE "ride_id" = ${rideIdToLock}::uuid FOR UPDATE`;
+        await tx.$queryRaw`SELECT 1 FROM "bookings" WHERE "booking_id" = ${booking.bookingId}::uuid FOR UPDATE`;
+
+        // Re-read authoritative current database state while holding exclusive row locks
+        const currentBooking = await tx.booking.findUnique({
           where: { bookingId: booking.bookingId },
-          data: {
-            status: BookingStatus.CONFIRMED,
+          select: {
+            bookingId: true,
+            status: true,
+            cancelledById: true,
+            cancelledAt: true,
+            cancellationReason: true,
+            ride: {
+              select: {
+                rideId: true,
+                status: true,
+              },
+            },
           },
         });
+
+        if (
+          currentBooking &&
+          currentBooking.status === BookingStatus.PENDING &&
+          currentBooking.ride.status === RideStatus.SCHEDULED
+        ) {
+          // Case A — Normal payment:
+          // Booking remains PENDING, Ride remains SCHEDULED.
+          // Atomically confirm booking.
+          await tx.booking.update({
+            where: { bookingId: booking.bookingId },
+            data: {
+              status: BookingStatus.CONFIRMED,
+            },
+          });
+        } else if (currentBooking && currentBooking.status === BookingStatus.CANCELLED) {
+          // Case B / Case C / Case E — Booking was cancelled while payment was in-flight:
+          // Invariant: Do NOT resurrect the booking to CONFIRMED.
+          // Preserve existing status, cancelledById, cancelledAt, and cancellationReason.
+          // The payment transaction remains COMPLETED so refund processing can handle it.
+          console.warn(
+            `[PAYMENT_RACE_DETECTED] Payment completed for booking ${booking.bookingId} which was cancelled (cancelledById: ${currentBooking.cancelledById}) while payment was in-flight. Retaining CANCELLED status for refund processing.`
+          );
+        } else if (
+          currentBooking &&
+          currentBooking.status === BookingStatus.PENDING &&
+          currentBooking.ride.status === RideStatus.CANCELLED
+        ) {
+          // Case D — Ride cancelled while payment in-flight, but booking is still PENDING:
+          // Invariant: Never confirm booking on a cancelled ride. Do not fabricate cancellation attribution.
+          // Provider success is recorded as COMPLETED, and reconciliation alert is logged.
+          console.error(
+            `[CRITICAL_PAYMENT_RECONCILIATION_REQUIRED] Payment completed for booking ${booking.bookingId} but parent ride ${currentBooking.ride.rideId} is CANCELLED while booking is PENDING. Retaining PENDING status and requiring reconciliation.`
+          );
+        } else if (currentBooking) {
+          // Any other unexpected state transition (e.g. COMPLETED booking)
+          console.warn(
+            `[PAYMENT_RACE_DETECTED] Payment completed for booking ${booking.bookingId} in unexpected status (booking: ${currentBooking.status}, ride: ${currentBooking.ride.status}). Booking status unchanged.`
+          );
+        }
       }
 
       return formatTransaction(updated);
@@ -661,7 +722,438 @@ export async function listUserTransactions(
 
 export const paymentService = {
   processBookingPayment,
+  processBookingRefund,
   getTransactionById,
   getBookingTransactions,
   listUserTransactions,
 };
+
+export interface ProcessBookingRefundInput {
+  bookingId: string;
+  reason?: string;
+  idempotencyKey?: string;
+}
+
+/**
+ * Processes a refund for an eligible cancelled booking using the two-phase intent pattern (M9.2).
+ *
+ * Requirements & Invariants:
+ * 1. Authorization: Only the passenger (booking.riderId) or platform ADMIN can request a refund.
+ * 2. Booking State: The booking must be in CANCELLED status.
+ * 3. Original Payment: Must locate an existing COMPLETED transaction of type BOOKING_PAYMENT.
+ * 4. Cancellation Policy & Authoritative Eligibility:
+ *    - Uses authoritative server timestamps (booking.cancelledAt or now vs ride.departureTime).
+ *    - If cancellation was >= 120 minutes prior to departure: 100% refundable.
+ *    - If cancellation was < 120 minutes prior to departure: 50% refundable.
+ *    - If booking cancellationReason explicitly designates policy (e.g. FULL_REFUND or LATE_CANCEL_50_PERCENT), respects it.
+ * 5. Cumulative Refund Guard:
+ *    - Sum of existing COMPLETED and unresolved PENDING refunds cannot exceed the eligible refund amount.
+ * 6. Direction & Relations:
+ *    - TransactionType: REFUND
+ *    - senderId: Driver (booking.ride.driverId)
+ *    - receiverId: Rider (booking.riderId)
+ *    - referenceTransactionId: Original completed payment transactionId
+ * 7. Two-Phase Intent Execution:
+ *    - Phase 1: Acquires booking row lock, checks idempotency & existing refunds, creates durable PENDING intent.
+ *    - Phase 2: Outside DB transaction, calls provider.processRefund().
+ *    - Phase 3: Short DB transaction updates existing refund intent to COMPLETED or FAILED.
+ */
+export async function processBookingRefund(
+  userId: string,
+  input: ProcessBookingRefundInput,
+  provider: PaymentProvider = defaultPaymentProvider,
+  isAdmin = false
+): Promise<{ transaction: TransactionOutput; duplicateSuppressed?: boolean }> {
+  const effectiveIdempotencyKey = input.idempotencyKey || `auto_rf_${input.bookingId}_${userId}`;
+
+  // =========================================================================
+  // PHASE 1: Short-lived Refund Intent Transaction (Inside DB Transaction)
+  // =========================================================================
+  const intentResult = await prisma.$transaction(async (tx) => {
+    // 1. Acquire row lock on booking
+    await tx.$queryRaw`SELECT 1 FROM "bookings" WHERE "booking_id" = ${input.bookingId}::uuid FOR UPDATE`;
+
+    // 2. Fetch booking with ride details
+    const booking = await tx.booking.findUnique({
+      where: { bookingId: input.bookingId },
+      include: {
+        ride: {
+          select: {
+            rideId: true,
+            driverId: true,
+            status: true,
+            departureTime: true,
+          },
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundError('Booking not found');
+    }
+
+    // 3. Authorization check
+    if (booking.riderId !== userId && !isAdmin) {
+      throw new ForbiddenError(
+        'Access denied: Only the passenger who created this booking can request a refund'
+      );
+    }
+
+    // 4. Booking Lifecycle Check: Only CANCELLED bookings can be refunded
+    if (booking.status !== BookingStatus.CANCELLED) {
+      throw new BadRequestError(
+        `Cannot process refund for a booking with status ${booking.status}. Booking must be CANCELLED.`
+      );
+    }
+
+    // 5. Find the original COMPLETED payment
+    const originalPayment = await tx.transaction.findFirst({
+      where: {
+        bookingId: booking.bookingId,
+        type: TransactionType.BOOKING_PAYMENT,
+        status: TransactionStatus.COMPLETED,
+      },
+      select: transactionSelectProjection,
+    });
+
+    if (!originalPayment) {
+      throw new BadRequestError(
+        'No completed payment found for this booking. Nothing to refund.'
+      );
+    }
+
+    // 6. Calculate eligible refund percentage and amount using authoritative policy
+    // Security & Business Integrity Invariants (SEC-1, BIZ-1, TIME-1, M9.2.3):
+    // - Never trust or parse user-editable cancellation text for financial calculations.
+    // - Driver cancellation/rejection: 100% full refund only when reliably attributable to driver (cancelledById === ride.driverId).
+    // - Administrator cancellation: 100% full refund only when cancelledById explicitly matches a normalized ID in env.ADMIN_USER_IDS.
+    // - Passenger cancellation: Only when cancelledById === riderId, apply 120-minute policy using authoritative cancelledAt.
+    // - RideStatus.CANCELLED alone does NOT establish driver identity or grant 100% refunds to unverified or passenger cancellations.
+    // - Unknown, missing, or unverified attribution: Fail safely with 400 BadRequestError and structured error logging.
+    let refundRatio: Prisma.Decimal;
+
+    const cancelledByIdNorm =
+      typeof booking.cancelledById === 'string' && booking.cancelledById.trim()
+        ? booking.cancelledById.trim().toLowerCase()
+        : null;
+
+    const driverIdNorm =
+      typeof booking.ride.driverId === 'string' && booking.ride.driverId.trim()
+        ? booking.ride.driverId.trim().toLowerCase()
+        : null;
+
+    const riderIdNorm =
+      typeof booking.riderId === 'string' && booking.riderId.trim()
+        ? booking.riderId.trim().toLowerCase()
+        : null;
+
+    const normalizedAdminIds = (env.ADMIN_USER_IDS || [])
+      .map((id) => (typeof id === 'string' ? id.trim().toLowerCase() : ''))
+      .filter(Boolean);
+
+    const isDriverCancellation =
+      cancelledByIdNorm !== null &&
+      driverIdNorm !== null &&
+      cancelledByIdNorm === driverIdNorm;
+
+    const isAdminCancellation =
+      cancelledByIdNorm !== null &&
+      normalizedAdminIds.includes(cancelledByIdNorm);
+
+    const isPassengerCancellation =
+      cancelledByIdNorm !== null &&
+      riderIdNorm !== null &&
+      cancelledByIdNorm === riderIdNorm;
+
+    if (isDriverCancellation) {
+      // 1. Driver rejection or driver-initiated cancellation: 100% full refund (Decision 11)
+      refundRatio = new Prisma.Decimal('1.0');
+    } else if (isAdminCancellation) {
+      // 2. Administrator cancellation: Verified via env.ADMIN_USER_IDS: 100% full refund
+      refundRatio = new Prisma.Decimal('1.0');
+    } else if (isPassengerCancellation) {
+      // 3. Passenger cancellation: Enforce authoritative M7 / Decision 11 time-windowed policy
+      // Never use refund-request time or guess when cancelledAt is missing.
+      if (!booking.cancelledAt) {
+        console.error(
+          `[REFUND_ERROR] Missing cancellation timestamp (cancelledAt) for cancelled booking ${booking.bookingId}. Cannot determine authoritative refund window.`
+        );
+        throw new BadRequestError(
+          'Cannot determine refund entitlement: Booking cancellation timestamp (cancelledAt) is missing. Please contact platform support.'
+        );
+      }
+
+      const cancelTimeMs = new Date(booking.cancelledAt).getTime();
+      const departureTimeMs = new Date(booking.ride.departureTime).getTime();
+      const diffMs = departureTimeMs - cancelTimeMs;
+
+      // Issue 9: Δt >= 120 minutes -> 100% full refund; Δt < 120 minutes -> 50% late cancellation refund
+      if (diffMs >= 120 * 60 * 1000) {
+        refundRatio = new Prisma.Decimal('1.0');
+      } else {
+        refundRatio = new Prisma.Decimal('0.5');
+      }
+    } else {
+      // 4. Unknown, missing, or unverified cancellation attribution: Fail safely
+      // RideStatus.CANCELLED alone does NOT establish driver identity or override attribution
+      console.error(
+        `[REFUND_ERROR] Unverifiable cancellation actor attribution for booking ${booking.bookingId}. cancelledById: ${booking.cancelledById}, rideStatus: ${booking.ride.status}`
+      );
+      throw new BadRequestError(
+        'Cannot determine refund entitlement: Cancellation actor could not be verified. Please contact platform support.'
+      );
+    }
+
+    // 7. Calculate maximum refundable amount using Prisma.Decimal arithmetic (FIN-1)
+    const originalAmountDecimal = new Prisma.Decimal(originalPayment.amount.toString());
+    const maxRefundableDecimal = originalAmountDecimal
+      .mul(refundRatio)
+      .toDecimalPlaces(2, Prisma.Decimal.ROUND_DOWN);
+    const maxRefundableStr = maxRefundableDecimal.toFixed(2);
+
+    if (maxRefundableDecimal.lte(0)) {
+      throw new BadRequestError(
+        `No refundable amount available for this booking under current policy (Eligible refund is INR 0.00)`
+      );
+    }
+
+    // 8. Check for existing refunds linked to this original payment
+    const existingRefunds = await tx.transaction.findMany({
+      where: {
+        bookingId: booking.bookingId,
+        type: TransactionType.REFUND,
+        referenceTransactionId: originalPayment.transactionId,
+        status: {
+          in: [TransactionStatus.COMPLETED, TransactionStatus.PENDING],
+        },
+      },
+      select: transactionSelectProjection,
+    });
+
+    // Check for exact idempotency match on previous refund
+    if (input.idempotencyKey) {
+      const match = existingRefunds.find((rf) =>
+        rf.description?.includes(`[IDEMPOTENCY:${input.idempotencyKey}]`)
+      );
+      if (match) {
+        return {
+          type: 'EXISTING_IDEMPOTENT' as const,
+          transaction: match,
+          duplicateSuppressed: true,
+        };
+      }
+    }
+
+    // Check if there is an unresolved PENDING refund attempt
+    const pendingRefund = existingRefunds.find(
+      (rf) => rf.status === TransactionStatus.PENDING
+    );
+    if (pendingRefund) {
+      if (
+        input.idempotencyKey &&
+        pendingRefund.description?.includes(`[IDEMPOTENCY:${input.idempotencyKey}]`)
+      ) {
+        return {
+          type: 'EXISTING_IDEMPOTENT' as const,
+          transaction: pendingRefund,
+          duplicateSuppressed: true,
+        };
+      }
+      throw new ConflictError(
+        'A refund request is currently pending and unresolved for this booking. Please wait before attempting again.'
+      );
+    }
+
+    // Check cumulative refunded amount against maximum allowed (FIN-1)
+    const totalAlreadyRefundedDecimal = existingRefunds
+      .filter((rf) => rf.status === TransactionStatus.COMPLETED)
+      .reduce(
+        (sum, rf) => sum.add(new Prisma.Decimal(rf.amount.toString())),
+        new Prisma.Decimal('0.00')
+      );
+
+    if (totalAlreadyRefundedDecimal.gte(maxRefundableDecimal)) {
+      throw new ConflictError(
+        `This booking has already been fully refunded according to policy (Refunded: INR ${totalAlreadyRefundedDecimal.toFixed(
+          2
+        )}, Max Eligible: INR ${maxRefundableStr})`
+      );
+    }
+
+    const remainingRefundableDecimal = maxRefundableDecimal
+      .sub(totalAlreadyRefundedDecimal)
+      .toDecimalPlaces(2, Prisma.Decimal.ROUND_DOWN);
+
+    if (remainingRefundableDecimal.lte(0)) {
+      throw new ConflictError(
+        `No refundable balance remaining for this booking under current policy (Max Eligible: INR ${maxRefundableStr}, Already Refunded: INR ${totalAlreadyRefundedDecimal.toFixed(
+          2
+        )})`
+      );
+    }
+
+    const refundAmountStr = remainingRefundableDecimal.toFixed(2);
+
+    // 9. Create durable PENDING refund intent
+    const descParts: string[] = [];
+    descParts.push(`[IDEMPOTENCY:${input.idempotencyKey || effectiveIdempotencyKey}]`);
+    descParts.push(
+      `[POLICY:${refundRatio.equals(1) ? '100%_FULL_REFUND' : '50%_LATE_CANCEL'}]`
+    );
+    if (input.reason) {
+      descParts.push(input.reason);
+    }
+    const finalDescription = descParts.join(' ');
+    const intentReference = `intent_rf_${crypto.randomUUID()}`;
+
+    // Sender = Driver (reversing funds), Receiver = Rider (receiving refund)
+    const createdIntent = await tx.transaction.create({
+      data: {
+        bookingId: booking.bookingId,
+        senderId: booking.ride.driverId,
+        receiverId: booking.riderId,
+        amount: refundAmountStr,
+        currency: originalPayment.currency || 'INR',
+        type: TransactionType.REFUND,
+        status: TransactionStatus.PENDING,
+        paymentMethod: originalPayment.paymentMethod || 'SIMULATED',
+        providerReference: intentReference,
+        referenceTransactionId: originalPayment.transactionId,
+        description: finalDescription,
+        completedAt: null,
+      },
+      select: transactionSelectProjection,
+    });
+
+    return {
+      type: 'NEW_REFUND_INTENT' as const,
+      transaction: createdIntent,
+      booking,
+      originalPayment,
+      refundAmountStr,
+      duplicateSuppressed: false,
+    };
+  });
+
+  // Short-circuit if an existing transaction was returned idempotently
+  if (intentResult.type === 'EXISTING_IDEMPOTENT') {
+    return {
+      transaction: formatTransaction(intentResult.transaction),
+      duplicateSuppressed: intentResult.duplicateSuppressed,
+    };
+  }
+
+  const {
+    transaction: intentTransaction,
+    booking,
+    originalPayment,
+    refundAmountStr,
+  } = intentResult;
+
+  // =========================================================================
+  // PHASE 2: External Provider Invocation (OUTSIDE Database Transaction)
+  // =========================================================================
+  let providerResult: ProcessRefundResult;
+
+  try {
+    providerResult = await provider.processRefund({
+      amount: refundAmountStr,
+      currency: originalPayment.currency || 'INR',
+      bookingId: booking.bookingId,
+      originalPaymentReference:
+        originalPayment.providerReference || `sim_pay_${originalPayment.transactionId}`,
+      idempotencyKey: input.idempotencyKey || effectiveIdempotencyKey,
+      reason: input.reason,
+    });
+  } catch (providerError: any) {
+    const errMsg = providerError?.message || 'Gateway refund connection failed';
+    const isTimeout =
+      errMsg.toLowerCase().includes('timeout') ||
+      errMsg.toLowerCase().includes('aborted') ||
+      errMsg.toLowerCase().includes('econnreset');
+
+    if (isTimeout) {
+      // Uncertain outcome: do not mark FAILED, keep intent PENDING
+      providerResult = {
+        success: false,
+        status: 'PENDING',
+        providerReference: intentTransaction.providerReference || `intent_rf_${intentTransaction.transactionId}`,
+        errorMessage: `Uncertain outcome: ${errMsg}`,
+        isSimulated: true,
+      };
+    } else {
+      providerResult = {
+        success: false,
+        status: 'FAILED',
+        providerReference: `sim_rf_err_${Date.now()}`,
+        errorMessage: `Refund provider error: ${errMsg}`,
+        isSimulated: true,
+      };
+    }
+  }
+
+  // =========================================================================
+  // PHASE 3: Persist Refund Outcome (Short-lived DB Transaction)
+  // =========================================================================
+  let updatedTransaction: TransactionOutput;
+
+  try {
+    updatedTransaction = await prisma.$transaction(async (tx) => {
+      let targetStatus: TransactionStatus;
+      if (providerResult.status === 'COMPLETED') {
+        targetStatus = TransactionStatus.COMPLETED;
+      } else if (providerResult.status === 'PENDING') {
+        targetStatus = TransactionStatus.PENDING;
+      } else {
+        targetStatus = TransactionStatus.FAILED;
+      }
+
+      const descParts: string[] = [];
+      descParts.push(`[IDEMPOTENCY:${input.idempotencyKey || effectiveIdempotencyKey}]`);
+      if (input.reason) {
+        descParts.push(input.reason);
+      }
+      if (providerResult.errorMessage) {
+        descParts.push(`[FAILURE: ${providerResult.errorMessage}]`);
+      }
+      const updatedDescription = descParts.join(' ');
+
+      const updated = await tx.transaction.update({
+        where: { transactionId: intentTransaction.transactionId },
+        data: {
+          status: targetStatus,
+          providerReference: providerResult.providerReference,
+          description: updatedDescription,
+          completedAt:
+            targetStatus === TransactionStatus.COMPLETED ? new Date() : null,
+        },
+        select: transactionSelectProjection,
+      });
+
+      return formatTransaction(updated);
+    });
+  } catch (persistenceError: any) {
+    if (providerResult.status === 'COMPLETED') {
+      console.error(
+        `[CRITICAL_REFUND_RECONCILIATION_REQUIRED] Provider succeeded refund (${providerResult.providerReference}) ` +
+          `for intent ${intentTransaction.transactionId} on booking ${booking.bookingId}, ` +
+          `but database update failed: ${persistenceError.message}`
+      );
+      return {
+        transaction: {
+          ...formatTransaction(intentTransaction),
+          status: TransactionStatus.PENDING,
+          providerReference: providerResult.providerReference,
+          description: `${intentTransaction.description} [RECONCILIATION_PENDING: ${providerResult.providerReference}]`,
+        },
+        duplicateSuppressed: false,
+      };
+    }
+    throw persistenceError;
+  }
+
+  return {
+    transaction: updatedTransaction,
+    duplicateSuppressed: providerResult.duplicateSuppressed,
+  };
+}

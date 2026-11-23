@@ -3,6 +3,7 @@ import { paymentService } from '../services/payment.service.js';
 import { sendSuccess } from '../utils/response.js';
 import {
   type ProcessPaymentInput,
+  type ProcessRefundInput,
   type ListTransactionsQueryInput,
   listTransactionsQuerySchema,
 } from '../validators/payment.validator.js';
@@ -47,6 +48,53 @@ export class PaymentController {
         : transaction.status === 'PENDING'
         ? 'Payment initiated and awaiting provider completion'
         : 'Payment transaction failed: Provider declined';
+
+      sendSuccess(res, { transaction, duplicateSuppressed }, message, statusCode);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/v1/payments/refund
+   * POST /api/v1/transactions/refund
+   * POST /api/v1/bookings/:bookingId/refund
+   * Initiates and records a financial refund transaction for an eligible cancelled booking.
+   */
+  static async processRefund(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const isAdmin = req.user?.roles?.includes('ADMIN') || false;
+      const input = req.body as ProcessRefundInput;
+
+      // Extract optional Idempotency-Key header if not present in request body
+      const idempotencyHeader = req.headers['idempotency-key'] as
+        | string
+        | undefined;
+      if (idempotencyHeader && !input.idempotencyKey) {
+        input.idempotencyKey = idempotencyHeader.trim();
+      }
+
+      const { transaction, duplicateSuppressed } =
+        await paymentService.processBookingRefund(
+          userId,
+          input,
+          undefined,
+          isAdmin
+        );
+
+      const statusCode = duplicateSuppressed ? 200 : 201;
+      const message = duplicateSuppressed
+        ? 'Refund transaction replayed idempotently'
+        : transaction.status === 'COMPLETED'
+        ? 'Refund processed and completed successfully'
+        : transaction.status === 'PENDING'
+        ? 'Refund initiated and awaiting gateway settlement'
+        : 'Refund transaction failed: Provider declined';
 
       sendSuccess(res, { transaction, duplicateSuppressed }, message, statusCode);
     } catch (error) {

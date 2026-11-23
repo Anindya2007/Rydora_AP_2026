@@ -9,7 +9,7 @@ import {
 } from '../validators/bookingValidator.js';
 import { BookingController } from '../controllers/booking.controller.js';
 import { PaymentController } from '../controllers/payment.controller.js';
-import { validateProcessPayment } from './payment.routes.js';
+import { validateProcessPayment, validateProcessRefund } from './payment.routes.js';
 
 export const bookingRouter = Router();
 
@@ -247,4 +247,21 @@ bookingRouter.post(
   },
   validateProcessPayment,
   PaymentController.processPayment
+);
+
+/**
+ * POST /api/v1/bookings/:bookingId/refund
+ * Protected endpoint to process a refund directly for a cancelled booking.
+ */
+bookingRouter.post(
+  '/:bookingId/refund',
+  authenticate,
+  validateBookingIdParam,
+  (req, _res, next) => {
+    // Inject bookingId from path parameter into body for validation
+    req.body = { ...req.body, bookingId: req.params.bookingId };
+    next();
+  },
+  validateProcessRefund,
+  PaymentController.processRefund
 );

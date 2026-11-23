@@ -2,6 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { authenticate } from '../middleware/auth.js';
 import {
   processPaymentSchema,
+  processRefundSchema,
   transactionIdParamSchema,
   bookingPaymentsParamSchema,
   listTransactionsQuerySchema,
@@ -17,6 +18,19 @@ export const validateProcessPayment = (
 ): void => {
   try {
     req.body = processPaymentSchema.parse(req.body);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const validateProcessRefund = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    req.body = processRefundSchema.parse(req.body);
     next();
   } catch (error) {
     next(error);
@@ -80,6 +94,18 @@ paymentRouter.post(
   authenticate,
   validateProcessPayment,
   PaymentController.processPayment
+);
+
+/**
+ * POST /api/v1/payments/refund
+ * POST /api/v1/transactions/refund
+ * Processes a refund transaction for an eligible cancelled booking.
+ */
+paymentRouter.post(
+  '/refund',
+  authenticate,
+  validateProcessRefund,
+  PaymentController.processRefund
 );
 
 /**

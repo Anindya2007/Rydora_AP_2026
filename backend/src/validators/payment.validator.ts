@@ -91,6 +91,28 @@ export const listTransactionsQuerySchema = z
   })
   .strict();
 
+export const processRefundSchema = z
+  .object({
+    bookingId: z
+      .string()
+      .trim()
+      .regex(UUID_REGEX, { message: 'bookingId must be a valid UUID' }),
+    reason: z
+      .string()
+      .trim()
+      .max(500, { message: 'reason cannot exceed 500 characters' })
+      .optional(),
+    idempotencyKey: z
+      .string()
+      .trim()
+      .min(1, { message: 'idempotencyKey cannot be empty' })
+      .max(150, { message: 'idempotencyKey cannot exceed 150 characters' })
+      .optional(),
+  })
+  .strict();
+
+export type ProcessRefundInput = z.infer<typeof processRefundSchema>;
+
 export type ListTransactionsQueryInput = z.infer<
   typeof listTransactionsQuerySchema
 >;

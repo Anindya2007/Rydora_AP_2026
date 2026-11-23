@@ -902,4 +902,503 @@ describe('Milestone 9.1: Financial Transaction Foundation & Payment Architecture
       consoleErrorSpy.mockRestore();
     });
   });
+
+  // =========================================================================
+  // 6. M9.2.7: PREVENT PAYMENT RESURRECTION OF CANCELLED BOOKINGS
+  // =========================================================================
+  describe('Milestone 9.2.7: In-Flight Cancellation Race & Anti-Resurrection Safety', () => {
+    it('should complete payment transaction but retain CANCELLED booking status when booking was cancelled while payment was in-flight', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRider as any);
+      vi.spyOn(prisma.transaction, 'findFirst').mockResolvedValue(null);
+      vi.spyOn(prisma.transaction, 'create').mockResolvedValue(mockTransactionRecord as any);
+      vi.spyOn(prisma.transaction, 'update').mockResolvedValue(mockTransactionRecord as any);
+
+      const updateBookingSpy = vi.spyOn(prisma.booking, 'update');
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const cancelledInFlightBooking = {
+        ...mockBooking,
+        status: BookingStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancelledById: mockDriverId,
+        cancellationReason: '[CANCELLED_BY_DRIVER] Ride cancelled by driver',
+        ride: {
+          ...mockRide,
+          status: RideStatus.CANCELLED,
+        },
+      };
+
+      // Call 1 (Phase 1): returns PENDING booking
+      // Call 2 (Phase 3): returns CANCELLED booking (cancelled while provider call was in progress)
+      vi.spyOn(prisma.booking, 'findUnique')
+        .mockResolvedValueOnce(mockBooking as any)
+        .mockResolvedValueOnce(cancelledInFlightBooking as any);
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .post('/api/v1/payments')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          bookingId: mockBookingId,
+          amount: '300.00',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.transaction.status).toBe('COMPLETED');
+
+      // Crucial: booking must NOT be updated/resurrected to CONFIRMED
+      expect(updateBookingSpy).not.toHaveBeenCalled();
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[PAYMENT_RACE_DETECTED]')
+      );
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should not confirm booking if ride was cancelled while payment was in-flight', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRider as any);
+      vi.spyOn(prisma.transaction, 'findFirst').mockResolvedValue(null);
+      vi.spyOn(prisma.transaction, 'create').mockResolvedValue(mockTransactionRecord as any);
+      vi.spyOn(prisma.transaction, 'update').mockResolvedValue(mockTransactionRecord as any);
+
+      const updateBookingSpy = vi.spyOn(prisma.booking, 'update');
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const rideCancelledBooking = {
+        ...mockBooking,
+        status: BookingStatus.PENDING,
+        ride: {
+          ...mockRide,
+          status: RideStatus.CANCELLED,
+        },
+      };
+
+      vi.spyOn(prisma.booking, 'findUnique')
+        .mockResolvedValueOnce(mockBooking as any)
+        .mockResolvedValueOnce(rideCancelledBooking as any);
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .post('/api/v1/payments')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          bookingId: mockBookingId,
+          amount: '300.00',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.transaction.status).toBe('COMPLETED');
+      expect(updateBookingSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[CRITICAL_PAYMENT_RECONCILIATION_REQUIRED]')
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should allow immediate 100% refund for a booking whose payment completed after in-flight driver cancellation', async () => {
+      // Setup the booking that ended up in CANCELLED state with completed payment
+      const cancelledBookingWithCompletedPayment = {
+        ...mockBooking,
+        status: BookingStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancelledById: mockDriverId,
+        cancellationReason: '[CANCELLED_BY_DRIVER] Ride cancelled by driver',
+        ride: {
+          ...mockRide,
+          status: RideStatus.CANCELLED,
+        },
+      };
+
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRider as any);
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue(
+        cancelledBookingWithCompletedPayment as any
+      );
+      vi.spyOn(prisma.transaction, 'findFirst').mockResolvedValue({
+        ...mockTransactionRecord,
+        status: TransactionStatus.COMPLETED,
+        amount: '300.00',
+      } as any);
+      vi.spyOn(prisma.transaction, 'findMany').mockResolvedValue([]);
+
+      const mockRefundTx = {
+        transactionId: '88888888-8888-8888-8888-888888888888',
+        bookingId: mockBookingId,
+        senderId: mockDriverId,
+        receiverId: mockRiderId,
+        amount: '300.00',
+        currency: 'INR',
+        type: TransactionType.REFUND,
+        status: TransactionStatus.COMPLETED,
+        paymentMethod: 'SIMULATED',
+        providerReference: 'sim_rf_race_recovery_123',
+        referenceTransactionId: mockTransactionId,
+        description: '[IDEMPOTENCY:rf_race_recovery] [POLICY:100%_FULL_REFUND]',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        completedAt: new Date(),
+      };
+      vi.spyOn(prisma.transaction, 'create').mockResolvedValue(mockRefundTx as any);
+      vi.spyOn(prisma.transaction, 'update').mockResolvedValue(mockRefundTx as any);
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .post('/api/v1/payments/refund')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          bookingId: mockBookingId,
+          idempotencyKey: 'rf_race_recovery',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.transaction.type).toBe('REFUND');
+      expect(res.body.data.transaction.amount).toBe('300.00');
+    });
+
+    it('should deterministically handle driver cancellation committing while payment provider is paused, preserving 100% refund eligibility', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRider as any);
+      vi.spyOn(prisma.transaction, 'findFirst').mockResolvedValue(null);
+      vi.spyOn(prisma.transaction, 'create').mockResolvedValue(mockTransactionRecord as any);
+      vi.spyOn(prisma.transaction, 'update').mockResolvedValue(mockTransactionRecord as any);
+
+      const updateBookingSpy = vi.spyOn(prisma.booking, 'update');
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // Set up async coordination barrier
+      let resolveProviderInvoked: () => void;
+      const providerInvokedPromise = new Promise<void>((resolve) => {
+        resolveProviderInvoked = resolve;
+      });
+
+      let releaseProvider: () => void;
+      const providerCanProceedPromise = new Promise<void>((resolve) => {
+        releaseProvider = resolve;
+      });
+
+      const pausingProvider: PaymentProvider = {
+        async processPayment() {
+          // Notify that Phase 1 committed and provider is called
+          resolveProviderInvoked();
+          // Pause execution until driver cancellation completes
+          await providerCanProceedPromise;
+          return {
+            success: true,
+            status: 'COMPLETED',
+            providerReference: 'sim_pay_paused_driver_race_888',
+            isSimulated: true,
+          };
+        },
+        async processRefund() {
+          throw new Error('Not implemented');
+        },
+      };
+
+      const driverCancelledBookingState = {
+        ...mockBooking,
+        status: BookingStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancelledById: mockDriverId,
+        cancellationReason: '[CANCELLED_BY_DRIVER] Ride cancelled by driver',
+        ride: {
+          ...mockRide,
+          status: RideStatus.CANCELLED,
+        },
+      };
+
+      // Call 1 (Phase 1): returns PENDING booking
+      // Call 2 (Phase 3 after driver cancellation commits): returns CANCELLED booking
+      vi.spyOn(prisma.booking, 'findUnique')
+        .mockResolvedValueOnce(mockBooking as any)
+        .mockResolvedValueOnce(driverCancelledBookingState as any);
+
+      // Start payment in background
+      const paymentPromise = paymentService.processBookingPayment(
+        mockRiderId,
+        {
+          bookingId: mockBookingId,
+          amount: '300.00',
+        },
+        pausingProvider
+      );
+
+      // 1. Wait until payment Phase 1 commits and provider is invoked
+      await providerInvokedPromise;
+
+      // 2. Driver cancellation commits while provider was processing
+      // (driverCancelledBookingState is now the authoritative DB state)
+
+      // 3. Release provider to report success
+      releaseProvider!();
+
+      // 4. Await payment Phase 3 completion
+      const res = await paymentPromise;
+
+      expect(res.transaction).toBeDefined();
+      expect(res.transaction.status).toBe('COMPLETED');
+      // Booking was NOT resurrected to CONFIRMED
+      expect(updateBookingSpy).not.toHaveBeenCalled();
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[PAYMENT_RACE_DETECTED]')
+      );
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should deterministically handle passenger late cancellation committing while payment provider is paused, preserving 50% refund policy', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRider as any);
+      vi.spyOn(prisma.transaction, 'findFirst').mockResolvedValue(null);
+      vi.spyOn(prisma.transaction, 'create').mockResolvedValue(mockTransactionRecord as any);
+      vi.spyOn(prisma.transaction, 'update').mockResolvedValue(mockTransactionRecord as any);
+
+      const updateBookingSpy = vi.spyOn(prisma.booking, 'update');
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      let resolveProviderInvoked: () => void;
+      const providerInvokedPromise = new Promise<void>((resolve) => {
+        resolveProviderInvoked = resolve;
+      });
+
+      let releaseProvider: () => void;
+      const providerCanProceedPromise = new Promise<void>((resolve) => {
+        releaseProvider = resolve;
+      });
+
+      const pausingProvider: PaymentProvider = {
+        async processPayment() {
+          resolveProviderInvoked();
+          await providerCanProceedPromise;
+          return {
+            success: true,
+            status: 'COMPLETED',
+            providerReference: 'sim_pay_paused_rider_race_777',
+            isSimulated: true,
+          };
+        },
+        async processRefund() {
+          throw new Error('Not implemented');
+        },
+      };
+
+      const passengerLateCancelledBookingState = {
+        ...mockBooking,
+        status: BookingStatus.CANCELLED,
+        cancelledAt: new Date(Date.now() - 1000), // < 120 mins before departure
+        cancelledById: mockRiderId, // Passenger attribution
+        cancellationReason: '[CANCELLED_BY_RIDER: LATE_CANCEL_50_PERCENT] Passenger voluntary cancel',
+        ride: {
+          ...mockRide,
+          departureTime: new Date(Date.now() + 60 * 60 * 1000), // 1 hour in future
+          status: RideStatus.SCHEDULED,
+        },
+      };
+
+      vi.spyOn(prisma.booking, 'findUnique')
+        .mockResolvedValueOnce(mockBooking as any)
+        .mockResolvedValueOnce(passengerLateCancelledBookingState as any);
+
+      const paymentPromise = paymentService.processBookingPayment(
+        mockRiderId,
+        {
+          bookingId: mockBookingId,
+          amount: '300.00',
+        },
+        pausingProvider
+      );
+
+      await providerInvokedPromise;
+      releaseProvider!();
+      const res = await paymentPromise;
+
+      expect(res.transaction).toBeDefined();
+      expect(res.transaction.status).toBe('COMPLETED');
+      expect(updateBookingSpy).not.toHaveBeenCalled();
+      consoleWarnSpy.mockRestore();
+
+      // Now verify that refunding this booking strictly awards the 50% late-cancellation refund (150.00)
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue(
+        passengerLateCancelledBookingState as any
+      );
+      vi.spyOn(prisma.transaction, 'findFirst').mockResolvedValue({
+        ...mockTransactionRecord,
+        status: TransactionStatus.COMPLETED,
+        amount: '300.00',
+      } as any);
+      vi.spyOn(prisma.transaction, 'findMany').mockResolvedValue([]);
+
+      const mockHalfRefundTx = {
+        transactionId: '99999999-8888-7777-6666-555555555555',
+        bookingId: mockBookingId,
+        senderId: mockDriverId,
+        receiverId: mockRiderId,
+        amount: '150.00', // 50% of 300.00
+        currency: 'INR',
+        type: TransactionType.REFUND,
+        status: TransactionStatus.COMPLETED,
+        paymentMethod: 'SIMULATED',
+        providerReference: 'sim_rf_late_policy_150',
+        referenceTransactionId: mockTransactionId,
+        description: '[IDEMPOTENCY:rf_late_test] [POLICY:50%_LATE_CANCEL]',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        completedAt: new Date(),
+      };
+      vi.spyOn(prisma.transaction, 'create').mockResolvedValue(mockHalfRefundTx as any);
+      vi.spyOn(prisma.transaction, 'update').mockResolvedValue(mockHalfRefundTx as any);
+
+      const token = generateToken(mockRiderId);
+      const refundRes = await request(app)
+        .post('/api/v1/payments/refund')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          bookingId: mockBookingId,
+          idempotencyKey: 'rf_late_test',
+        });
+
+      expect(refundRes.status).toBe(201);
+      expect(refundRes.body.success).toBe(true);
+      expect(refundRes.body.data.transaction.amount).toBe('150.00');
+    });
+
+    it('should handle Case D: ride is CANCELLED while booking remains PENDING, recording payment without confirming booking and emitting reconciliation alert', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRider as any);
+      vi.spyOn(prisma.transaction, 'findFirst').mockResolvedValue(null);
+      vi.spyOn(prisma.transaction, 'create').mockResolvedValue(mockTransactionRecord as any);
+      vi.spyOn(prisma.transaction, 'update').mockResolvedValue(mockTransactionRecord as any);
+
+      const updateBookingSpy = vi.spyOn(prisma.booking, 'update');
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const rideCancelledBookingPendingState = {
+        ...mockBooking,
+        status: BookingStatus.PENDING,
+        ride: {
+          ...mockRide,
+          status: RideStatus.CANCELLED,
+        },
+      };
+
+      vi.spyOn(prisma.booking, 'findUnique')
+        .mockResolvedValueOnce(mockBooking as any)
+        .mockResolvedValueOnce(rideCancelledBookingPendingState as any);
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .post('/api/v1/payments')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          bookingId: mockBookingId,
+          amount: '300.00',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.transaction.status).toBe('COMPLETED');
+      // Never confirmed on a cancelled ride
+      expect(updateBookingSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[CRITICAL_PAYMENT_RECONCILIATION_REQUIRED]')
+      );
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should handle Case E: cancelled booking with null attribution preserves null attribution without fabricating identity and fails closed on refund', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRider as any);
+      vi.spyOn(prisma.transaction, 'findFirst').mockResolvedValue(null);
+      vi.spyOn(prisma.transaction, 'create').mockResolvedValue(mockTransactionRecord as any);
+      vi.spyOn(prisma.transaction, 'update').mockResolvedValue(mockTransactionRecord as any);
+
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const nullAttributionCancelledBooking = {
+        ...mockBooking,
+        status: BookingStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancelledById: null, // Unknown/unverified actor
+        cancellationReason: 'Cancelled out of band',
+        ride: {
+          ...mockRide,
+          status: RideStatus.CANCELLED,
+        },
+      };
+
+      vi.spyOn(prisma.booking, 'findUnique')
+        .mockResolvedValueOnce(mockBooking as any)
+        .mockResolvedValueOnce(nullAttributionCancelledBooking as any);
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .post('/api/v1/payments')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          bookingId: mockBookingId,
+          amount: '300.00',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.transaction.status).toBe('COMPLETED');
+
+      // Now verify that refunding this booking with unverified cancelledById fails closed with 400 Bad Request
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue(
+        nullAttributionCancelledBooking as any
+      );
+      vi.spyOn(prisma.transaction, 'findFirst').mockResolvedValue({
+        ...mockTransactionRecord,
+        status: TransactionStatus.COMPLETED,
+        amount: '300.00',
+      } as any);
+
+      const refundRes = await request(app)
+        .post('/api/v1/payments/refund')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          bookingId: mockBookingId,
+        });
+
+      expect(refundRes.status).toBe(400);
+      expect(refundRes.body.success).toBe(false);
+      expect(refundRes.body.error.message).toContain('Cancellation actor could not be verified');
+
+      consoleWarnSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should acquire row locks in consistent order (rides -> bookings) during Phase 3', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockRider as any);
+      vi.spyOn(prisma.booking, 'findUnique').mockResolvedValue(mockBooking as any);
+      vi.spyOn(prisma.transaction, 'findFirst').mockResolvedValue(null);
+      vi.spyOn(prisma.transaction, 'create').mockResolvedValue(mockTransactionRecord as any);
+      vi.spyOn(prisma.transaction, 'update').mockResolvedValue(mockTransactionRecord as any);
+      vi.spyOn(prisma.booking, 'update').mockResolvedValue({
+        ...mockBooking,
+        status: BookingStatus.CONFIRMED,
+      } as any);
+
+      const queryRawSpy = vi.spyOn(prisma, '$queryRaw').mockResolvedValue([{ '?column?': 1 }] as any);
+
+      const token = generateToken(mockRiderId);
+      const res = await request(app)
+        .post('/api/v1/payments')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          bookingId: mockBookingId,
+          amount: '300.00',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+
+      // Verify row locks:
+      // Call 1 (Phase 1): SELECT 1 FROM "bookings" WHERE "booking_id" = ... FOR UPDATE
+      // Call 2 (Phase 3): SELECT 1 FROM "rides" WHERE "ride_id" = ... FOR UPDATE
+      // Call 3 (Phase 3): SELECT 1 FROM "bookings" WHERE "booking_id" = ... FOR UPDATE
+      expect(queryRawSpy).toHaveBeenCalledTimes(3);
+      const call2Strings = queryRawSpy.mock.calls[1][0] as any;
+      const call3Strings = queryRawSpy.mock.calls[2][0] as any;
+
+      expect(call2Strings.join(' ')).toContain('"rides"');
+      expect(call3Strings.join(' ')).toContain('"bookings"');
+    });
+  });
 });

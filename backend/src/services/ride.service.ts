@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
-import { RideStatus, UserRole } from '../generated/prisma/client.js';
+import { BookingStatus, RideStatus, UserRole } from '../generated/prisma/client.js';
 import type { CreateRideInput, DriverRidesQueryInput, RideQueryInput, UpdateRideInput } from '../validators/rideValidator.js';
 import {
   BadRequestError,
@@ -827,7 +827,33 @@ export async function cancelRide(
       );
     }
 
-    // 5. Retrieve updated ride with safe relations
+    // 5. Atomic Booking Cancellation Propagation (M9.2.5):
+    // In the exact same interactive database transaction, propagate the cancellation
+    // to all active bookings (PENDING, CONFIRMED) associated with this cancelled ride.
+    // Invariants:
+    // - Attributed directly to the verified driver: cancelledById = driverId
+    // - Authoritative timestamp: cancelledAt = cancellationTimestamp
+    // - Standardized cancellation reason: [CANCELLED_BY_DRIVER] Ride cancelled by driver
+    // - Preservation of prior cancellations: Excludes already CANCELLED bookings so prior
+    //   passenger voluntary cancellations (and their refund policies) are never overwritten.
+    const cancellationTimestamp = new Date();
+
+    await tx.booking.updateMany({
+      where: {
+        rideId,
+        status: {
+          in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+        },
+      },
+      data: {
+        status: BookingStatus.CANCELLED,
+        cancelledAt: cancellationTimestamp,
+        cancelledById: driverId,
+        cancellationReason: '[CANCELLED_BY_DRIVER] Ride cancelled by driver',
+      },
+    });
+
+    // 6. Retrieve updated ride with safe relations
     const updatedRide = await tx.ride.findUnique({
       where: { rideId },
       select: rideDetailSelectProjection,

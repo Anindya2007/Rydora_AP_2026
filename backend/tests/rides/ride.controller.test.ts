@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { app } from '../../src/app.js';
 import { prisma } from '../../src/config/prisma.js';
 import { env } from '../../src/config/env.js';
-import { UserRole, RideStatus, CommunityStatus, MembershipStatus } from '../../src/generated/prisma/client.js';
+import { UserRole, RideStatus, CommunityStatus, MembershipStatus, BookingStatus } from '../../src/generated/prisma/client.js';
 
 describe('Milestone 6.1: Ride Creation API (POST /api/v1/rides)', () => {
   const mockDriverId = '11111111-2222-3333-4444-555555555555';
@@ -2098,6 +2098,7 @@ describe('Milestone 6.1: Ride Creation API (POST /api/v1/rides)', () => {
         }
         return Promise.all(callback);
       });
+      vi.spyOn(prisma.booking, 'updateMany').mockResolvedValue({ count: 0 } as any);
     });
 
     it('should reject unauthenticated request when Authorization header is missing (401 Unauthorized)', async () => {
@@ -2334,6 +2335,71 @@ describe('Milestone 6.1: Ride Creation API (POST /api/v1/rides)', () => {
       expect(ride.driver.licenseNumber).toBeUndefined();
       expect(ride.driver.licenseExpiry).toBeUndefined();
       expect(ride.driver.phone).toBeUndefined();
+    });
+
+    it('should atomically propagate cancellation to eligible active bookings (PENDING, CONFIRMED) with driver attribution', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDriverDbUser as any);
+      vi.spyOn(prisma.ride, 'findUnique')
+        .mockResolvedValueOnce(mockScheduledRide as any)
+        .mockResolvedValueOnce(mockCancelledRideWithRelations as any);
+      vi.spyOn(prisma.ride, 'updateMany').mockResolvedValue({ count: 1 });
+      const bookingUpdateManySpy = vi.spyOn(prisma.booking, 'updateMany').mockResolvedValue({ count: 2 });
+
+      const token = generateToken(mockDriverId);
+      const res = await request(app)
+        .post(`/api/v1/rides/${mockRideId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(bookingUpdateManySpy).toHaveBeenCalledWith({
+        where: {
+          rideId: mockRideId,
+          status: {
+            in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+          },
+        },
+        data: {
+          status: BookingStatus.CANCELLED,
+          cancelledAt: expect.any(Date),
+          cancelledById: mockDriverId,
+          cancellationReason: '[CANCELLED_BY_DRIVER] Ride cancelled by driver',
+        },
+      });
+    });
+
+    it('should never modify already CANCELLED bookings when ride is cancelled by driver', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDriverDbUser as any);
+      vi.spyOn(prisma.ride, 'findUnique')
+        .mockResolvedValueOnce(mockScheduledRide as any)
+        .mockResolvedValueOnce(mockCancelledRideWithRelations as any);
+      vi.spyOn(prisma.ride, 'updateMany').mockResolvedValue({ count: 1 });
+      const bookingUpdateManySpy = vi.spyOn(prisma.booking, 'updateMany').mockResolvedValue({ count: 0 });
+
+      const token = generateToken(mockDriverId);
+      const res = await request(app)
+        .post(`/api/v1/rides/${mockRideId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      const callArg = bookingUpdateManySpy.mock.calls[0][0];
+      expect(callArg.where.status.in).not.toContain(BookingStatus.CANCELLED);
+    });
+
+    it('should rollback both ride and booking cancellations if an error occurs during booking update', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDriverDbUser as any);
+      vi.spyOn(prisma.ride, 'findUnique').mockResolvedValue(mockScheduledRide as any);
+      vi.spyOn(prisma.ride, 'updateMany').mockResolvedValue({ count: 1 });
+      vi.spyOn(prisma.booking, 'updateMany').mockRejectedValue(new Error('Database write failure during booking propagation'));
+
+      const token = generateToken(mockDriverId);
+      const res = await request(app)
+        .post(`/api/v1/rides/${mockRideId}/cancel`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('INTERNAL_SERVER_ERROR');
     });
   });
 });

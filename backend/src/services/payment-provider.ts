@@ -19,8 +19,27 @@ export interface ProcessPaymentResult {
   duplicateSuppressed?: boolean;
 }
 
+export interface ProcessRefundInput {
+  amount: string;
+  currency: string;
+  bookingId: string;
+  originalPaymentReference: string;
+  idempotencyKey?: string;
+  reason?: string;
+}
+
+export interface ProcessRefundResult {
+  success: boolean;
+  status: 'COMPLETED' | 'PENDING' | 'FAILED';
+  providerReference: string;
+  errorMessage?: string;
+  isSimulated: boolean;
+  duplicateSuppressed?: boolean;
+}
+
 export interface PaymentProvider {
   processPayment(input: ProcessPaymentInput): Promise<ProcessPaymentResult>;
+  processRefund(input: ProcessRefundInput): Promise<ProcessRefundResult>;
   getPaymentStatus?(
     providerReference: string
   ): Promise<ProcessPaymentResult | null> | ProcessPaymentResult | null;
@@ -123,6 +142,74 @@ export class SimulatedPaymentProvider implements PaymentProvider {
 
   clearProcessed(): void {
     this.processedKeys.clear();
+  }
+
+  async processRefund(input: ProcessRefundInput): Promise<ProcessRefundResult> {
+    // 1. Verify and enforce provider-level idempotency
+    if (input.idempotencyKey && this.processedKeys.has(input.idempotencyKey)) {
+      const cached = this.processedKeys.get(input.idempotencyKey)! as ProcessRefundResult;
+      return {
+        ...cached,
+        duplicateSuppressed: true,
+      };
+    }
+
+    // 2. Deterministic failure triggers for automated testing and fault injection:
+    // - Reason containing 'FAIL' or 'INVALID'
+    // - Amount ending with '.99' triggers simulated gateway refund decline
+    const isExplicitFailure =
+      input.reason?.toUpperCase().includes('FAIL') ||
+      input.reason?.toUpperCase().includes('SIMULATE_FAILURE') ||
+      input.amount.endsWith('.99');
+
+    if (isExplicitFailure) {
+      const failureResult: ProcessRefundResult = {
+        success: false,
+        status: 'FAILED',
+        providerReference: `sim_rf_fail_${crypto.randomUUID()}`,
+        errorMessage: 'Simulated refund declined: Original transaction not settled or gateway rejection',
+        isSimulated: true,
+      };
+
+      if (input.idempotencyKey) {
+        this.processedKeys.set(input.idempotencyKey, failureResult as any);
+      }
+
+      return failureResult;
+    }
+
+    // 3. Deterministic pending trigger for testing asynchronous gateway refund flows:
+    // - Reason containing 'PENDING'
+    const isExplicitPending = input.reason?.toUpperCase().includes('PENDING');
+
+    if (isExplicitPending) {
+      const pendingResult: ProcessRefundResult = {
+        success: true,
+        status: 'PENDING',
+        providerReference: `sim_rf_pend_${crypto.randomUUID()}`,
+        isSimulated: true,
+      };
+
+      if (input.idempotencyKey) {
+        this.processedKeys.set(input.idempotencyKey, pendingResult as any);
+      }
+
+      return pendingResult;
+    }
+
+    // 4. Successful simulated refund
+    const successResult: ProcessRefundResult = {
+      success: true,
+      status: 'COMPLETED',
+      providerReference: `sim_rf_${crypto.randomUUID()}`,
+      isSimulated: true,
+    };
+
+    if (input.idempotencyKey) {
+      this.processedKeys.set(input.idempotencyKey, successResult as any);
+    }
+
+    return successResult;
   }
 }
 
