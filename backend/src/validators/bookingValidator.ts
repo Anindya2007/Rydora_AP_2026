@@ -44,3 +44,22 @@ export const bookingIdParamSchema = z
   .strict();
 
 export type BookingIdParam = z.infer<typeof bookingIdParamSchema>;
+
+/**
+ * Validation schema for querying passenger's own bookings (GET /api/v1/bookings/me).
+ *
+ * Rules:
+ * - page: Positive integer, defaults to 1.
+ * - limit: Positive integer between 1 and 100, defaults to 20.
+ * - status: Optional BookingStatus enum filter.
+ * - strict: Rejects client attempts to filter by riderId, userId, or other unauthorized parameters.
+ */
+export const myBookingsQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(100).default(20),
+    status: z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED']).optional(),
+  })
+  .strict();
+
+export type MyBookingsQueryInput = z.infer<typeof myBookingsQuerySchema>;

@@ -1,6 +1,11 @@
 import { prisma } from '../config/prisma.js';
 import { BookingStatus, RideStatus } from '../generated/prisma/client.js';
-import type { CreateBookingInput } from '../validators/bookingValidator.js';
+import type { AuthenticatedUser } from '../middleware/auth.js';
+import type { PaginationMeta } from '../utils/response.js';
+import type {
+  CreateBookingInput,
+  MyBookingsQueryInput,
+} from '../validators/bookingValidator.js';
 import {
   BadRequestError,
   ConflictError,
@@ -246,6 +251,113 @@ export async function createBooking(
   });
 }
 
+export interface PaginatedBookingsResult {
+  bookings: BookingOutput[];
+  pagination: PaginationMeta;
+}
+
+/**
+ * Retrieves a single booking by ID with ownership and role-based authorization (GET /api/v1/bookings/:bookingId).
+ *
+ * Authorization Invariants:
+ * 1. Passenger Access: The rider who created the booking may retrieve it.
+ * 2. Driver Access: The driver of the ride associated with this booking may retrieve it.
+ * 3. Platform Admin Access: Administrators may retrieve any booking.
+ * 4. Unrelated User Rejection: Any authenticated user who is neither the rider, nor the ride's driver,
+ *    nor an admin is rejected with 403 Forbidden.
+ * 5. Safe Projection: Returns sanitized BookingOutput without exposing password hashes, wallet balances, or license data.
+ *
+ * @param user Authenticated user context.
+ * @param bookingId UUID of target booking.
+ * @returns Standardized BookingOutput.
+ */
+export async function getBookingById(
+  user: AuthenticatedUser,
+  bookingId: string
+): Promise<BookingOutput> {
+  const booking = await prisma.booking.findUnique({
+    where: { bookingId },
+    select: bookingDetailSelectProjection,
+  });
+
+  if (!booking) {
+    throw new NotFoundError('Booking not found');
+  }
+
+  // Authorization check
+  const isRider = booking.riderId === user.userId;
+  const isDriver = booking.ride?.driverId === user.userId;
+  const isAdmin = user.roles.includes('ADMIN');
+
+  if (!isRider && !isDriver && !isAdmin) {
+    throw new ForbiddenError('You are not authorized to view this booking');
+  }
+
+  return formatBookingOutput(booking);
+}
+
+/**
+ * Retrieves the authenticated passenger's booking history with bounded pagination (GET /api/v1/bookings/me).
+ *
+ * Requirements & Invariants:
+ * 1. Strict Rider Isolation: Results are strictly filtered by riderId derived from req.user.userId.
+ * 2. Bounded Pagination: Supports page and limit (default 20, max 100).
+ * 3. Status Filtering: Supports optional filtering by valid BookingStatus enum values.
+ * 4. Deterministic Ordering: Ordered by bookedAt descending, tie-broken by bookingId ascending.
+ * 5. Safe Projection: Returns sanitized BookingOutput items with associated safe ride details.
+ *
+ * @param riderId Authenticated passenger UUID.
+ * @param options Validated pagination and status filter options.
+ * @returns Paginated list of bookings and pagination metadata.
+ */
+export async function listPassengerBookings(
+  riderId: string,
+  options?: MyBookingsQueryInput
+): Promise<PaginatedBookingsResult> {
+  const page = options?.page ?? 1;
+  const limit = options?.limit ?? 20;
+  const skip = (page - 1) * limit;
+
+  const where: any = {
+    riderId,
+  };
+
+  if (options?.status) {
+    where.status = options.status;
+  }
+
+  const orderBy: any = [{ bookedAt: 'desc' }, { bookingId: 'asc' }];
+
+  const [total, records] = await Promise.all([
+    prisma.booking.count({ where }),
+    prisma.booking.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy,
+      select: bookingDetailSelectProjection,
+    }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  const pagination: PaginationMeta = {
+    page,
+    limit,
+    total,
+    totalPages,
+    hasNext: page < totalPages,
+    hasPrev: page > 1,
+  };
+
+  return {
+    bookings: records.map(formatBookingOutput),
+    pagination,
+  };
+}
+
 export const bookingService = {
   createBooking,
+  getBookingById,
+  listPassengerBookings,
 };

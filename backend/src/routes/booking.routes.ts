@@ -1,6 +1,10 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { createBookingSchema } from '../validators/bookingValidator.js';
+import {
+  bookingIdParamSchema,
+  createBookingSchema,
+  myBookingsQuerySchema,
+} from '../validators/bookingValidator.js';
 import { BookingController } from '../controllers/booking.controller.js';
 
 export const bookingRouter = Router();
@@ -23,6 +27,38 @@ export const validateCreateBooking = (
 };
 
 /**
+ * Request parameter validation middleware for single booking retrieval.
+ */
+export const validateBookingIdParam = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    bookingIdParamSchema.parse(req.params);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Request query validation middleware for passenger booking history.
+ */
+export const validateMyBookingsQuery = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    myBookingsQuerySchema.parse(req.query);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * POST /api/v1/bookings
  * Protected endpoint for authenticated passengers to reserve seats on a scheduled carpool ride.
  *
@@ -36,4 +72,37 @@ bookingRouter.post(
   authenticate,
   validateCreateBooking,
   BookingController.createBooking
+);
+
+/**
+ * GET /api/v1/bookings/me
+ * Protected endpoint for authenticated passengers to retrieve their booking history.
+ * NOTE: Defined BEFORE /:bookingId to prevent Express routing 'me' as a bookingId parameter.
+ *
+ * Security & Middleware Execution Sequence:
+ * 1. authenticate - Validates JWT Bearer token and attaches fresh user state to req.user.
+ * 2. validateMyBookingsQuery - Validates pagination and status query parameters.
+ * 3. BookingController.getMyBookings - Retrieves paginated booking history isolated to req.user.userId.
+ */
+bookingRouter.get(
+  '/me',
+  authenticate,
+  validateMyBookingsQuery,
+  BookingController.getMyBookings
+);
+
+/**
+ * GET /api/v1/bookings/:bookingId
+ * Protected endpoint for authorized passengers, drivers, and admins to retrieve a single booking.
+ *
+ * Security & Middleware Execution Sequence:
+ * 1. authenticate - Validates JWT Bearer token and attaches fresh user state to req.user.
+ * 2. validateBookingIdParam - Validates bookingId parameter as a well-formed UUID.
+ * 3. BookingController.getBookingById - Enforces ownership (rider or ride driver) or ADMIN role.
+ */
+bookingRouter.get(
+  '/:bookingId',
+  authenticate,
+  validateBookingIdParam,
+  BookingController.getBookingById
 );
