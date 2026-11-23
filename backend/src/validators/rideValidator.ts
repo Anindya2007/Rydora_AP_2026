@@ -244,6 +244,98 @@ export const driverRidesQuerySchema = z
 export type DriverRidesQueryInput = z.infer<typeof driverRidesQuerySchema>;
 
 /**
+ * Validation schema for updating an existing ride (PATCH /api/v1/rides/:rideId).
+ *
+ * Rules:
+ * - Permitted fields: vehicleId, source, destination, departureTime, totalSeats, farePerSeat,
+ *   sourceLatitude, sourceLongitude, destinationLatitude, destinationLongitude.
+ * - Disallowed / Protected fields: rideId, driverId, communityId, status, availableSeats,
+ *   createdAt, updatedAt (enforced via .strict()).
+ * - At least one field must be provided in the update payload.
+ * - departureTime, if supplied, must be in the future.
+ * - totalSeats, if supplied, must be an integer between 1 and 8.
+ * - farePerSeat, if supplied, must be non-negative (0.00 to 10000.00).
+ */
+export const updateRideSchema = z
+  .object({
+    vehicleId: z
+      .string({ message: 'Vehicle ID must be a string' })
+      .trim()
+      .regex(UUID_REGEX, 'Vehicle ID must be a valid UUID')
+      .optional(),
+    source: z
+      .string({ message: 'Source must be a string' })
+      .trim()
+      .min(1, 'Source location cannot be empty')
+      .max(255, 'Source location must not exceed 255 characters')
+      .optional(),
+    destination: z
+      .string({ message: 'Destination must be a string' })
+      .trim()
+      .min(1, 'Destination location cannot be empty')
+      .max(255, 'Destination location must not exceed 255 characters')
+      .optional(),
+    departureTime: z
+      .union([
+        z
+          .string({ message: 'Departure time must be a string' })
+          .datetime({ message: 'Departure time must be a valid ISO 8601 datetime' }),
+        z.date({ message: 'Departure time must be a valid date' }),
+      ])
+      .transform((val) => (val instanceof Date ? val : new Date(val)))
+      .refine(
+        (date) => date.getTime() > Date.now(),
+        'Departure time must be in the future'
+      )
+      .optional(),
+    totalSeats: z
+      .number({ message: 'Total seats must be a valid number' })
+      .int('Total seats must be an integer')
+      .min(1, 'Total seats must be at least 1')
+      .max(8, 'Total seats must not exceed 8')
+      .optional(),
+    farePerSeat: z.preprocess(
+      (val) => {
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string' && val.trim() !== '') return Number(val.trim());
+        return val;
+      },
+      z
+        .number({ message: 'Fare per seat must be a valid number' })
+        .min(0, 'Fare per seat must be non-negative')
+        .max(10000, 'Fare per seat must not exceed 10000.00')
+    ).optional(),
+    sourceLatitude: latitudeSchema,
+    sourceLongitude: longitudeSchema,
+    destinationLatitude: latitudeSchema,
+    destinationLongitude: longitudeSchema,
+  })
+  .strict()
+  .refine(
+    (data) => {
+      // Must contain at least one field
+      return Object.keys(data).length > 0;
+    },
+    {
+      message: 'At least one editable field must be provided for update',
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.source && data.destination) {
+        return data.source.trim().toLowerCase() !== data.destination.trim().toLowerCase();
+      }
+      return true;
+    },
+    {
+      message: 'Source and destination cannot be identical',
+      path: ['destination'],
+    }
+  );
+
+export type UpdateRideInput = z.infer<typeof updateRideSchema>;
+
+/**
  * Parameter schema for endpoints addressing rides by UUID.
  */
 export const rideIdParamSchema = z

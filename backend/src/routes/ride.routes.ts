@@ -7,6 +7,7 @@ import {
   rideIdParamSchema,
   driverRidesQuerySchema,
   rideQuerySchema,
+  updateRideSchema,
 } from '../validators/rideValidator.js';
 import { RideController } from '../controllers/ride.controller.js';
 
@@ -78,6 +79,22 @@ export const validateRideQuery = (
 };
 
 /**
+ * Request body validation middleware for ride updates (PATCH /api/v1/rides/:rideId).
+ */
+export const validateUpdateRide = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    req.body = updateRideSchema.parse(req.body);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * GET /api/v1/rides/me
  * Protected endpoint for authenticated drivers to view their published rides.
  * NOTE: Declared BEFORE /:rideId to prevent route parameter collision.
@@ -133,6 +150,26 @@ rideRouter.get(
   authenticate,
   validateRideIdParam,
   RideController.getRideById
+);
+
+/**
+ * PATCH /api/v1/rides/:rideId
+ * Protected endpoint for authorized drivers to update their published ride.
+ *
+ * Security & Middleware Execution Sequence:
+ * 1. authenticate - Validates JWT Bearer token and attaches fresh user state to req.user.
+ * 2. requireRoles(UserRole.DRIVER) - Enforces global DRIVER role on req.user.roles.
+ * 3. validateRideIdParam - Validates rideId parameter as a well-formed UUID.
+ * 4. validateUpdateRide - Validates update payload against updateRideSchema (rejects protected/immutable fields).
+ * 5. RideController.updateRide - Enforces ownership, lifecycle state, capacity invariants, and performs atomic update.
+ */
+rideRouter.patch(
+  '/:rideId',
+  authenticate,
+  requireRoles(UserRole.DRIVER),
+  validateRideIdParam,
+  validateUpdateRide,
+  RideController.updateRide
 );
 
 /**

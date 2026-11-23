@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
 import { RideStatus, UserRole } from '../generated/prisma/client.js';
-import type { CreateRideInput, DriverRidesQueryInput, RideQueryInput } from '../validators/rideValidator.js';
+import type { CreateRideInput, DriverRidesQueryInput, RideQueryInput, UpdateRideInput } from '../validators/rideValidator.js';
 import {
   BadRequestError,
   ConflictError,
@@ -568,9 +568,189 @@ export async function listRides(
   };
 }
 
+/**
+ * Updates permitted mutable fields of a ride belonging to the authenticated driver.
+ *
+ * Security & Lifecycle Rules:
+ * 1. Existence Check: Finds ride by rideId. If not found, throws NotFoundError (404).
+ * 2. Ownership Check: If ride.driverId !== driverId, throws ForbiddenError (403).
+ * 3. Lifecycle Enforcement: Only SCHEDULED rides can be updated.
+ *    If status is IN_PROGRESS, COMPLETED, or CANCELLED, throws BadRequestError (400).
+ *    If departureTime has already passed, throws BadRequestError (400).
+ * 4. Vehicle Invariant: If vehicleId is changed:
+ *    - New vehicle must belong to driver and be isActive = true.
+ *    - New vehicle seatCapacity must be >= totalSeats.
+ * 5. Seat Capacity & Booking Invariant:
+ *    - Booked seats = ride.totalSeats - ride.availableSeats.
+ *    - If new totalSeats < bookedSeats, throws BadRequestError.
+ *    - new availableSeats = new totalSeats - bookedSeats.
+ * 6. Scheduling Conflict Prevention:
+ *    - If departureTime or vehicleId is changed, checks that driver/vehicle has no conflicting ride.
+ * 7. Route Invariant:
+ *    - If source is updated, source !== destination.
+ * 8. Atomic Database Update:
+ *    - Updates only permitted fields in PostgreSQL and returns formatted RideDetailOutput.
+ *
+ * @param driverId UUID of the authenticated driver.
+ * @param rideId UUID of the target ride.
+ * @param input Validated update payload.
+ * @returns Standardized RideDetailOutput representation.
+ */
+export async function updateRide(
+  driverId: string,
+  rideId: string,
+  input: UpdateRideInput
+): Promise<RideDetailOutput> {
+  // 1. Fetch current ride state with vehicle
+  const existingRide = await prisma.ride.findUnique({
+    where: { rideId },
+    include: {
+      vehicle: {
+        select: {
+          vehicleId: true,
+          seatCapacity: true,
+          isActive: true,
+          driverId: true,
+        },
+      },
+    },
+  });
+
+  if (!existingRide) {
+    throw new NotFoundError('Ride not found');
+  }
+
+  // 2. Ownership check
+  if (existingRide.driverId !== driverId) {
+    throw new ForbiddenError('You are not authorized to update this ride');
+  }
+
+  // 3. Lifecycle state check
+  if (existingRide.status !== RideStatus.SCHEDULED) {
+    throw new BadRequestError(
+      `Cannot update ride with status ${existingRide.status}. Only SCHEDULED rides can be updated.`
+    );
+  }
+
+  if (new Date(existingRide.departureTime).getTime() <= Date.now()) {
+    throw new BadRequestError('Cannot update a ride whose scheduled departure time has passed');
+  }
+
+  // 4. Source & destination collision check with existing record
+  const effectiveSource = input.source?.trim() ?? existingRide.source;
+  const effectiveDestination = input.destination?.trim() ?? existingRide.destination;
+  if (effectiveSource.toLowerCase() === effectiveDestination.toLowerCase()) {
+    throw new BadRequestError('Source and destination cannot be identical');
+  }
+
+  // 5. Vehicle change validation
+  let targetVehicle = existingRide.vehicle;
+  if (input.vehicleId && input.vehicleId !== existingRide.vehicleId) {
+    const newVehicle = await prisma.vehicle.findFirst({
+      where: {
+        vehicleId: input.vehicleId,
+        driverId,
+      },
+      select: {
+        vehicleId: true,
+        seatCapacity: true,
+        isActive: true,
+        driverId: true,
+      },
+    });
+
+    if (!newVehicle) {
+      throw new NotFoundError('Selected vehicle not found or does not belong to you');
+    }
+
+    if (!newVehicle.isActive) {
+      throw new BadRequestError('Selected vehicle is inactive and cannot be assigned to rides');
+    }
+
+    targetVehicle = newVehicle;
+  }
+
+  // 6. Total seats vs vehicle capacity & existing bookings
+  const bookedSeats = existingRide.totalSeats - existingRide.availableSeats;
+  let newAvailableSeats = existingRide.availableSeats;
+
+  if (input.totalSeats !== undefined) {
+    if (input.totalSeats > targetVehicle.seatCapacity) {
+      throw new BadRequestError(
+        `Total seats offered (${input.totalSeats}) exceeds vehicle seat capacity (${targetVehicle.seatCapacity})`
+      );
+    }
+
+    if (input.totalSeats < bookedSeats) {
+      throw new BadRequestError(
+        `Cannot reduce total seats to ${input.totalSeats}; ${bookedSeats} seats are already booked`
+      );
+    }
+
+    newAvailableSeats = input.totalSeats - bookedSeats;
+  } else if (input.vehicleId && existingRide.totalSeats > targetVehicle.seatCapacity) {
+    throw new BadRequestError(
+      `Current total seats (${existingRide.totalSeats}) exceeds new vehicle seat capacity (${targetVehicle.seatCapacity})`
+    );
+  }
+
+  // 7. Scheduling conflicts check if departureTime or vehicleId changed
+  const effectiveDepartureTime = input.departureTime ?? existingRide.departureTime;
+  const departureChanged =
+    input.departureTime &&
+    input.departureTime.getTime() !== new Date(existingRide.departureTime).getTime();
+  const vehicleChanged = input.vehicleId && input.vehicleId !== existingRide.vehicleId;
+
+  if (departureChanged || vehicleChanged) {
+    const conflict = await prisma.ride.findFirst({
+      where: {
+        rideId: { not: rideId },
+        departureTime: effectiveDepartureTime,
+        status: { in: [RideStatus.SCHEDULED, RideStatus.IN_PROGRESS] },
+        OR: [
+          { driverId },
+          { vehicleId: targetVehicle.vehicleId },
+        ],
+      },
+      select: { rideId: true },
+    });
+
+    if (conflict) {
+      throw new ConflictError(
+        'A ride is already scheduled for this driver or vehicle at the specified departure time'
+      );
+    }
+  }
+
+  // 8. Assemble database update payload (preserving omitted fields)
+  const updateData: any = {};
+  if (input.vehicleId) updateData.vehicleId = input.vehicleId;
+  if (input.source) updateData.source = input.source.trim();
+  if (input.destination) updateData.destination = input.destination.trim();
+  if (input.departureTime) updateData.departureTime = input.departureTime;
+  if (input.totalSeats !== undefined) {
+    updateData.totalSeats = input.totalSeats;
+    updateData.availableSeats = newAvailableSeats;
+  }
+  if (input.farePerSeat !== undefined) updateData.farePerSeat = input.farePerSeat;
+  if (input.sourceLatitude !== undefined) updateData.sourceLatitude = input.sourceLatitude;
+  if (input.sourceLongitude !== undefined) updateData.sourceLongitude = input.sourceLongitude;
+  if (input.destinationLatitude !== undefined) updateData.destinationLatitude = input.destinationLatitude;
+  if (input.destinationLongitude !== undefined) updateData.destinationLongitude = input.destinationLongitude;
+
+  const updatedRide = await prisma.ride.update({
+    where: { rideId },
+    data: updateData,
+    select: rideDetailSelectProjection,
+  });
+
+  return formatRideDetailOutput(updatedRide);
+}
+
 export const rideService = {
   createRide,
   getRideById,
   listDriverRides,
   listRides,
+  updateRide,
 };

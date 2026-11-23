@@ -4,6 +4,7 @@ import {
   driverRidesQuerySchema,
   rideIdParamSchema,
   rideQuerySchema,
+  updateRideSchema,
 } from '../validators/rideValidator.js';
 import { rideService } from '../services/ride.service.js';
 import { sendSuccess } from '../utils/response.js';
@@ -112,9 +113,38 @@ export async function listRides(
   }
 }
 
+/**
+ * Controller handling ride updates (PATCH /api/v1/rides/:rideId).
+ * Enforces driver ownership, validation, and lifecycle invariants.
+ */
+export async function updateRide(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const { rideId } = rideIdParamSchema.parse(req.params);
+    const validatedData = updateRideSchema.parse(req.body);
+    const ride = await rideService.updateRide(
+      req.user.userId,
+      rideId,
+      validatedData
+    );
+
+    sendSuccess(res, { ride }, 'Ride updated successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const RideController = {
   createRide,
   listDriverRides,
   getRideById,
   listRides,
+  updateRide,
 };
