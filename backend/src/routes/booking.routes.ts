@@ -4,6 +4,7 @@ import {
   bookingIdParamSchema,
   createBookingSchema,
   myBookingsQuerySchema,
+  rejectBookingSchema,
 } from '../validators/bookingValidator.js';
 import { BookingController } from '../controllers/booking.controller.js';
 
@@ -59,6 +60,22 @@ export const validateMyBookingsQuery = (
 };
 
 /**
+ * Request body validation middleware for driver booking rejection.
+ */
+export const validateRejectBooking = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    req.body = rejectBookingSchema.parse(req.body ?? {});
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * POST /api/v1/bookings
  * Protected endpoint for authenticated passengers to reserve seats on a scheduled carpool ride.
  *
@@ -89,6 +106,57 @@ bookingRouter.get(
   authenticate,
   validateMyBookingsQuery,
   BookingController.getMyBookings
+);
+
+/**
+ * PATCH /api/v1/bookings/:bookingId/approve
+ * POST  /api/v1/bookings/:bookingId/approve
+ * Protected endpoint for authorized drivers to approve a pending booking request.
+ *
+ * Security & Middleware Execution Sequence:
+ * 1. authenticate - Validates JWT Bearer token and attaches fresh user state to req.user.
+ * 2. validateBookingIdParam - Validates bookingId parameter as a well-formed UUID.
+ * 3. BookingController.approveBooking - Enforces ride ownership, checks pending status, performs atomic transition.
+ */
+bookingRouter.patch(
+  '/:bookingId/approve',
+  authenticate,
+  validateBookingIdParam,
+  BookingController.approveBooking
+);
+
+bookingRouter.post(
+  '/:bookingId/approve',
+  authenticate,
+  validateBookingIdParam,
+  BookingController.approveBooking
+);
+
+/**
+ * PATCH /api/v1/bookings/:bookingId/reject
+ * POST  /api/v1/bookings/:bookingId/reject
+ * Protected endpoint for authorized drivers to reject a pending booking request.
+ *
+ * Security & Middleware Execution Sequence:
+ * 1. authenticate - Validates JWT Bearer token and attaches fresh user state to req.user.
+ * 2. validateBookingIdParam - Validates bookingId parameter as a well-formed UUID.
+ * 3. validateRejectBooking - Validates optional rejection reason payload.
+ * 4. BookingController.rejectBooking - Enforces ownership, marks cancelled, atomically restores seats.
+ */
+bookingRouter.patch(
+  '/:bookingId/reject',
+  authenticate,
+  validateBookingIdParam,
+  validateRejectBooking,
+  BookingController.rejectBooking
+);
+
+bookingRouter.post(
+  '/:bookingId/reject',
+  authenticate,
+  validateBookingIdParam,
+  validateRejectBooking,
+  BookingController.rejectBooking
 );
 
 /**

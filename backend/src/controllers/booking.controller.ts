@@ -3,7 +3,10 @@ import {
   bookingIdParamSchema,
   createBookingSchema,
   myBookingsQuerySchema,
+  rejectBookingSchema,
+  rideBookingsQuerySchema,
 } from '../validators/bookingValidator.js';
+import { rideIdParamSchema } from '../validators/rideValidator.js';
 import { bookingService } from '../services/booking.service.js';
 import { sendSuccess } from '../utils/response.js';
 import { UnauthorizedError } from '../utils/errors.js';
@@ -89,8 +92,97 @@ export async function getMyBookings(
   }
 }
 
+/**
+ * Controller handling passenger manifest retrieval for a ride (GET /api/v1/rides/:rideId/bookings).
+ * Permits access to publishing driver or platform admin.
+ */
+export async function getRideBookings(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const { rideId } = rideIdParamSchema.parse(req.params);
+    const validatedQuery = rideBookingsQuerySchema.parse(req.query);
+    const result = await bookingService.listRideBookings(
+      req.user,
+      rideId,
+      validatedQuery
+    );
+
+    sendSuccess(
+      res,
+      { bookings: result.bookings },
+      'Ride passenger manifest retrieved successfully',
+      200,
+      result.pagination
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Controller handling driver approval of a pending booking (PATCH /api/v1/bookings/:bookingId/approve).
+ */
+export async function approveBooking(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const { bookingId } = bookingIdParamSchema.parse(req.params);
+    const booking = await bookingService.approveBooking(
+      req.user.userId,
+      bookingId
+    );
+
+    sendSuccess(res, { booking }, 'Booking approved successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Controller handling driver rejection of a pending booking (PATCH /api/v1/bookings/:bookingId/reject).
+ */
+export async function rejectBooking(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const { bookingId } = bookingIdParamSchema.parse(req.params);
+    const validatedBody = rejectBookingSchema.parse(req.body ?? {});
+    const booking = await bookingService.rejectBooking(
+      req.user.userId,
+      bookingId,
+      validatedBody.reason
+    );
+
+    sendSuccess(res, { booking }, 'Booking rejected successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const BookingController = {
   createBooking,
   getBookingById,
   getMyBookings,
+  getRideBookings,
+  approveBooking,
+  rejectBooking,
 };

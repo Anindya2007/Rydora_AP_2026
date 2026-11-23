@@ -5,6 +5,8 @@ import type { PaginationMeta } from '../utils/response.js';
 import type {
   CreateBookingInput,
   MyBookingsQueryInput,
+  RejectBookingInput,
+  RideBookingsQueryInput,
 } from '../validators/bookingValidator.js';
 import {
   BadRequestError,
@@ -16,7 +18,7 @@ import {
 export interface BookingRiderSummary {
   userId: string;
   name: string;
-  email: string;
+  email?: string;
   profileImage: string | null;
 }
 
@@ -82,6 +84,80 @@ export const bookingDetailSelectProjection = {
     },
   },
 };
+
+/**
+ * Selection projection for passenger manifests (GET /api/v1/rides/:rideId/bookings).
+ * Excludes passenger email, phone, wallet balance, and password hashes for rider privacy.
+ */
+export const manifestBookingSelectProjection = {
+  bookingId: true,
+  rideId: true,
+  riderId: true,
+  seatsBooked: true,
+  status: true,
+  totalAmount: true,
+  bookedAt: true,
+  updatedAt: true,
+  cancelledAt: true,
+  cancelledById: true,
+  cancellationReason: true,
+  rider: {
+    select: {
+      userId: true,
+      name: true,
+      profileImage: true,
+      // email is omitted for privacy
+    },
+  },
+  ride: {
+    select: {
+      rideId: true,
+      driverId: true,
+      source: true,
+      destination: true,
+      departureTime: true,
+      farePerSeat: true,
+      status: true,
+    },
+  },
+};
+
+/**
+ * Formats raw booking record for driver passenger manifest, strictly stripping passenger email.
+ */
+export function formatManifestBookingOutput(raw: any): BookingOutput {
+  return {
+    bookingId: raw.bookingId,
+    rideId: raw.rideId,
+    riderId: raw.riderId,
+    seatsBooked: raw.seatsBooked,
+    status: raw.status,
+    totalAmount: raw.totalAmount ? raw.totalAmount.toString() : '0.00',
+    bookedAt: raw.bookedAt,
+    updatedAt: raw.updatedAt,
+    cancelledAt: raw.cancelledAt ?? null,
+    cancelledById: raw.cancelledById ?? null,
+    cancellationReason: raw.cancellationReason ?? null,
+    rider: raw.rider
+      ? {
+          userId: raw.rider.userId,
+          name: raw.rider.name,
+          profileImage: raw.rider.profileImage ?? null,
+        }
+      : undefined,
+    ride: raw.ride
+      ? {
+          rideId: raw.ride.rideId,
+          driverId: raw.ride.driverId,
+          source: raw.ride.source,
+          destination: raw.ride.destination,
+          departureTime: raw.ride.departureTime,
+          farePerSeat: raw.ride.farePerSeat ? raw.ride.farePerSeat.toString() : '0.00',
+          status: raw.ride.status,
+        }
+      : undefined,
+  };
+}
 
 /**
  * Formats raw Prisma Booking model to standardized BookingOutput with clean decimal strings.
@@ -356,8 +432,306 @@ export async function listPassengerBookings(
   };
 }
 
+/**
+ * Retrieves the passenger manifest for a specific ride (GET /api/v1/rides/:rideId/bookings).
+ *
+ * Requirements & Invariants:
+ * 1. Authorization: Only the publishing driver or a platform ADMIN may view the manifest.
+ * 2. Unrelated users are rejected with 403 Forbidden.
+ * 3. Safe Projection: Returns sanitized BookingOutput without exposing password hashes or private credentials.
+ * 4. Bounded Pagination: Supports page and limit (default 20, max 100).
+ * 5. Deterministic Ordering: Ordered by bookedAt descending, tie-broken by bookingId ascending.
+ */
+export async function listRideBookings(
+  user: AuthenticatedUser,
+  rideId: string,
+  options?: RideBookingsQueryInput
+): Promise<PaginatedBookingsResult> {
+  const ride = await prisma.ride.findUnique({
+    where: { rideId },
+    select: {
+      rideId: true,
+      driverId: true,
+    },
+  });
+
+  if (!ride) {
+    throw new NotFoundError('Ride not found');
+  }
+
+  const isDriver = ride.driverId === user.userId;
+  const isAdmin = user.roles.includes('ADMIN');
+
+  if (!isDriver && !isAdmin) {
+    throw new ForbiddenError(
+      'You are not authorized to view the passenger manifest for this ride'
+    );
+  }
+
+  const page = options?.page ?? 1;
+  const limit = options?.limit ?? 20;
+  const skip = (page - 1) * limit;
+
+  const where: any = {
+    rideId,
+  };
+
+  if (options?.status) {
+    where.status = options.status;
+  }
+
+  const orderBy: any = [{ bookedAt: 'desc' }, { bookingId: 'asc' }];
+
+  const [total, records] = await Promise.all([
+    prisma.booking.count({ where }),
+    prisma.booking.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy,
+      select: manifestBookingSelectProjection,
+    }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  const pagination: PaginationMeta = {
+    page,
+    limit,
+    total,
+    totalPages,
+    hasNext: page < totalPages,
+    hasPrev: page > 1,
+  };
+
+  return {
+    bookings: records.map(formatManifestBookingOutput),
+    pagination,
+  };
+}
+
+/**
+ * Approves a pending passenger booking request (PATCH /api/v1/bookings/:bookingId/approve).
+ *
+ * Requirements & Lifecycle Invariants:
+ * 1. Driver Ownership: Only the driver of the ride can approve bookings on that ride.
+ * 2. Eligible State: Only PENDING bookings can be approved.
+ * 3. Idempotency/Conflict: Already approved bookings return 400. Cancelled or completed bookings return 400.
+ * 4. Ride State: Only bookings for SCHEDULED rides can be approved.
+ * 5. Seat Allocation Model: Seats were already allocated during creation (M7A). availableSeats is NOT decremented again.
+ * 6. Concurrency Safety: Atomic conditional update (status === PENDING) prevents race conditions.
+ */
+export async function approveBooking(
+  driverId: string,
+  bookingId: string
+): Promise<BookingOutput> {
+  return await prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({
+      where: { bookingId },
+      select: {
+        bookingId: true,
+        rideId: true,
+        riderId: true,
+        seatsBooked: true,
+        status: true,
+        ride: {
+          select: {
+            rideId: true,
+            driverId: true,
+            status: true,
+            departureTime: true,
+          },
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundError('Booking not found');
+    }
+
+    if (booking.ride.driverId !== driverId) {
+      throw new ForbiddenError(
+        'Only the driver who published this ride can approve its bookings'
+      );
+    }
+
+    if (booking.status === BookingStatus.CONFIRMED) {
+      throw new BadRequestError('Booking has already been approved');
+    }
+    if (booking.status === BookingStatus.CANCELLED) {
+      throw new BadRequestError('Cannot approve a cancelled booking');
+    }
+    if (booking.status === BookingStatus.COMPLETED) {
+      throw new BadRequestError('Cannot approve a completed booking');
+    }
+    if (booking.status !== BookingStatus.PENDING) {
+      throw new BadRequestError(`Cannot approve booking with status ${booking.status}`);
+    }
+
+    if (booking.ride.status !== RideStatus.SCHEDULED) {
+      throw new BadRequestError(
+        `Cannot approve booking for a ride with status ${booking.ride.status}. Only SCHEDULED rides can be approved.`
+      );
+    }
+
+    const updateResult = await tx.booking.updateMany({
+      where: {
+        bookingId,
+        status: BookingStatus.PENDING,
+      },
+      data: {
+        status: BookingStatus.CONFIRMED,
+      },
+    });
+
+    if (updateResult.count === 0) {
+      throw new BadRequestError(
+        'Booking status transition conflict. Booking is no longer in pending status.'
+      );
+    }
+
+    const updatedBooking = await tx.booking.findUnique({
+      where: { bookingId },
+      select: bookingDetailSelectProjection,
+    });
+
+    return formatBookingOutput(updatedBooking);
+  });
+}
+
+/**
+ * Rejects a pending passenger booking request (PATCH /api/v1/bookings/:bookingId/reject).
+ *
+ * Requirements & Lifecycle Invariants:
+ * 1. Driver Ownership: Only the driver of the ride can reject bookings on that ride.
+ * 2. Eligible State: Only PENDING bookings can be rejected. Confirmed, cancelled, or completed bookings cannot.
+ * 3. State Representation (Decision M7C.1): Transitions status to CANCELLED, recording cancelledById (driver)
+ *    and cancellationReason with a [REJECTED_BY_DRIVER] prefix without requiring schema alterations.
+ * 4. Atomic Seat Restoration: Restores seatsBooked back to availableSeats, capped at totalSeats to prevent over-restoration.
+ * 5. Concurrency Safety: Atomic updateMany ensures concurrent approve/reject calls cannot produce corrupted state.
+ */
+export async function rejectBooking(
+  driverId: string,
+  bookingId: string,
+  reason?: string
+): Promise<BookingOutput> {
+  return await prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({
+      where: { bookingId },
+      select: {
+        bookingId: true,
+        rideId: true,
+        riderId: true,
+        seatsBooked: true,
+        status: true,
+        ride: {
+          select: {
+            rideId: true,
+            driverId: true,
+            status: true,
+            totalSeats: true,
+            availableSeats: true,
+            departureTime: true,
+          },
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundError('Booking not found');
+    }
+
+    if (booking.ride.driverId !== driverId) {
+      throw new ForbiddenError(
+        'Only the driver who published this ride can reject its bookings'
+      );
+    }
+
+    if (booking.status === BookingStatus.CANCELLED) {
+      throw new BadRequestError('Booking has already been rejected or cancelled');
+    }
+    if (booking.status === BookingStatus.CONFIRMED) {
+      throw new BadRequestError(
+        'Cannot reject a booking that has already been confirmed'
+      );
+    }
+    if (booking.status === BookingStatus.COMPLETED) {
+      throw new BadRequestError('Cannot reject a completed booking');
+    }
+    if (booking.status !== BookingStatus.PENDING) {
+      throw new BadRequestError(`Cannot reject booking with status ${booking.status}`);
+    }
+
+    if (booking.ride.status !== RideStatus.SCHEDULED) {
+      throw new BadRequestError(
+        `Cannot reject booking for a ride with status ${booking.ride.status}. Only SCHEDULED rides can be managed.`
+      );
+    }
+
+    if (new Date(booking.ride.departureTime).getTime() <= Date.now()) {
+      throw new BadRequestError(
+        'Cannot reject booking for a ride whose departure time has already passed'
+      );
+    }
+
+    const formattedReason = reason?.trim()
+      ? `[REJECTED_BY_DRIVER] ${reason.trim()}`
+      : '[REJECTED_BY_DRIVER] Driver declined the booking request';
+
+    const updateResult = await tx.booking.updateMany({
+      where: {
+        bookingId,
+        status: BookingStatus.PENDING,
+      },
+      data: {
+        status: BookingStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancelledById: driverId,
+        cancellationReason: formattedReason,
+      },
+    });
+
+    if (updateResult.count === 0) {
+      throw new BadRequestError(
+        'Booking status transition conflict. Booking is no longer in pending status.'
+      );
+    }
+
+    // Atomic seat restoration: capped at totalSeats
+    const seatRestore = await tx.ride.updateMany({
+      where: {
+        rideId: booking.rideId,
+        availableSeats: {
+          lte: booking.ride.totalSeats - booking.seatsBooked,
+        },
+      },
+      data: {
+        availableSeats: {
+          increment: booking.seatsBooked,
+        },
+      },
+    });
+
+    if (seatRestore.count === 0) {
+      throw new ConflictError(
+        'Seat restoration failed: available seats on the ride cannot exceed total vehicle capacity'
+      );
+    }
+
+    const updatedBooking = await tx.booking.findUnique({
+      where: { bookingId },
+      select: bookingDetailSelectProjection,
+    });
+
+    return formatBookingOutput(updatedBooking);
+  });
+}
+
 export const bookingService = {
   createBooking,
   getBookingById,
   listPassengerBookings,
+  listRideBookings,
+  approveBooking,
+  rejectBooking,
 };

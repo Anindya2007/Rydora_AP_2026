@@ -63,3 +63,32 @@ export const myBookingsQuerySchema = z
   .strict();
 
 export type MyBookingsQueryInput = z.infer<typeof myBookingsQuerySchema>;
+
+/**
+ * Validation schema for driver passenger manifest query (GET /api/v1/rides/:rideId/bookings).
+ */
+export const rideBookingsQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(100).default(20),
+    status: z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED']).optional(),
+  })
+  .strict();
+
+export type RideBookingsQueryInput = z.infer<typeof rideBookingsQuerySchema>;
+
+/**
+ * Validation schema for driver booking rejection (PATCH /api/v1/bookings/:bookingId/reject).
+ */
+export const rejectBookingSchema = z
+  .object({
+    reason: z
+      .string()
+      .trim()
+      .min(1, 'Rejection reason must not be empty')
+      .max(500, 'Rejection reason must not exceed 500 characters')
+      .optional(),
+  })
+  .strict();
+
+export type RejectBookingInput = z.infer<typeof rejectBookingSchema>;

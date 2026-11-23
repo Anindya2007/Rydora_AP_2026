@@ -10,6 +10,8 @@ import {
   updateRideSchema,
 } from '../validators/rideValidator.js';
 import { RideController } from '../controllers/ride.controller.js';
+import { BookingController } from '../controllers/booking.controller.js';
+import { rideBookingsQuerySchema } from '../validators/bookingValidator.js';
 
 export const rideRouter = Router();
 
@@ -72,6 +74,22 @@ export const validateRideQuery = (
 ): void => {
   try {
     rideQuerySchema.parse(req.query);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Request query validation middleware for ride passenger manifest.
+ */
+export const validateRideBookingsQuery = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    rideBookingsQuerySchema.parse(req.query);
     next();
   } catch (error) {
     next(error);
@@ -150,6 +168,24 @@ rideRouter.get(
   authenticate,
   validateRideIdParam,
   RideController.getRideById
+);
+
+/**
+ * GET /api/v1/rides/:rideId/bookings
+ * Protected endpoint for authorized drivers (and platform admins) to retrieve the passenger manifest.
+ *
+ * Security & Middleware Execution Sequence:
+ * 1. authenticate - Validates JWT Bearer token and attaches fresh user state to req.user.
+ * 2. validateRideIdParam - Validates rideId parameter as a well-formed UUID.
+ * 3. validateRideBookingsQuery - Validates pagination and status query parameters.
+ * 4. BookingController.getRideBookings - Enforces ride ownership, returns sanitized passenger bookings.
+ */
+rideRouter.get(
+  '/:rideId/bookings',
+  authenticate,
+  validateRideIdParam,
+  validateRideBookingsQuery,
+  BookingController.getRideBookings
 );
 
 /**
