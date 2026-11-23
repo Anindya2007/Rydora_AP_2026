@@ -36,7 +36,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const outputFile = path.resolve(__dirname, "../api-test-report.json");
 
-const BASE_URL = process.env.API_BASE_URL || "http://localhost:3000/api/v1";
+const BASE_URL = process.env.API_BASE_URL || "http://localhost:5001/api/v1";
 const timestamp = Date.now();
 
 // Unique test credentials for User 1 (Primary Actor & Community Creator)

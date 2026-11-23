@@ -37,7 +37,6 @@ export const Navbar = ({
   const navItems = [
     { id: 'ride', label: 'Ride' },
     { id: 'drive', label: 'Drive' },
-    { id: 'business', label: 'Business' },
     { id: 'about', label: 'About', hasDropdown: true },
   ];
 

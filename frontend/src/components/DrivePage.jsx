@@ -101,9 +101,13 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
         licenseNumber.trim(),
         new Date(licenseExpiry).toISOString()
       );
-      setVerifMessage(
-        'Driving licence submitted successfully! Pending verification by Rydora fleet administration.'
-      );
+      // Immediately refresh user state to acquire DRIVER role in real time
+      const freshUser = await api.auth.getMe();
+      if (freshUser) {
+        window.location.reload();
+      } else {
+        setVerifMessage('Driving licence activated successfully! You can now publish carpool rides.');
+      }
     } catch (err) {
       setVerifMessage(
         err.response?.data?.error?.message ||
@@ -393,14 +397,54 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
             </p>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-              <LiquidGlassButton
-                variant="primary"
-                scale={1}
-                onClick={onSignUpClick}
-                style={{ padding: '14px 28px', fontSize: '15px' }}
-              >
-                Sign up to drive
-              </LiquidGlassButton>
+              {!user ? (
+                <LiquidGlassButton
+                  variant="primary"
+                  scale={1}
+                  onClick={onSignUpClick}
+                  style={{ padding: '14px 28px', fontSize: '15px' }}
+                >
+                  Sign up to drive
+                </LiquidGlassButton>
+              ) : !isDriver ? (
+                <a
+                  href="#driver-onboarding-section"
+                  style={{
+                    color: '#ffffff',
+                    textDecoration: 'none',
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    padding: '14px 28px',
+                    borderRadius: '9999px',
+                    background: 'rgba(99, 102, 241, 0.4)',
+                    border: '1px solid rgba(129, 140, 248, 0.6)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  Activate Driver Account ↓
+                </a>
+              ) : (
+                <a
+                  href="#driver-onboarding-section"
+                  style={{
+                    color: '#ffffff',
+                    textDecoration: 'none',
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    padding: '14px 28px',
+                    borderRadius: '9999px',
+                    background: 'rgba(34, 197, 94, 0.25)',
+                    border: '1px solid rgba(74, 222, 128, 0.45)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  Manage Carpool Rides ↓
+                </a>
+              )}
 
               <a
                 href="#earnings-calculator"
@@ -447,7 +491,7 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
 
       {/* Driver Onboarding & Management Dashboard */}
       {user && (
-        <section className="rs-section">
+        <section id="driver-onboarding-section" className="rs-section">
           <LiquidGlassPanel
             radius={28}
             frosted={true}

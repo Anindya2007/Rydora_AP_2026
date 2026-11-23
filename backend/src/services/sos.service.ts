@@ -347,6 +347,75 @@ export async function getSOSAlertById(
 /**
  * Lists emergency alerts for the authenticated user with pagination and optional status filter.
  */
+/**
+ * Retrieves all currently active SOS alerts where the specified phone number
+ * is listed as an emergency contact / safety guardian.
+ * Allows guardians to see in-app incoming emergency notifications in real time.
+ */
+export async function getGuardianActiveAlerts(
+  guardianPhone: string
+): Promise<SOSAlertDetailOutput[]> {
+  if (!guardianPhone || !guardianPhone.trim()) {
+    return [];
+  }
+
+  const normalizedPhone = guardianPhone.trim();
+
+  // Find users who have registered this phone number as an emergency contact
+  const matchingContacts = await prisma.emergencyContact.findMany({
+    where: {
+      phone: {
+        contains: normalizedPhone.replace(/^\+91/, '').trim(),
+      },
+    },
+    select: {
+      userId: true,
+      name: true,
+      relationship: true,
+    },
+  });
+
+  if (matchingContacts.length === 0) {
+    return [];
+  }
+
+  const targetUserIds = matchingContacts.map((c) => c.userId);
+
+  // Find all ACTIVE SOS alerts for these users
+  const activeAlerts = await prisma.sOSAlert.findMany({
+    where: {
+      userId: { in: targetUserIds },
+      status: SOSAlertStatus.ACTIVE,
+    },
+    include: {
+      user: {
+        select: {
+          userId: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
+      ride: {
+        select: {
+          rideId: true,
+          source: true,
+          destination: true,
+          status: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return activeAlerts.map((row) => ({
+    alert: formatSOSAlert(row),
+    contacts: [],
+    ride: row.ride,
+    sender: row.user,
+  })) as any[];
+}
+
 export async function listUserSOSAlerts(
   userId: string,
   query: ListSOSAlertsQueryInput
@@ -412,9 +481,30 @@ export async function resolveSOSAlert(
     }
 
     if (alert.userId !== userId && !isAdmin) {
-      throw new ForbiddenError(
-        'Access denied: You do not have permission to resolve this SOS alert'
-      );
+      // Also check if requester is a registered emergency contact for this alert's creator
+      const requester = await tx.user.findUnique({
+        where: { userId },
+        select: { phone: true },
+      });
+
+      let isGuardian = false;
+      if (requester?.phone) {
+        const guardianMatch = await tx.emergencyContact.findFirst({
+          where: {
+            userId: alert.userId,
+            phone: requester.phone,
+          },
+        });
+        if (guardianMatch) {
+          isGuardian = true;
+        }
+      }
+
+      if (!isGuardian) {
+        throw new ForbiddenError(
+          'Access denied: You do not have permission to resolve this SOS alert'
+        );
+      }
     }
 
     if (alert.status !== SOSAlertStatus.ACTIVE) {
@@ -516,6 +606,7 @@ export async function cancelSOSAlert(
 export const sosService = {
   createSOSAlert,
   getActiveSOSAlert,
+  getGuardianActiveAlerts,
   getSOSAlertById,
   listUserSOSAlerts,
   resolveSOSAlert,

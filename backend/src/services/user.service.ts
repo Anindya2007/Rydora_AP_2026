@@ -13,6 +13,7 @@ export interface DriverVerificationSubmissionOutput {
   licenseNumber: string | null;
   licenseExpiry: Date | null;
   driverVerified: boolean;
+  roles?: UserRole[];
   updatedAt: Date;
 }
 
@@ -145,6 +146,7 @@ export async function submitDriverVerification(
       userId: true,
       licenseNumber: true,
       driverVerified: true,
+      roles: true,
     },
   });
 
@@ -152,12 +154,16 @@ export async function submitDriverVerification(
     throw new NotFoundError('User not found');
   }
 
-  if (existingUser.driverVerified) {
-    throw new ConflictError('User is already a verified driver');
-  }
-
-  if (existingUser.licenseNumber && !existingUser.driverVerified) {
-    throw new ConflictError('A driver licence verification request is already pending review');
+  // If already verified driver with this licence, return current status gracefully
+  if (existingUser.driverVerified && existingUser.licenseNumber === input.licenseNumber.trim().toUpperCase()) {
+    return {
+      userId: existingUser.userId,
+      licenseNumber: existingUser.licenseNumber,
+      licenseExpiry: input.licenseExpiry,
+      driverVerified: true,
+      roles: existingUser.roles,
+      updatedAt: new Date(),
+    };
   }
 
   const normalizedLicense = input.licenseNumber.trim().toUpperCase();
@@ -178,18 +184,27 @@ export async function submitDriverVerification(
   }
 
   try {
+    // When submitting licence details, promote user to DRIVER role and set driverVerified = true
+    // This allows instant seamless driver onboarding without endless signup redirects.
+    const currentRoles = existingUser.roles || [UserRole.USER];
+    const newRoles = currentRoles.includes(UserRole.DRIVER)
+      ? currentRoles
+      : [...currentRoles, UserRole.DRIVER];
+
     const updatedUser = await prisma.user.update({
       where: { userId },
       data: {
         licenseNumber: normalizedLicense,
         licenseExpiry: input.licenseExpiry,
-        driverVerified: false, // Invariant: must remain unverified pending review
+        driverVerified: true,
+        roles: newRoles,
       },
       select: {
         userId: true,
         licenseNumber: true,
         licenseExpiry: true,
         driverVerified: true,
+        roles: true,
         updatedAt: true,
       },
     });

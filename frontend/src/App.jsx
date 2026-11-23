@@ -4,7 +4,6 @@ import { Hero } from '@/components/ui/tailwind-css-background-snippet';
 import { Navbar } from '@/components/Navbar';
 import { RidePage } from '@/components/RidePage';
 import { DrivePage } from '@/components/DrivePage';
-import { BusinessPage } from '@/components/BusinessPage';
 import { AboutPage } from '@/components/AboutPage';
 import { Footer } from '@/components/Footer';
 import { SignupPage } from '@/components/SignupPage';
@@ -29,7 +28,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.replace('#', '');
-    if (['ride', 'drive', 'business', 'about'].includes(hash)) return hash;
+    if (['ride', 'drive', 'about'].includes(hash)) return hash;
     return 'ride';
   });
 
@@ -82,7 +81,7 @@ export default function App() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setCurrentView('home');
-        if (['ride', 'drive', 'business', 'about'].includes(hash)) {
+        if (['ride', 'drive', 'about'].includes(hash)) {
           setActiveTab(hash);
         }
       }
@@ -219,9 +218,6 @@ export default function App() {
                   onSignUpClick={navigateToSignup}
                   onLoginClick={navigateToLogin}
                 />
-              )}
-              {activeTab === 'business' && (
-                <BusinessPage onSignUpClick={navigateToSignup} />
               )}
               {activeTab === 'about' && (
                 <AboutPage onSignUpClick={navigateToSignup} />

@@ -7,27 +7,26 @@ export const Footer = ({ onSelectTab }) => {
   const getTabTarget = (text) => {
     const lower = text.toLowerCase();
     if (lower.includes('about') || lower.includes('safety') || lower.includes('sustainability')) return 'about';
-    if (lower.includes('business')) return 'business';
     if (lower.includes('drive')) return 'drive';
     if (lower.includes('ride') || lower.includes('reserve')) return 'ride';
     return null;
   };
   const columns = [
     {
-      title: 'Company',
-      links: ['About us', 'Our offerings', 'Newsroom', 'Investors', 'Blog', 'Careers'],
+      title: 'Platform',
+      links: ['About us', 'Safety standards', 'Two-way trust', 'Community guidelines'],
     },
     {
-      title: 'Products',
-      links: ['Ride', 'Drive', 'RideShare for Business', 'Reserve', 'Campus Commutes'],
+      title: 'Services',
+      links: ['Ride & Carpool', 'Drive with Rydora', 'Campus Commutes', 'Verified Communities'],
     },
     {
-      title: 'Global citizenship',
-      links: ['Safety standards', 'Sustainability & Green points', 'Two-way trust'],
+      title: 'Safety & Trust',
+      links: ['SOS Emergency Telemetry', 'Safety Guardians', 'Verified Driver Licences'],
     },
     {
-      title: 'Travel',
-      links: ['Airports', 'Hotels', 'Delhi NCR', 'Bangalore', 'Mumbai', 'All Cities'],
+      title: 'Corridors',
+      links: ['Delhi NCR', 'Gurugram Cyber Hub', 'IIT Delhi', 'North Campus'],
     },
   ];
 

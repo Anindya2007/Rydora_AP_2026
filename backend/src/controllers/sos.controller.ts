@@ -43,6 +43,32 @@ export async function triggerSOS(
 }
 
 /**
+ * Controller handling retrieval of active SOS alerts where caller is a safety guardian (GET /api/v1/sos/guardian-alerts).
+ */
+export async function getGuardianAlerts(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const userPhone = req.user.phone;
+    if (!userPhone) {
+      sendSuccess(res, { alerts: [] }, 'No guardian alerts found', 200);
+      return;
+    }
+
+    const alerts = await sosService.getGuardianActiveAlerts(userPhone);
+    sendSuccess(res, { alerts }, 'Guardian alerts retrieved successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * Controller handling retrieval of currently active SOS alert (GET /api/v1/sos/active).
  */
 export async function getActiveSOS(
@@ -247,6 +273,7 @@ export async function retryNotifications(
 export const SOSController = {
   triggerSOS,
   getActiveSOS,
+  getGuardianAlerts,
   getSOSById,
   listUserAlerts,
   resolveSOS,

@@ -14,15 +14,38 @@ app.disable('x-powered-by');
 // 1. Attach Request ID to every incoming request
 app.use(requestIdMiddleware);
 
-// 2. Cross-Origin Resource Sharing (CORS) with environment-aware origins
-const isWildcardOrigin = env.CORS_ORIGIN.trim() === '*';
-const allowedOrigins = isWildcardOrigin
-  ? true
-  : env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean);
+// 2. Cross-Origin Resource Sharing (CORS) with dynamic deployment and local fallback support
+const configuredOrigins = env.CORS_ORIGIN
+  ? env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+  : [];
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (requestOrigin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+      if (!requestOrigin) return callback(null, true);
+      
+      // Allow wildcard configuration
+      if (env.CORS_ORIGIN.trim() === '*') return callback(null, true);
+
+      // Check configured origins
+      if (configuredOrigins.includes(requestOrigin)) {
+        return callback(null, true);
+      }
+
+      // Automatically allow common local dev ports and preview deployments (Vite / Vercel / Render)
+      const isLocalOrPreview =
+        /^https?:\/\/localhost(:\d+)?$/.test(requestOrigin) ||
+        /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(requestOrigin) ||
+        /^https:\/\/.*\.vercel\.app$/.test(requestOrigin) ||
+        /^https:\/\/.*\.onrender\.com$/.test(requestOrigin);
+
+      if (isLocalOrPreview) {
+        return callback(null, true);
+      }
+
+      callback(null, false);
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-request-id', 'x-session-id'],
     credentials: true,

@@ -133,6 +133,11 @@ export const HeroSection = ({ user, onLoginClick }) => {
   const [activeSOS, setActiveSOS] = useState(null);
   const [sosLoading, setSosLoading] = useState(false);
   const [sosStatusMsg, setSosStatusMsg] = useState('');
+  const [guardianAlerts, setGuardianAlerts] = useState([]);
+
+  // Community Filter State
+  const [communities, setCommunities] = useState([]);
+  const [selectedCommunityId, setSelectedCommunityId] = useState('');
 
   // Refund & Emergency Contacts State
   const [refundLoadingId, setRefundLoadingId] = useState(null);
@@ -174,6 +179,17 @@ export const HeroSection = ({ user, onLoginClick }) => {
   }, []);
 
   useEffect(() => {
+    // Load active communities for community-based carpool filtering
+    api.communities
+      .list()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : (data?.items || []);
+        setCommunities(list);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (user) {
       api.bookings
         .getMyBookings()
@@ -190,6 +206,14 @@ export const HeroSection = ({ user, onLoginClick }) => {
         .catch(() => {});
 
       api.safety
+        .getGuardianAlerts()
+        .then((res) => {
+          const list = Array.isArray(res) ? res : (res?.alerts || []);
+          setGuardianAlerts(list);
+        })
+        .catch(() => {});
+
+      api.safety
         .getEmergencyContacts()
         .then((res) => {
           const list = Array.isArray(res) ? res : (res?.contacts || []);
@@ -199,6 +223,7 @@ export const HeroSection = ({ user, onLoginClick }) => {
     } else {
       setMyBookings([]);
       setActiveSOS(null);
+      setGuardianAlerts([]);
       setEmergencyContacts([]);
     }
   }, [user]);
@@ -208,10 +233,14 @@ export const HeroSection = ({ user, onLoginClick }) => {
     setIsSearching(true);
     setSearchMessage('');
     try {
-      const results = await api.rides.search({
+      const searchParams = {
         source: pickup.trim(),
         destination: dropoff.trim(),
-      });
+      };
+      if (selectedCommunityId) {
+        searchParams.communityId = selectedCommunityId;
+      }
+      const results = await api.rides.search(searchParams);
       setRides(Array.isArray(results) ? results : []);
       setHasSearched(true);
       if (!results || results.length === 0) {
@@ -395,102 +424,126 @@ export const HeroSection = ({ user, onLoginClick }) => {
         {/* Isolated Animated Typewriter Headline */}
         <TypewriterHeadline />
 
-        {/* Pickup Time Pill Selector + Liquid Glass Dropdown */}
-        <div ref={dropdownRef} style={{ position: 'relative', marginBottom: '22px', width: 'fit-content', zIndex: 35 }}>
-          <LiquidGlassButton
-            scale={0.84}
-            onClick={() => setIsPickupDropdownOpen((prev) => !prev)}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <IconClock size={16} />
-              <span>{pickupMode}</span>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
-                  transform: isPickupDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                }}
-              >
-                <IconChevronDown size={14} />
-              </span>
-            </span>
-          </LiquidGlassButton>
-
-          {/* Liquid Glass Dropdown Menu */}
-          {isPickupDropdownOpen && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 'calc(100% + 10px)',
-                left: 0,
-                minWidth: '210px',
-                zIndex: 45,
-              }}
+        {/* Pickup Time Pill Selector & Community Scope Pill */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '22px' }}>
+          <div ref={dropdownRef} style={{ position: 'relative', width: 'fit-content', zIndex: 35 }}>
+            <LiquidGlassButton
+              scale={0.84}
+              onClick={() => setIsPickupDropdownOpen((prev) => !prev)}
             >
-              <LiquidGlassPanel
-                radius={22}
-                frosted={true}
-                blur={10}
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <IconClock size={16} />
+                <span>{pickupMode}</span>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                    transform: isPickupDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  }}
+                >
+                  <IconChevronDown size={14} />
+                </span>
+              </span>
+            </LiquidGlassButton>
+
+            {/* Liquid Glass Dropdown Menu */}
+            {isPickupDropdownOpen && (
+              <div
                 style={{
-                  padding: '6px',
-                  background: 'rgba(20, 16, 36, 0.55)',
-                  border: 'none',
-                  boxShadow: '0 20px 44px -8px rgba(0, 0, 0, 0.65)',
+                  position: 'absolute',
+                  top: 'calc(100% + 10px)',
+                  left: 0,
+                  minWidth: '210px',
+                  zIndex: 45,
                 }}
               >
-                {['Pickup now', 'Schedule later'].map((option, idx) => {
-                  const isSelected = pickupMode === option;
-                  return (
-                    <React.Fragment key={option}>
-                      {idx > 0 && (
-                        <div
-                          style={{
-                            height: '1px',
-                            background: 'rgba(255, 255, 255, 0.08)',
-                            margin: '2px 12px',
+                <LiquidGlassPanel
+                  radius={22}
+                  frosted={true}
+                  blur={10}
+                  style={{
+                    padding: '6px',
+                    background: 'rgba(20, 16, 36, 0.55)',
+                    border: 'none',
+                    boxShadow: '0 20px 44px -8px rgba(0, 0, 0, 0.65)',
+                  }}
+                >
+                  {['Pickup now', 'Schedule later'].map((option, idx) => {
+                    const isSelected = pickupMode === option;
+                    return (
+                      <React.Fragment key={option}>
+                        {idx > 0 && (
+                          <div
+                            style={{
+                              height: '1px',
+                              background: 'rgba(255, 255, 255, 0.08)',
+                              margin: '2px 12px',
+                            }}
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPickupMode(option);
+                            setIsPickupDropdownOpen(false);
                           }}
-                        />
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPickupMode(option);
-                          setIsPickupDropdownOpen(false);
-                        }}
-                        style={{
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '14px 18px',
-                          background: isSelected ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
-                          border: 'none',
-                          borderRadius: '16px',
-                          color: isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.78)',
-                          fontSize: '15px',
-                          fontWeight: isSelected ? 600 : 500,
-                          fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
-                          letterSpacing: '-0.02em',
-                          cursor: 'pointer',
-                          transition: 'background 0.15s ease, color 0.15s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                            e.currentTarget.style.color = '#ffffff';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.background = 'transparent';
-                            e.currentTarget.style.color = 'rgba(255, 255, 255, 0.78)';
-                          }
-                        }}
-                      >
-                        {option}
-                      </button>
-                    </React.Fragment>
-                  );
-                })}
-              </LiquidGlassPanel>
+                          style={{
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '14px 18px',
+                            background: isSelected ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                            border: 'none',
+                            borderRadius: '16px',
+                            color: isSelected ? '#ffffff' : 'rgba(255, 255, 255, 0.78)',
+                            fontSize: '15px',
+                            fontWeight: isSelected ? 600 : 500,
+                            fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif',
+                            letterSpacing: '-0.02em',
+                            cursor: 'pointer',
+                            transition: 'background 0.15s ease, color 0.15s ease',
+                          }}
+                        >
+                          {option}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+                </LiquidGlassPanel>
+              </div>
+            )}
+          </div>
+
+          {/* Community Filter Capsule */}
+          {communities.length > 0 && (
+            <div style={{ position: 'relative', width: 'fit-content', zIndex: 30 }}>
+              <select
+                value={selectedCommunityId}
+                onChange={(e) => setSelectedCommunityId(e.target.value)}
+                style={{
+                  height: '36px',
+                  borderRadius: '9999px',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255, 255, 255, 0.16)',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  padding: '0 16px',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                <option value="" style={{ background: '#181428', color: '#ffffff' }}>
+                  🌐 All Communities & Corridors
+                </option>
+                {communities.map((c) => (
+                  <option key={c.communityId} value={c.communityId} style={{ background: '#181428', color: '#ffffff' }}>
+                    🏢 {c.name} ({c.domain})
+                  </option>
+                ))}
+              </select>
             </div>
           )}
         </div>
@@ -799,7 +852,62 @@ export const HeroSection = ({ user, onLoginClick }) => {
           )}
         </div>
 
-        {/* Active SOS Emergency Banner */}
+        {/* Active Guardian Emergency Alerts (Incoming from protected loved ones) */}
+        {guardianAlerts.length > 0 && (
+          <div style={{ marginTop: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {guardianAlerts.map((gAlert) => (
+              <div
+                key={gAlert.alert.alertId}
+                style={{
+                  padding: '16px 20px',
+                  borderRadius: '20px',
+                  background: 'rgba(239, 68, 68, 0.28)',
+                  backdropFilter: 'blur(16px)',
+                  WebkitBackdropFilter: 'blur(16px)',
+                  border: '1.5px solid rgba(239, 68, 68, 0.65)',
+                  boxShadow: '0 8px 32px rgba(239, 68, 68, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '14px',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <IconShield size={24} color="#fca5a5" />
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.01em' }}>
+                      🚨 INCOMING EMERGENCY SOS ALERT
+                    </div>
+                    <div style={{ fontSize: '12.5px', color: '#fecaca', marginTop: '2px' }}>
+                      {gAlert.sender?.name || 'A user'} ({gAlert.sender?.phone || 'Emergency Contact'}) has activated an emergency SOS alert.
+                      {gAlert.alert.message && ` "${gAlert.alert.message}"`}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleResolveSOS(gAlert.alert.alertId)}
+                  style={{
+                    background: '#ffffff',
+                    border: 'none',
+                    color: '#991b1b',
+                    padding: '8px 16px',
+                    borderRadius: '9999px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                  }}
+                >
+                  Acknowledge & Resolve SOS
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Active SOS Emergency Banner (Raised by user) */}
         {activeSOS && (
           <div
             style={{
@@ -1052,11 +1160,12 @@ export const HeroSection = ({ user, onLoginClick }) => {
                     }}
                   >
                     <div>
-                      <div style={{ fontSize: '14.5px', fontWeight: 600, color: '#ffffff' }}>
-                        {ride.driver?.name || 'Verified Driver'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '14.5px', fontWeight: 600, color: '#ffffff' }}>
+                          {ride.driver?.name || 'Verified Driver'}
+                        </span>
                         <span
                           style={{
-                            marginLeft: '8px',
                             fontSize: '12px',
                             background: 'rgba(250, 204, 21, 0.15)',
                             color: '#fde047',
@@ -1066,10 +1175,25 @@ export const HeroSection = ({ user, onLoginClick }) => {
                         >
                           ★ {ride.driver?.averageRating || '5.0'}
                         </span>
+                        {ride.community?.name && (
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              background: 'rgba(99, 102, 241, 0.25)',
+                              border: '1px solid rgba(129, 140, 248, 0.4)',
+                              color: '#c7d2fe',
+                              padding: '2px 8px',
+                              borderRadius: '9999px',
+                              fontWeight: 600,
+                            }}
+                          >
+                            🏢 {ride.community.name}
+                          </span>
+                        )}
                       </div>
-                      <div style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.65)', marginTop: '2px' }}>
-                        {ride.vehicle ? `${ride.vehicle.make} ${ride.vehicle.model}` : 'Verified Vehicle'} •{' '}
-                        {ride.availableSeats} seats left
+                      <div style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.65)', marginTop: '4px' }}>
+                        {ride.vehicle ? `${ride.vehicle.make} ${ride.vehicle.model} (${ride.vehicle.vehicleType})` : 'Verified Vehicle'} •{' '}
+                        {ride.availableSeats} seats left • Departure: {new Date(ride.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </div>
 

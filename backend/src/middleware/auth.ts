@@ -72,8 +72,10 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
 
       verifiedToken = token || session.token;
 
-      // Store / update the session token every time middleware is used
-      await sessionService.storeSessionToken(sessionId, verifiedToken, session.userId);
+      // Throttled update: only update session token in database if not updated recently
+      if (!session.updatedAt || Date.now() - new Date(session.updatedAt).getTime() > 5 * 60 * 1000) {
+        await sessionService.storeSessionToken(sessionId, verifiedToken, session.userId);
+      }
 
       // Verify token signature with JWT_SECRET
       let decoded: jwt.JwtPayload;

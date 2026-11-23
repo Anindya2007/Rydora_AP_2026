@@ -37,3 +37,31 @@ export function createAuthRateLimiter(options?: Partial<Options>) {
  * Default authentication rate limiter applied to signup and login endpoints.
  */
 export const authRateLimiter = createAuthRateLimiter();
+
+/**
+ * General API rate limiter applied to all /api/v1 routes.
+ * 200 requests per 15-minute window per IP.
+ */
+export const apiRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 200,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  skip: () => env.NODE_ENV === 'test',
+  handler: (req: Request, res: Response) => {
+    const requestId = req.id || (res.locals?.requestId as string) || 'unknown';
+    res.status(429).json({
+      success: false,
+      statusCode: 429,
+      error: {
+        code: 'TOO_MANY_REQUESTS',
+        message: 'Too many requests. Please slow down and try again later.',
+        details: null,
+      },
+      meta: {
+        requestId,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  },
+});

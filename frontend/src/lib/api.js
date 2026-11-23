@@ -232,6 +232,11 @@ export const api = {
       return response.data.data;
     },
 
+    async getGuardianAlerts() {
+      const response = await apiClient.get('/sos/guardian-alerts');
+      return response.data.data;
+    },
+
     async resolveSOS(alertId, resolutionNotes = 'Resolved safely by user') {
       const response = await apiClient.patch(`/sos/${alertId}/resolve`, {
         resolutionNotes,

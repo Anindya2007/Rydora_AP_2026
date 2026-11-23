@@ -86,6 +86,16 @@ sosRouter.post(
 );
 
 /**
+ * GET /api/v1/sos/guardian-alerts
+ * Retrieve active SOS alerts where the authenticated user is listed as an emergency contact.
+ */
+sosRouter.get(
+  '/guardian-alerts',
+  authenticate,
+  SOSController.getGuardianAlerts
+);
+
+/**
  * GET /api/v1/sos/active
  * Retrieve the currently active SOS alert for the authenticated user.
  */
