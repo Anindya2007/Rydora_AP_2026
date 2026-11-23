@@ -18,6 +18,10 @@ import {
   emergencyContactSelectProjection,
   type EmergencyContactOutput,
 } from './emergency-contact.service.js';
+import {
+  emergencyNotificationService,
+  type SOSNotificationOutput,
+} from './emergency-notification.service.js';
 
 export interface SOSAlertOutput {
   alertId: string;
@@ -42,6 +46,7 @@ export interface SOSAlertDetailOutput {
   alert: SOSAlertOutput;
   contacts: EmergencyContactOutput[];
   ride?: RideSummary | null;
+  notifications?: SOSNotificationOutput[];
 }
 
 export const sosAlertSelectProjection = {
@@ -106,7 +111,7 @@ export async function createSOSAlert(
   userId: string,
   input: CreateSOSAlertInput
 ): Promise<SOSAlertDetailOutput> {
-  return await prisma.$transaction(async (tx) => {
+  const created = await prisma.$transaction(async (tx) => {
     // 1. Acquire row lock on user row to serialize concurrent SOS activations
     await tx.$queryRaw`SELECT 1 FROM "users" WHERE "user_id" = ${userId}::uuid FOR UPDATE`;
 
@@ -200,6 +205,26 @@ export async function createSOSAlert(
       ride: rideSummary,
     };
   });
+
+  // 6. Trigger emergency notification workflow to all saved emergency contacts
+  let notifications: SOSNotificationOutput[] = [];
+  try {
+    notifications = await emergencyNotificationService.dispatchSOSNotifications(
+      created.alert.alertId
+    );
+  } catch (error) {
+    // Isolate notification dispatch errors: SOS alert creation is already committed
+    // and must never cause the SOS activation API call to report failure or roll back.
+    console.error(
+      `[SOS] Emergency notification dispatch failed for alert ${created.alert.alertId}:`,
+      error
+    );
+  }
+
+  return {
+    ...created,
+    notifications,
+  };
 }
 
 /**
@@ -229,15 +254,22 @@ export async function getActiveSOSAlert(
     return null;
   }
 
-  const contacts = await prisma.emergencyContact.findMany({
-    where: { userId },
-    orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
-    select: emergencyContactSelectProjection,
-  });
+  const [contacts, notifications] = await Promise.all([
+    prisma.emergencyContact.findMany({
+      where: { userId },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+      select: emergencyContactSelectProjection,
+    }),
+    prisma.sOSNotification.findMany({
+      where: { alertId: alert.alertId },
+      orderBy: { createdAt: 'asc' },
+    }),
+  ]);
 
   return {
     alert: formatSOSAlert(alert),
     contacts,
+    notifications,
     ride: alert.ride
       ? {
           rideId: alert.ride.rideId,
@@ -285,15 +317,22 @@ export async function getSOSAlertById(
     );
   }
 
-  const contacts = await prisma.emergencyContact.findMany({
-    where: { userId: alert.userId },
-    orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
-    select: emergencyContactSelectProjection,
-  });
+  const [contacts, notifications] = await Promise.all([
+    prisma.emergencyContact.findMany({
+      where: { userId: alert.userId },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+      select: emergencyContactSelectProjection,
+    }),
+    prisma.sOSNotification.findMany({
+      where: { alertId },
+      orderBy: { createdAt: 'asc' },
+    }),
+  ]);
 
   return {
     alert: formatSOSAlert(alert),
     contacts,
+    notifications,
     ride: alert.ride
       ? {
           rideId: alert.ride.rideId,

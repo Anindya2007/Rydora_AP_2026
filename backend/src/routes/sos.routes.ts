@@ -139,3 +139,25 @@ sosRouter.patch(
   validateAlertIdParam,
   SOSController.cancelSOS
 );
+
+/**
+ * GET /api/v1/sos/:alertId/notifications
+ * View emergency notification delivery audit logs for an alert (owner or platform ADMIN).
+ */
+sosRouter.get(
+  '/:alertId/notifications',
+  authenticate,
+  validateAlertIdParam,
+  SOSController.getAlertNotifications
+);
+
+/**
+ * POST /api/v1/sos/:alertId/notifications/retry
+ * Re-attempt dispatch for failed emergency notifications on an active alert.
+ */
+sosRouter.post(
+  '/:alertId/notifications/retry',
+  authenticate,
+  validateAlertIdParam,
+  SOSController.retryNotifications
+);

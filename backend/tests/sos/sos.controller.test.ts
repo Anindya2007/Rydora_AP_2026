@@ -10,6 +10,7 @@ import {
   RideStatus,
   BookingStatus,
 } from '../../src/generated/prisma/client.js';
+import { emergencyNotificationService } from '../../src/services/emergency-notification.service.js';
 
 describe('Milestone 8.2: SOS Activation & Emergency Event Lifecycle API (/api/v1/sos)', () => {
   const mockUserId = '11111111-2222-3333-4444-555555555555';
@@ -118,6 +119,33 @@ describe('Milestone 8.2: SOS Activation & Emergency Event Lifecycle API (/api/v1
       }
       return Promise.all(callback);
     });
+    vi.spyOn(emergencyNotificationService, 'dispatchSOSNotifications').mockResolvedValue([]);
+    vi.spyOn(prisma.sOSNotification, 'findMany').mockResolvedValue([]);
+    vi.spyOn(prisma.sOSNotification, 'findUnique').mockResolvedValue(null);
+    vi.spyOn(prisma.sOSNotification, 'upsert').mockResolvedValue({
+      notificationId: 'notif-1111-2222',
+      alertId: mockAlertId,
+      contactId: '55555555-5555-5555-5555-555555555555',
+      recipientPhone: '+919876500001',
+      recipientName: 'Rajesh Patel',
+      channel: 'SMS',
+      status: 'SENT',
+      errorMessage: null,
+      sentAt: mockTimestamp,
+      createdAt: mockTimestamp,
+    } as any);
+    vi.spyOn(prisma.sOSNotification, 'update').mockResolvedValue({
+      notificationId: 'notif-1111-2222',
+      alertId: mockAlertId,
+      contactId: '55555555-5555-5555-5555-555555555555',
+      recipientPhone: '+919876500001',
+      recipientName: 'Rajesh Patel',
+      channel: 'SMS',
+      status: 'SENT',
+      errorMessage: null,
+      sentAt: mockTimestamp,
+      createdAt: mockTimestamp,
+    } as any);
   });
 
   afterEach(() => {
@@ -207,6 +235,35 @@ describe('Milestone 8.2: SOS Activation & Emergency Event Lifecycle API (/api/v1
       expect(res.body.data.alert.longitude).toBeNull();
       expect(res.body.data.contacts).toEqual([]);
       expect(res.body.data.ride).toBeNull();
+    });
+
+    it('should still return 201 Created and succeed when notification dispatch throws an error', async () => {
+      vi.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockDbUser as any);
+      vi.spyOn(prisma.sOSAlert, 'findFirst').mockResolvedValue(null);
+      vi.spyOn(prisma.sOSAlert, 'create').mockResolvedValue({
+        ...mockSOSAlert,
+        rideId: null,
+        latitude: null,
+        longitude: null,
+        message: 'Help needed',
+      } as any);
+      vi.spyOn(prisma.emergencyContact, 'findMany').mockResolvedValue(mockEmergencyContacts as any);
+
+      // Notification dispatch fails unexpectedly
+      vi.spyOn(emergencyNotificationService, 'dispatchSOSNotifications').mockRejectedValue(
+        new Error('Emergency notification service temporary failure')
+      );
+
+      const token = generateToken(mockUserId);
+      const res = await request(app)
+        .post('/api/v1/sos')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ message: 'Help needed' });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.alert.alertId).toBe(mockAlertId);
+      expect(res.body.data.notifications).toEqual([]);
     });
 
     it('should reject activation with 409 Conflict if user already has an active SOS alert', async () => {

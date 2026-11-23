@@ -51,6 +51,12 @@ enum SOSAlertStatus {
   CANCELLED
 }
 
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 enum TransactionType {
   BOOKING_PAYMENT
   REFUND
@@ -233,7 +239,8 @@ model EmergencyContact {
   isPrimary    Boolean  @default(false) @map("is_primary")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  user User @relation("EmergencyContactOwner", fields: [userId], references: [userId], onDelete: Cascade)
+  user             User              @relation("EmergencyContactOwner", fields: [userId], references: [userId], onDelete: Cascade)
+  sosNotifications SOSNotification[]
 
   @@unique([userId, phone])
   @@index([userId])
@@ -251,12 +258,33 @@ model SOSAlert {
   createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   resolvedAt DateTime?      @map("resolved_at") @db.Timestamptz(6)
 
-  user User  @relation("SOSAlertOwner", fields: [userId], references: [userId], onDelete: Restrict)
-  ride Ride? @relation(fields: [rideId], references: [rideId], onDelete: SetNull)
+  user          User              @relation("SOSAlertOwner", fields: [userId], references: [userId], onDelete: Restrict)
+  ride          Ride?             @relation(fields: [rideId], references: [rideId], onDelete: SetNull)
+  notifications SOSNotification[]
 
   @@index([userId, createdAt])
   @@index([rideId])
   @@map("sos_alerts")
+}
+
+model SOSNotification {
+  notificationId String             @id @default(uuid()) @map("notification_id") @db.Uuid
+  alertId        String             @map("alert_id") @db.Uuid
+  contactId      String?            @map("contact_id") @db.Uuid
+  recipientPhone String             @map("recipient_phone") @db.VarChar(20)
+  recipientName  String             @map("recipient_name") @db.VarChar(100)
+  channel        String             @default("SMS") @db.VarChar(20)
+  status         NotificationStatus @default(PENDING)
+  errorMessage   String?            @map("error_message") @db.Text
+  sentAt         DateTime?          @map("sent_at") @db.Timestamptz(6)
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  alert   SOSAlert          @relation(fields: [alertId], references: [alertId], onDelete: Cascade)
+  contact EmergencyContact? @relation(fields: [contactId], references: [contactId], onDelete: SetNull)
+
+  @@unique([alertId, recipientPhone])
+  @@index([alertId, status])
+  @@map("sos_notifications")
 }
 
 model Transaction {

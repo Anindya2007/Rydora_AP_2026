@@ -6,6 +6,7 @@ import {
   resolveSOSAlertSchema,
 } from '../validators/sos.validator.js';
 import { sosService } from '../services/sos.service.js';
+import { emergencyNotificationService } from '../services/emergency-notification.service.js';
 import { sendSuccess } from '../utils/response.js';
 import { UnauthorizedError } from '../utils/errors.js';
 
@@ -177,6 +178,72 @@ export async function cancelSOS(
   }
 }
 
+/**
+ * Controller handling retrieval of emergency notification delivery logs for an alert (GET /api/v1/sos/:alertId/notifications).
+ */
+export async function getAlertNotifications(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const { alertId } = alertIdParamSchema.parse(req.params);
+    const isAdmin = isUserAdmin(req);
+
+    const notifications = await emergencyNotificationService.getAlertNotifications(
+      req.user.userId,
+      alertId,
+      isAdmin
+    );
+
+    sendSuccess(
+      res,
+      { notifications },
+      'SOS alert notifications retrieved successfully',
+      200
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Controller handling retry/re-escalation of failed notifications for an active alert (POST /api/v1/sos/:alertId/notifications/retry).
+ */
+export async function retryNotifications(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const { alertId } = alertIdParamSchema.parse(req.params);
+    const isAdmin = isUserAdmin(req);
+
+    const notifications = await emergencyNotificationService.retryFailedNotifications(
+      req.user.userId,
+      alertId,
+      isAdmin
+    );
+
+    sendSuccess(
+      res,
+      { notifications },
+      'SOS alert notifications re-escalated successfully',
+      200
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const SOSController = {
   triggerSOS,
   getActiveSOS,
@@ -184,4 +251,6 @@ export const SOSController = {
   listUserAlerts,
   resolveSOS,
   cancelSOS,
+  getAlertNotifications,
+  retryNotifications,
 };
