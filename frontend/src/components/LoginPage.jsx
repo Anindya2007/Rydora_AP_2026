@@ -21,11 +21,21 @@ export const LoginPage = ({ onNavigateHome, onNavigateSignup, onLoginSuccess }) 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const canSubmit = email.trim() && password.length >= 6;
+  const canSubmit = email.trim() && password.length >= 8;
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!canSubmit || loading) return;
+    if (e && e.preventDefault) e.preventDefault();
+    if (loading) return;
+
+    if (!email.trim() || !email.includes('@')) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+    if (!password) {
+      setErrorMsg('Please enter your password.');
+      return;
+    }
+
     setErrorMsg('');
     setLoading(true);
     try {
@@ -561,7 +571,8 @@ export const LoginPage = ({ onNavigateHome, onNavigateSignup, onLoginSuccess }) 
               {/* Submit Button */}
               <LiquidGlassButton
                 scale={1.02}
-                disabled={!canSubmit || loading}
+                disabled={loading}
+                onClick={handleSubmit}
                 style={{
                   height: '48px',
                   width: '100%',

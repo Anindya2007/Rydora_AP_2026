@@ -35,18 +35,36 @@ export const SignupPage = ({ onNavigateHome, onNavigateLogin, onLoginSuccess }) 
     email.includes('@google.com') ||
     email.includes('@deloitte.com');
 
-  const canSubmit = name.trim() && email.trim() && phone.trim() && password.length >= 6 && agreed;
+  const canSubmit = name.trim().length >= 2 && email.trim() && password.length >= 8 && agreed;
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!canSubmit || loading) return;
+    if (e && e.preventDefault) e.preventDefault();
+    if (loading) return;
+
+    if (!name.trim() || name.trim().length < 2) {
+      setErrorMsg('Please enter your full name (at least 2 characters).');
+      return;
+    }
+    if (!email.trim() || !email.includes('@')) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+    if (!password || password.length < 8) {
+      setErrorMsg('Password must be at least 8 characters long.');
+      return;
+    }
+    if (!agreed) {
+      setErrorMsg('Please agree to the Community Guidelines to create an account.');
+      return;
+    }
+
     setErrorMsg('');
     setLoading(true);
     try {
       const { user } = await api.auth.signup({
         name: name.trim(),
         email: email.trim(),
-        phone: phone.trim(),
+        phone: phone.trim() || undefined,
         password,
       });
       if (onLoginSuccess) {
@@ -597,7 +615,7 @@ export const SignupPage = ({ onNavigateHome, onNavigateLogin, onLoginSuccess }) 
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password (min. 6 chars)"
+                  placeholder="Password (min. 8 chars)"
                   className="rs-signup-input"
                   style={{
                     width: '100%',
@@ -659,7 +677,8 @@ export const SignupPage = ({ onNavigateHome, onNavigateLogin, onLoginSuccess }) 
               {/* Submit Button */}
               <LiquidGlassButton
                 scale={1.02}
-                disabled={!canSubmit || loading}
+                disabled={loading}
+                onClick={handleSubmit}
                 style={{
                   height: '48px',
                   width: '100%',

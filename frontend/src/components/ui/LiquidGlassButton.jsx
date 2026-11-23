@@ -13,14 +13,21 @@ export const LiquidGlassButton = ({
   const [isActive, setIsActive] = useState(false);
 
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', width: 'fit-content' }}>
+    <div style={{ display: 'inline-flex', alignItems: 'center', width: style.width || 'fit-content' }}>
       <RefractiveGlass
         pill={true}
         blur={4}
         glassThickness={65}
         refractiveIndex={1.46}
         onClick={(e) => {
-          if (!disabled && onClick) onClick(e);
+          if (!disabled) {
+            if (onClick) {
+              onClick(e);
+            } else {
+              const form = e.currentTarget.closest('form');
+              if (form) form.requestSubmit();
+            }
+          }
         }}
         onMouseEnter={() => {
           if (!disabled) setIsHovered(true);
