@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
 import { ConflictError, UnauthorizedError } from '../utils/errors.js';
+import { sessionService } from './session.service.js';
 import type { SignupInput, LoginInput } from '../validators/authValidator.js';
 
 export const BCRYPT_SALT_ROUNDS = 10;
@@ -26,6 +27,7 @@ export interface SanitizedUser {
 export interface AuthResult {
   user: SanitizedUser;
   token: string;
+  sessionId: string;
 }
 
 /**
@@ -161,12 +163,14 @@ export async function signup(input: SignupInput): Promise<AuthResult> {
     throw error;
   }
 
-  // 5. Generate JWT token
+  // 5. Generate JWT token and persist session in sessions table
   const token = generateToken(createdUser);
+  const sessionId = await sessionService.createSession(createdUser.userId, token);
 
   return {
     user: sanitizeUser(createdUser),
     token,
+    sessionId,
   };
 }
 
@@ -176,7 +180,7 @@ export async function signup(input: SignupInput): Promise<AuthResult> {
  * 2. Queries user by email
  * 3. Verifies password against stored hash
  * 4. Throws generic 401 Unauthorized for both invalid email and password (prevents user enumeration)
- * 5. Issues 24-hour JWT token upon success
+ * 5. Issues 24-hour JWT token and records session in sessions table
  */
 export async function login(input: LoginInput): Promise<AuthResult> {
   const normalizedEmail = input.email.trim().toLowerCase();
@@ -197,10 +201,12 @@ export async function login(input: LoginInput): Promise<AuthResult> {
   }
 
   const token = generateToken(user);
+  const sessionId = await sessionService.createSession(user.userId, token);
 
   return {
     user: sanitizeUser(user),
     token,
+    sessionId,
   };
 }
 

@@ -1,5 +1,6 @@
 import express, { type Application } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
@@ -16,28 +17,30 @@ app.use(requestIdMiddleware);
 // 2. Cross-Origin Resource Sharing (CORS) with environment-aware origins
 const isWildcardOrigin = env.CORS_ORIGIN.trim() === '*';
 const allowedOrigins = isWildcardOrigin
-  ? '*'
+  ? true
   : env.CORS_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean);
 
 app.use(
   cors({
     origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-request-id'],
-    // Disallow credentials when using wildcard origin to satisfy W3C/MDN security specs
-    credentials: !isWildcardOrigin,
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-request-id', 'x-session-id'],
+    credentials: true,
   })
 );
 
-// 3. Body Parsing with payload limits
+// 3. Cookie Parsing Middleware
+app.use(cookieParser());
+
+// 4. Body Parsing with payload limits
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
-// 4. Mount Central API v1 Router
+// 5. Mount Central API v1 Router
 app.use('/api/v1', apiV1Router);
 
-// 5. Fallback 404 Handler for Unmatched Routes
+// 6. Fallback 404 Handler for Unmatched Routes
 app.use(notFoundHandler);
 
-// 6. Centralized Error Handler (must be mounted last)
+// 7. Centralized Error Handler (must be mounted last)
 app.use(errorHandler);

@@ -20,6 +20,12 @@ authRouter.post('/signup', authRateLimiter, AuthController.signup);
 authRouter.post('/login', authRateLimiter, AuthController.login);
 
 /**
+ * POST /api/v1/auth/logout
+ * Terminates user session from database and clears auth cookies.
+ */
+authRouter.post('/logout', AuthController.logout);
+
+/**
  * GET /api/v1/auth/me
  * Retrieves the currently authenticated user's profile.
  */

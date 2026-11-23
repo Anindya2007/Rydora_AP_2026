@@ -2,6 +2,7 @@ import type { Server } from 'node:http';
 import { app } from './app.js';
 import { env } from './config/env.js';
 import { prisma, disconnectPrisma } from './config/prisma.js';
+import { initSessionTable } from './services/session.service.js';
 
 let server: Server;
 
@@ -11,7 +12,10 @@ async function startServer(): Promise<void> {
     await prisma.$queryRaw`SELECT 1`;
     console.log('✅ PostgreSQL Database connection established via Prisma 7.');
 
-    // 2. Start HTTP listener
+    // 2. Initialize Sessions table and indexes
+    await initSessionTable();
+
+    // 3. Start HTTP listener
     server = app.listen(env.PORT, () => {
       console.log(`🚀 Rydora Backend listening on http://localhost:${env.PORT}`);
       console.log(`📡 API v1 Base Route: http://localhost:${env.PORT}/api/v1`);

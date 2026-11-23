@@ -5,16 +5,21 @@ const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api/v1';
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Attach Authorization Bearer token to every outgoing request if available
+// Attach Authorization Bearer token & Session ID to every outgoing request if available
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('rideshare_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  const sessionId = localStorage.getItem('rideshare_session_id');
+  if (sessionId) {
+    config.headers['x-session-id'] = sessionId;
   }
   return config;
 });
@@ -24,10 +29,11 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear token and user on unrecoverable unauthorized
+      // Clear token, session, and user on unrecoverable unauthorized
       const currentToken = localStorage.getItem('rideshare_token');
       if (currentToken && !error.config.url?.includes('/auth/login')) {
         localStorage.removeItem('rideshare_token');
+        localStorage.removeItem('rideshare_session_id');
         localStorage.removeItem('rideshare_user');
       }
     }
@@ -39,10 +45,13 @@ export const api = {
   auth: {
     async login(email, password) {
       const response = await apiClient.post('/auth/login', { email, password });
-      const { user, token } = response.data.data;
+      const { user, token, sessionId } = response.data.data;
       localStorage.setItem('rideshare_token', token);
+      if (sessionId) {
+        localStorage.setItem('rideshare_session_id', sessionId);
+      }
       localStorage.setItem('rideshare_user', JSON.stringify(user));
-      return { user, token };
+      return { user, token, sessionId };
     },
 
     async signup({ name, email, phone, password }) {
@@ -58,26 +67,37 @@ export const api = {
         payload.phone = cleanedPhone;
       }
       const response = await apiClient.post('/auth/signup', payload);
-      const { user, token } = response.data.data;
+      const { user, token, sessionId } = response.data.data;
       localStorage.setItem('rideshare_token', token);
+      if (sessionId) {
+        localStorage.setItem('rideshare_session_id', sessionId);
+      }
       localStorage.setItem('rideshare_user', JSON.stringify(user));
-      return { user, token };
+      return { user, token, sessionId };
     },
 
     async getMe() {
       const response = await apiClient.get('/auth/me');
-      const user = response.data.data;
+      const user = response.data.data.user || response.data.data;
       localStorage.setItem('rideshare_user', JSON.stringify(user));
       return user;
     },
 
-    logout() {
+    async logout() {
+      try {
+        await apiClient.post('/auth/logout');
+      } catch {}
       localStorage.removeItem('rideshare_token');
+      localStorage.removeItem('rideshare_session_id');
       localStorage.removeItem('rideshare_user');
     },
 
     getToken() {
       return localStorage.getItem('rideshare_token');
+    },
+
+    getSessionId() {
+      return localStorage.getItem('rideshare_session_id');
     },
 
     getCurrentUser() {
