@@ -135,11 +135,20 @@ export const api = {
       const response = await apiClient.post(`/rides/${rideId}/cancel`);
       return response.data.data?.ride || response.data.data;
     },
+
+    async complete(rideId) {
+      const response = await apiClient.post(`/rides/${rideId}/complete`);
+      return response.data.data?.ride || response.data.data;
+    },
   },
 
   bookings: {
-    async create(rideId, seatsBooked = 1) {
-      const response = await apiClient.post('/bookings', { rideId, seatsBooked });
+    async create(rideId, seatsBooked = 1, options = {}) {
+      const response = await apiClient.post('/bookings', {
+        rideId,
+        seatsBooked,
+        ...options,
+      });
       return response.data.data?.booking || response.data.data;
     },
 
@@ -154,8 +163,10 @@ export const api = {
     },
 
     async cancel(bookingId, cancellationReason = '') {
+      const reason = cancellationReason.trim() || 'Passenger requested cancellation';
       const response = await apiClient.patch(`/bookings/${bookingId}/cancel`, {
-        cancellationReason,
+        reason,
+        cancellationReason: reason,
       });
       return response.data.data?.booking || response.data.data;
     },

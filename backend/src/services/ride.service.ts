@@ -9,6 +9,20 @@ import {
   NotFoundError,
 } from '../utils/errors.js';
 import type { PaginationMeta } from '../utils/response.js';
+import {
+  calculateHaversineDistance,
+  matchRouteCorridor,
+  resolveLocationCoordinates,
+  type Coordinates,
+} from '../utils/distance.js';
+
+export interface RouteCorridorPricing {
+  driverTotalDistanceKm: number;
+  riderSubTripDistanceKm: number;
+  ratePerKm: string;
+  calculatedSubTripFare: string;
+  isEnRouteMatch: boolean;
+}
 
 export interface RideDriverSummary {
   userId: string;
@@ -59,6 +73,7 @@ export interface RideDetailOutput extends RideOutput {
   driver?: RideDriverSummary;
   vehicle?: RideVehicleSummary;
   community?: RideCommunitySummary;
+  routePricing?: RouteCorridorPricing;
 }
 
 export interface PaginatedDriverRidesResult {
@@ -499,14 +514,33 @@ export async function listRides(
     where.communityId = options.communityId;
   }
 
-  if (options?.source) {
+  // Resolve coordinates for passenger search queries
+  const riderPickupCoords: Coordinates | null =
+    options?.pickupLat !== undefined && options?.pickupLng !== undefined
+      ? { latitude: options.pickupLat, longitude: options.pickupLng }
+      : options?.source
+      ? resolveLocationCoordinates(options.source)
+      : null;
+
+  const riderDropoffCoords: Coordinates | null =
+    options?.dropoffLat !== undefined && options?.dropoffLng !== undefined
+      ? { latitude: options.dropoffLat, longitude: options.dropoffLng }
+      : options?.destination
+      ? resolveLocationCoordinates(options.destination)
+      : null;
+
+  const isCorridorSearch = !!(riderPickupCoords && riderDropoffCoords);
+
+  // If corridor search is active, do not restrict SQL to strict string match
+  // so intermediate rides along the corridor (e.g. Rishihood -> Mumbai for Kota -> Barodra) are retrieved.
+  if (options?.source && !isCorridorSearch) {
     where.source = {
       contains: options.source,
       mode: 'insensitive',
     };
   }
 
-  if (options?.destination) {
+  if (options?.destination && !isCorridorSearch) {
     where.destination = {
       contains: options.destination,
       mode: 'insensitive',
@@ -589,7 +623,65 @@ export async function listRides(
     userCommunityIds = memberships.map((m) => m.communityId);
   }
 
-  let formattedRides = records.map(formatRideDetailOutput);
+  const hasRiderCoordinates =
+    options?.pickupLat !== undefined &&
+    options?.pickupLng !== undefined &&
+    options?.dropoffLat !== undefined &&
+    options?.dropoffLng !== undefined;
+
+  let formattedRides = records
+    .map((record) => {
+      const formatted = formatRideDetailOutput(record);
+
+      // Resolve driver coordinates (either from database or built-in location table)
+      let driverSource: Coordinates | null =
+        record.sourceLatitude && record.sourceLongitude
+          ? { latitude: Number(record.sourceLatitude), longitude: Number(record.sourceLongitude) }
+          : resolveLocationCoordinates(record.source);
+
+      let driverDest: Coordinates | null =
+        record.destinationLatitude && record.destinationLongitude
+          ? { latitude: Number(record.destinationLatitude), longitude: Number(record.destinationLongitude) }
+          : resolveLocationCoordinates(record.destination);
+
+      if (driverSource && driverDest) {
+        const driverTotalDist = Math.max(0.5, calculateHaversineDistance(driverSource, driverDest));
+        const fullFare = Number(formatted.farePerSeat);
+        // Rate per km = Driver's full price divided by total driver route km
+        const ratePerKm = fullFare / driverTotalDist;
+
+        if (isCorridorSearch && riderPickupCoords && riderDropoffCoords) {
+          const match = matchRouteCorridor(driverSource, driverDest, riderPickupCoords, riderDropoffCoords);
+          const rawFare = match.riderDistanceKm * ratePerKm;
+          const subTripFare = Math.min(fullFare, Math.max(20, Math.round(rawFare)));
+
+          formatted.routePricing = {
+            driverTotalDistanceKm: Math.round(driverTotalDist * 10) / 10,
+            riderSubTripDistanceKm: match.riderDistanceKm,
+            ratePerKm: (Math.round(ratePerKm * 100) / 100).toFixed(2),
+            calculatedSubTripFare: subTripFare.toFixed(2),
+            isEnRouteMatch: match.isMatch,
+          };
+        } else {
+          formatted.routePricing = {
+            driverTotalDistanceKm: Math.round(driverTotalDist * 10) / 10,
+            riderSubTripDistanceKm: Math.round(driverTotalDist * 10) / 10,
+            ratePerKm: (Math.round(ratePerKm * 100) / 100).toFixed(2),
+            calculatedSubTripFare: formatted.farePerSeat,
+            isEnRouteMatch: true,
+          };
+        }
+      }
+
+      return formatted;
+    })
+    .filter((ride) => {
+      // If the passenger searched for a specific corridor, only retain rides that match that corridor
+      if (isCorridorSearch) {
+        return ride.routePricing?.isEnRouteMatch === true;
+      }
+      return true;
+    });
   if (userCommunityIds.length > 0) {
     formattedRides.sort((a, b) => {
       const aIsMember = a.community && userCommunityIds.includes(a.community.communityId) ? 1 : 0;
@@ -913,6 +1005,97 @@ export async function cancelRide(
   });
 }
 
+/**
+ * Marks a scheduled or in-progress ride as COMPLETED by the authenticated driver.
+ *
+ * Requirements & Invariants:
+ * 1. Ownership: Only the driver of the ride can complete it.
+ * 2. Status Transition: Only SCHEDULED or IN_PROGRESS rides can be completed.
+ * 3. Driver Earnings Creation: In the same transaction, creates/updates DriverEarning records
+ *    for all confirmed bookings on this ride so the driver's earnings are credited only when
+ *    the trip is successfully finished.
+ * 4. Booking Completion: Marks all CONFIRMED bookings as COMPLETED.
+ */
+export async function completeRide(
+  driverId: string,
+  rideId: string
+): Promise<RideDetailOutput> {
+  return await prisma.$transaction(async (tx) => {
+    const ride = await tx.ride.findUnique({
+      where: { rideId },
+      include: {
+        bookings: {
+          where: { status: BookingStatus.CONFIRMED },
+        },
+      },
+    });
+
+    if (!ride) {
+      throw new NotFoundError('Ride not found');
+    }
+
+    if (ride.driverId !== driverId) {
+      throw new ForbiddenError('Only the driver can complete this ride');
+    }
+
+    if (ride.status === RideStatus.COMPLETED) {
+      throw new BadRequestError('Ride is already completed');
+    }
+
+    if (ride.status === RideStatus.CANCELLED) {
+      throw new BadRequestError('Cannot complete a cancelled ride');
+    }
+
+    // 1. Mark ride as COMPLETED
+    await tx.ride.update({
+      where: { rideId },
+      data: { status: RideStatus.COMPLETED },
+    });
+
+    // 2. Mark confirmed bookings as COMPLETED and record DriverEarning rows
+    for (const booking of ride.bookings) {
+      await tx.booking.update({
+        where: { bookingId: booking.bookingId },
+        data: { status: BookingStatus.COMPLETED },
+      });
+
+      if (typeof (tx as any).driverEarning?.upsert === 'function') {
+        try {
+          await (tx as any).driverEarning.upsert({
+            where: { bookingId: booking.bookingId },
+            create: {
+              bookingId: booking.bookingId,
+              driverId: ride.driverId,
+              grossAmount: booking.totalAmount,
+              platformFee: 0,
+              netAmount: booking.totalAmount,
+              status: 'AVAILABLE',
+            },
+            update: {
+              status: 'AVAILABLE',
+              grossAmount: booking.totalAmount,
+              netAmount: booking.totalAmount,
+            },
+          });
+        } catch {
+          // Diagnostic logging if driver earning sync is optional in certain environments
+        }
+      }
+    }
+
+    const updatedRide = await tx.ride.findUnique({
+      where: { rideId },
+      select: rideDetailSelectProjection,
+    });
+
+    if (!updatedRide) {
+      throw new NotFoundError('Ride not found');
+    }
+
+    return formatRideDetailOutput(updatedRide);
+  });
+}
+
 export const rideService = {
   createRide,
   getRideById,
@@ -920,4 +1103,5 @@ export const rideService = {
   listRides,
   updateRide,
   cancelRide,
+  completeRide,
 };

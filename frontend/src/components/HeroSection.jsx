@@ -238,11 +238,44 @@ export const HeroSection = ({ user, onLoginClick }) => {
     if (!canSeePrices || isSearching) return;
     setIsSearching(true);
     setSearchMessage('');
+    const pTrim = pickup.trim().toLowerCase();
+    const dTrim = dropoff.trim().toLowerCase();
+
+    // Known Delhi NCR coordinates map for instant accurate corridor calculations
+    const KNOWN_COORDS = {
+      'delhi university north campus': { lat: 28.6894, lng: 77.2104 },
+      'north campus': { lat: 28.6894, lng: 77.2104 },
+      'connaught place, new delhi': { lat: 28.6304, lng: 77.2177 },
+      'connaught place': { lat: 28.6304, lng: 77.2177 },
+      'cp': { lat: 28.6304, lng: 77.2177 },
+      'iit delhi, hauz khas': { lat: 28.545, lng: 77.1926 },
+      'iit delhi': { lat: 28.545, lng: 77.1926 },
+      'cyber hub, gurugram': { lat: 28.4986, lng: 77.0878 },
+      'cyber hub': { lat: 28.4986, lng: 77.0878 },
+      'noida sector 62': { lat: 28.628, lng: 77.3649 },
+      'noida sec 62': { lat: 28.628, lng: 77.3649 },
+      'indirapuram, ghaziabad': { lat: 28.6415, lng: 77.3714 },
+      'indirapuram': { lat: 28.6415, lng: 77.3714 },
+      'aiims delhi': { lat: 28.5672, lng: 77.21 },
+      'akshardham': { lat: 28.6127, lng: 77.2773 },
+    };
+
+    const pCoords = Object.entries(KNOWN_COORDS).find(([k]) => pTrim.includes(k))?.[1];
+    const dCoords = Object.entries(KNOWN_COORDS).find(([k]) => dTrim.includes(k))?.[1];
+
     try {
       const searchParams = {
         source: pickup.trim(),
         destination: dropoff.trim(),
       };
+
+      if (pCoords && dCoords) {
+        searchParams.pickupLat = pCoords.lat;
+        searchParams.pickupLng = pCoords.lng;
+        searchParams.dropoffLat = dCoords.lat;
+        searchParams.dropoffLng = dCoords.lng;
+      }
+
       const results = await api.rides.search(searchParams);
       let list = Array.isArray(results) ? results : (results?.rides || []);
       if (selectedCommunityId && list.length > 0) {
@@ -274,14 +307,23 @@ export const HeroSection = ({ user, onLoginClick }) => {
     }
   };
 
-  const handleBook = async (rideId) => {
+  const handleBook = async (ride) => {
     if (!user) {
       if (onLoginClick) onLoginClick();
       return;
     }
     setBookingLoading(true);
     try {
-      const newBooking = await api.bookings.create(rideId, 1);
+      const rideId = typeof ride === 'string' ? ride : ride.rideId;
+      const bookingOptions = {};
+
+      if (typeof ride === 'object' && ride.routePricing?.riderSubTripDistanceKm) {
+        bookingOptions.subTripDistanceKm = ride.routePricing.riderSubTripDistanceKm;
+        bookingOptions.passengerPickup = pickup.trim();
+        bookingOptions.passengerDropoff = dropoff.trim();
+      }
+
+      const newBooking = await api.bookings.create(rideId, 1, bookingOptions);
       try {
         await api.bookings.pay(newBooking.bookingId, newBooking.totalAmount, 'UPI');
       } catch {}
@@ -296,11 +338,15 @@ export const HeroSection = ({ user, onLoginClick }) => {
   };
 
   const handleCancelBooking = async (bookingId) => {
-    if (!confirm('Cancel this ride booking?')) return;
+    if (!confirm('Are you sure you want to cancel this ride booking? Your reserved seats will be restored.')) return;
     try {
       await api.bookings.cancel(bookingId, 'Passenger requested cancellation');
       const updated = await api.bookings.getMyBookings();
       setMyBookings(Array.isArray(updated) ? updated : []);
+      // Refresh available rides so restored seat count appears immediately
+      if (hasSearched) {
+        handleSearch();
+      }
       alert('Booking cancelled successfully.');
     } catch (err) {
       alert(err.response?.data?.error?.message || 'Cancellation failed.');
@@ -1240,14 +1286,27 @@ export const HeroSection = ({ user, onLoginClick }) => {
                         {ride.vehicle ? `${ride.vehicle.make} ${ride.vehicle.model} (${ride.vehicle.vehicleType})` : 'Verified Vehicle'} •{' '}
                         {ride.availableSeats} seats left • Departure: {new Date(ride.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
+                      {ride.routePricing?.isEnRouteMatch && (
+                        <div style={{ fontSize: '11.5px', color: '#38bdf8', marginTop: '3px' }}>
+                          🛣️ En-Route Driver Corridor: <strong>{ride.source} → {ride.destination}</strong> ({ride.routePricing.driverTotalDistanceKm} km)
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff' }}>
-                          ₹{ride.farePerSeat}
+                          ₹{ride.routePricing?.calculatedSubTripFare || ride.farePerSeat}
                         </div>
-                        <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.5)' }}>per seat</div>
+                        <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.5)' }}>
+                          {ride.routePricing?.riderSubTripDistanceKm ? (
+                            <span style={{ color: '#86efac' }}>
+                              ₹{ride.routePricing.ratePerKm}/km ({ride.routePricing.riderSubTripDistanceKm} km)
+                            </span>
+                          ) : (
+                            'per seat'
+                          )}
+                        </div>
                       </div>
 
                       {myBookings.some((b) => b.rideId === ride.rideId && ['PENDING', 'CONFIRMED'].includes(b.status)) ? (
@@ -1268,7 +1327,7 @@ export const HeroSection = ({ user, onLoginClick }) => {
                         <LiquidGlassButton
                           scale={0.88}
                           disabled={bookingLoading || ride.availableSeats <= 0}
-                          onClick={() => handleBook(ride.rideId)}
+                          onClick={() => handleBook(ride)}
                           style={{
                             background: 'rgba(99, 102, 241, 0.3)',
                             border: '1px solid rgba(99, 102, 241, 0.45)',

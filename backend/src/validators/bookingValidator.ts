@@ -26,6 +26,13 @@ export const createBookingSchema = z
       .int('Seats booked must be an integer')
       .min(1, 'At least 1 seat must be booked')
       .max(4, 'Cannot book more than 4 seats in a single reservation'),
+    passengerPickup: z.string().trim().max(255).optional(),
+    passengerDropoff: z.string().trim().max(255).optional(),
+    pickupLat: z.coerce.number().min(-90).max(90).optional(),
+    pickupLng: z.coerce.number().min(-180).max(180).optional(),
+    dropoffLat: z.coerce.number().min(-90).max(90).optional(),
+    dropoffLng: z.coerce.number().min(-180).max(180).optional(),
+    subTripDistanceKm: z.coerce.number().positive().max(1000).optional(),
   })
   .strict();
 
@@ -103,6 +110,12 @@ export type RejectBookingInput = z.infer<typeof rejectBookingSchema>;
 export const cancelBookingSchema = z
   .object({
     reason: z
+      .string()
+      .trim()
+      .min(1, 'Cancellation reason must not be empty')
+      .max(500, 'Cancellation reason must not exceed 500 characters')
+      .optional(),
+    cancellationReason: z
       .string()
       .trim()
       .min(1, 'Cancellation reason must not be empty')

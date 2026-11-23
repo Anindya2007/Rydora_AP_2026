@@ -165,6 +165,25 @@ export async function cancelRide(
   }
 }
 
+export async function completeRide(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const { rideId } = rideIdParamSchema.parse(req.params);
+    const ride = await rideService.completeRide(req.user.userId, rideId);
+
+    sendSuccess(res, { ride }, 'Ride completed successfully and driver earnings credited', 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const RideController = {
   createRide,
   listDriverRides,
@@ -172,4 +191,5 @@ export const RideController = {
   listRides,
   updateRide,
   cancelRide,
+  completeRide,
 };

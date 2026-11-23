@@ -231,6 +231,22 @@ rideRouter.post(
   RideController.cancelRide
 );
 
+rideRouter.post(
+  '/:rideId/complete',
+  authenticate,
+  requireRoles(UserRole.DRIVER),
+  validateRideIdParam,
+  RideController.completeRide
+);
+
+rideRouter.patch(
+  '/:rideId/complete',
+  authenticate,
+  requireRoles(UserRole.DRIVER),
+  validateRideIdParam,
+  RideController.completeRide
+);
+
 rideRouter.patch(
   '/:rideId/cancel',
   authenticate,

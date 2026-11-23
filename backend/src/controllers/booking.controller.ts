@@ -195,12 +195,13 @@ export async function cancelBooking(
 
     const { bookingId } = bookingIdParamSchema.parse(req.params);
     const validatedBody = cancelBookingSchema.parse(req.body ?? {});
+    const reason = validatedBody.reason || validatedBody.cancellationReason || undefined;
     const isAdmin = req.user.roles.includes('ADMIN');
 
     const booking = await bookingService.cancelPassengerBooking(
       req.user.userId,
       bookingId,
-      validatedBody.reason,
+      reason,
       isAdmin
     );
 

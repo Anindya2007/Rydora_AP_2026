@@ -204,6 +204,10 @@ export const rideQuerySchema = z
       .min(1, 'Vehicle type filter cannot be empty')
       .max(50, 'Vehicle type must not exceed 50 characters')
       .optional(),
+    pickupLat: z.coerce.number().min(-90).max(90).optional(),
+    pickupLng: z.coerce.number().min(-180).max(180).optional(),
+    dropoffLat: z.coerce.number().min(-90).max(90).optional(),
+    dropoffLng: z.coerce.number().min(-180).max(180).optional(),
     sortBy: z
       .enum(['departureTime', 'farePerSeat', 'availableSeats', 'createdAt'], {
         message: 'Sort field must be one of: departureTime, farePerSeat, availableSeats, createdAt',

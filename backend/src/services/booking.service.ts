@@ -14,6 +14,12 @@ import {
   ForbiddenError,
   NotFoundError,
 } from '../utils/errors.js';
+import {
+  calculateHaversineDistance,
+  matchRouteCorridor,
+  resolveLocationCoordinates,
+  type Coordinates,
+} from '../utils/distance.js';
 
 export interface BookingDriverSummary {
   userId: string;
@@ -274,6 +280,10 @@ export async function createBooking(
         source: true,
         destination: true,
         departureTime: true,
+        sourceLatitude: true,
+        sourceLongitude: true,
+        destinationLatitude: true,
+        destinationLongitude: true,
         farePerSeat: true,
         status: true,
         availableSeats: true,
@@ -352,9 +362,52 @@ export async function createBooking(
       );
     }
 
-    // 7. Compute total booking amount (seatsBooked * farePerSeat)
-    const farePerSeatNum = Number(ride.farePerSeat);
-    const totalAmountNum = (farePerSeatNum * input.seatsBooked).toFixed(2);
+    // 7. Compute total booking amount (seatsBooked * distance-proportional farePerSeat)
+    const fullFarePerSeat = Number(ride.farePerSeat);
+    let effectiveFarePerSeat = fullFarePerSeat;
+
+    // Resolve driver coordinates (from database columns or geocoding table)
+    const driverSource: Coordinates | null =
+      ride.sourceLatitude && ride.sourceLongitude
+        ? { latitude: Number(ride.sourceLatitude), longitude: Number(ride.sourceLongitude) }
+        : resolveLocationCoordinates(ride.source);
+
+    const driverDest: Coordinates | null =
+      ride.destinationLatitude && ride.destinationLongitude
+        ? { latitude: Number(ride.destinationLatitude), longitude: Number(ride.destinationLongitude) }
+        : resolveLocationCoordinates(ride.destination);
+
+    if (driverSource && driverDest) {
+      const driverTotalDist = Math.max(0.5, calculateHaversineDistance(driverSource, driverDest));
+      const ratePerKm = fullFarePerSeat / driverTotalDist;
+
+      if (input.subTripDistanceKm && input.subTripDistanceKm > 0) {
+        const calculated = input.subTripDistanceKm * ratePerKm;
+        effectiveFarePerSeat = Math.min(fullFarePerSeat, Math.max(20, Math.round(calculated)));
+      } else {
+        const riderPickup: Coordinates | null =
+          input.pickupLat !== undefined && input.pickupLng !== undefined
+            ? { latitude: input.pickupLat, longitude: input.pickupLng }
+            : input.passengerPickup
+            ? resolveLocationCoordinates(input.passengerPickup)
+            : null;
+
+        const riderDropoff: Coordinates | null =
+          input.dropoffLat !== undefined && input.dropoffLng !== undefined
+            ? { latitude: input.dropoffLat, longitude: input.dropoffLng }
+            : input.passengerDropoff
+            ? resolveLocationCoordinates(input.passengerDropoff)
+            : null;
+
+        if (riderPickup && riderDropoff) {
+          const match = matchRouteCorridor(driverSource, driverDest, riderPickup, riderDropoff);
+          const calculated = match.riderDistanceKm * ratePerKm;
+          effectiveFarePerSeat = Math.min(fullFarePerSeat, Math.max(20, Math.round(calculated)));
+        }
+      }
+    }
+
+    const totalAmountNum = (effectiveFarePerSeat * input.seatsBooked).toFixed(2);
 
     // 8. Create the booking record
     const booking = await tx.booking.create({

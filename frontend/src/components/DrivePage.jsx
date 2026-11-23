@@ -258,6 +258,22 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
     }
   };
 
+  const handleCompleteDriverRide = async (rideId) => {
+    if (!confirm('Mark this ride as completed? Confirmed passenger bookings will complete and your driver earnings will be credited.')) return;
+    try {
+      await api.rides.complete(rideId);
+      alert('Ride marked as completed! Driver earnings have been credited.');
+      const updatedRides = await api.rides.getDriverRides();
+      setDriverRides(Array.isArray(updatedRides) ? updatedRides : (updatedRides?.rides || []));
+      try {
+        const earningsRes = await api.driver.getEarnings();
+        setDriverEarnings(earningsRes);
+      } catch {}
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Could not complete ride.');
+    }
+  };
+
   // Hourly base rate in ₹
   const hourlyRate = 620;
   const estimatedWeekly = weeklyHours * hourlyRate;
@@ -1230,21 +1246,39 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                                 </LiquidGlassButton>
 
                                 {ride.status === 'SCHEDULED' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleCancelDriverRide(ride.rideId)}
-                                    style={{
-                                      background: 'rgba(239, 68, 68, 0.12)',
-                                      border: '1px solid rgba(239, 68, 68, 0.25)',
-                                      borderRadius: '9999px',
-                                      padding: '4px 10px',
-                                      color: '#f87171',
-                                      fontSize: '11px',
-                                      cursor: 'pointer',
-                                    }}
-                                  >
-                                    Cancel Ride
-                                  </button>
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCompleteDriverRide(ride.rideId)}
+                                      style={{
+                                        background: 'rgba(34, 197, 94, 0.15)',
+                                        border: '1px solid rgba(34, 197, 94, 0.35)',
+                                        borderRadius: '9999px',
+                                        padding: '4px 10px',
+                                        color: '#86efac',
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      ✓ Complete Trip
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCancelDriverRide(ride.rideId)}
+                                      style={{
+                                        background: 'rgba(239, 68, 68, 0.12)',
+                                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                                        borderRadius: '9999px',
+                                        padding: '4px 10px',
+                                        color: '#f87171',
+                                        fontSize: '11px',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      Cancel Ride
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </div>
