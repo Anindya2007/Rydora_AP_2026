@@ -3,6 +3,7 @@ import {
   createRideSchema,
   driverRidesQuerySchema,
   rideIdParamSchema,
+  rideQuerySchema,
 } from '../validators/rideValidator.js';
 import { rideService } from '../services/ride.service.js';
 import { sendSuccess } from '../utils/response.js';
@@ -86,8 +87,34 @@ export async function getRideById(
   }
 }
 
+/**
+ * Controller handling public and authenticated ride listing & discovery (GET /api/v1/rides).
+ * Supports comprehensive filtering, bounded pagination, and deterministic sorting.
+ */
+export async function listRides(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const validatedQuery = rideQuerySchema.parse(req.query);
+    const result = await rideService.listRides(validatedQuery);
+
+    sendSuccess(
+      res,
+      { rides: result.rides },
+      'Rides retrieved successfully',
+      200,
+      result.pagination
+    );
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const RideController = {
   createRide,
   listDriverRides,
   getRideById,
+  listRides,
 };

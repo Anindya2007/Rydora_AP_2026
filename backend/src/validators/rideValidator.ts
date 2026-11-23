@@ -110,17 +110,122 @@ export type CreateRideInput = z.infer<typeof createRideSchema>;
 
 /**
  * Ride query parameters schema for ride discovery (GET /api/v1/rides).
+ *
+ * Supported Filters:
+ * - communityId: Filter rides belonging to a specific community (UUID format).
+ * - source: Case-insensitive search on origin/departure location.
+ * - destination: Case-insensitive search on destination location.
+ * - status: Filter by RideStatus (SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED).
+ * - date: Filter rides departing on a single calendar day (YYYY-MM-DD).
+ * - startDate / endDate: Filter rides departing within a date/time range.
+ * - availableSeats / minSeats: Filter rides offering at least N seats.
+ * - vehicleType: Filter by vehicle category (e.g. SEDAN, SUV).
+ * - sortBy: Sort by departureTime, farePerSeat, availableSeats, or createdAt.
+ * - sortOrder: asc or desc.
+ * - page & limit: Bounded pagination (limit max 100).
  */
 export const rideQuerySchema = z
   .object({
-    page: z.coerce.number().int().positive().default(1),
-    limit: z.coerce.number().int().positive().max(100).default(20),
-    communityId: z.string().trim().regex(UUID_REGEX).optional(),
-    source: z.string().trim().optional(),
-    destination: z.string().trim().optional(),
-    status: z.enum(['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
+    page: z.coerce
+      .number({ message: 'Page must be a valid number' })
+      .int('Page must be an integer')
+      .positive('Page must be greater than zero')
+      .default(1),
+    limit: z.coerce
+      .number({ message: 'Limit must be a valid number' })
+      .int('Limit must be an integer')
+      .positive('Limit must be greater than zero')
+      .max(100, 'Limit must not exceed 100')
+      .default(20),
+    communityId: z
+      .string({ message: 'Community ID must be a string' })
+      .trim()
+      .regex(UUID_REGEX, 'Community ID must be a valid UUID')
+      .optional(),
+    source: z
+      .string({ message: 'Source must be a string' })
+      .trim()
+      .min(1, 'Source filter cannot be empty')
+      .max(255, 'Source filter must not exceed 255 characters')
+      .optional(),
+    destination: z
+      .string({ message: 'Destination must be a string' })
+      .trim()
+      .min(1, 'Destination filter cannot be empty')
+      .max(255, 'Destination filter must not exceed 255 characters')
+      .optional(),
+    status: z
+      .enum(['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'], {
+        message: 'Status must be one of: SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED',
+      })
+      .optional(),
+    date: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be formatted as YYYY-MM-DD')
+      .optional(),
+    startDate: z
+      .string()
+      .trim()
+      .refine(
+        (val) =>
+          /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/.test(val) &&
+          !isNaN(Date.parse(val)),
+        'Start date must be a valid YYYY-MM-DD date or ISO 8601 datetime'
+      )
+      .optional(),
+    endDate: z
+      .string()
+      .trim()
+      .refine(
+        (val) =>
+          /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?)?$/.test(val) &&
+          !isNaN(Date.parse(val)),
+        'End date must be a valid YYYY-MM-DD date or ISO 8601 datetime'
+      )
+      .optional(),
+    availableSeats: z.coerce
+      .number({ message: 'Available seats must be a valid number' })
+      .int('Available seats must be an integer')
+      .min(1, 'Available seats must be at least 1')
+      .max(8, 'Available seats must not exceed 8')
+      .optional(),
+    minSeats: z.coerce
+      .number({ message: 'Minimum seats must be a valid number' })
+      .int('Minimum seats must be an integer')
+      .min(1, 'Minimum seats must be at least 1')
+      .max(8, 'Minimum seats must not exceed 8')
+      .optional(),
+    vehicleType: z
+      .string()
+      .trim()
+      .min(1, 'Vehicle type filter cannot be empty')
+      .max(50, 'Vehicle type must not exceed 50 characters')
+      .optional(),
+    sortBy: z
+      .enum(['departureTime', 'farePerSeat', 'availableSeats', 'createdAt'], {
+        message: 'Sort field must be one of: departureTime, farePerSeat, availableSeats, createdAt',
+      })
+      .default('departureTime'),
+    sortOrder: z
+      .enum(['asc', 'desc'], {
+        message: 'Sort order must be either asc or desc',
+      })
+      .default('asc'),
   })
-  .strict();
+  .strict()
+  .refine(
+    (data) => {
+      if (data.startDate && data.endDate) {
+        return new Date(data.startDate).getTime() <= new Date(data.endDate).getTime();
+      }
+      return true;
+    },
+    {
+      message: 'Start date must be earlier than or equal to end date',
+      path: ['endDate'],
+    }
+  );
 
 export type RideQueryInput = z.infer<typeof rideQuerySchema>;
 

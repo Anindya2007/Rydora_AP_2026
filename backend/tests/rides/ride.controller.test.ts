@@ -955,4 +955,479 @@ describe('Milestone 6.1: Ride Creation API (POST /api/v1/rides)', () => {
       expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
     });
   });
+
+  describe('Milestone 6.3: Ride Listing, Pagination and Filtering (GET /api/v1/rides)', () => {
+    const sampleRide = {
+      rideId: mockRideId,
+      driverId: mockDriverId,
+      vehicleId: mockVehicleId,
+      communityId: mockCommunityId,
+      source: 'SRM University Main Gate',
+      destination: 'Chennai Central Railway Station',
+      departureTime: futureDepartureTime,
+      sourceLatitude: { toString: () => '12.823000' },
+      sourceLongitude: { toString: () => '80.044000' },
+      destinationLatitude: { toString: () => '13.082700' },
+      destinationLongitude: { toString: () => '80.270700' },
+      totalSeats: 3,
+      availableSeats: 3,
+      farePerSeat: { toString: () => '150.00' },
+      status: RideStatus.SCHEDULED,
+      createdAt: mockTimestamp,
+      updatedAt: mockTimestamp,
+      driver: {
+        userId: mockDriverId,
+        name: 'Rohan Sharma',
+        email: 'rohan.driver@rydora.in',
+        profileImage: null,
+        averageRating: { toString: () => '5.00' },
+        ratingCount: 10,
+      },
+      vehicle: {
+        vehicleId: mockVehicleId,
+        make: 'Honda',
+        model: 'City',
+        color: 'White',
+        vehicleType: 'SEDAN',
+        registrationNumber: 'DL01AB1234',
+        seatCapacity: 4,
+      },
+      community: {
+        communityId: mockCommunityId,
+        name: 'SRM University',
+        domain: 'srmist.edu.in',
+        status: CommunityStatus.ACTIVE,
+      },
+    };
+
+    it('should list rides with default parameters when no filters are provided (200 OK)', async () => {
+      const countSpy = vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+
+      const res = await request(app).get('/api/v1/rides');
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(countSpy).toHaveBeenCalledWith({ where: {} });
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {},
+          skip: 0,
+          take: 20,
+          orderBy: [
+            { departureTime: 'asc' },
+            { rideId: 'asc' },
+          ],
+        })
+      );
+      expect(res.body.data.rides).toHaveLength(1);
+      expect(res.body.data.rides[0].rideId).toBe(mockRideId);
+      expect(res.body.meta.pagination).toEqual({
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      });
+    });
+
+    it('should allow public access to /api/v1/rides/search alias without authentication (200 OK)', async () => {
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(0);
+      vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([]);
+
+      const res = await request(app).get('/api/v1/rides/search');
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.rides).toEqual([]);
+    });
+
+    it('should allow authenticated users to list rides with Bearer token (200 OK)', async () => {
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+      vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+
+      const token = generateToken(mockOtherUserId);
+      const res = await request(app)
+        .get('/api/v1/rides')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.rides).toHaveLength(1);
+    });
+
+    it('should filter rides by source location with case-insensitive partial match', async () => {
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+
+      const res = await request(app).get('/api/v1/rides?source=srm');
+
+      expect(res.status).toBe(200);
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            source: {
+              contains: 'srm',
+              mode: 'insensitive',
+            },
+          }),
+        })
+      );
+    });
+
+    it('should filter rides by destination location with case-insensitive partial match', async () => {
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+
+      const res = await request(app).get('/api/v1/rides?destination=central');
+
+      expect(res.status).toBe(200);
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            destination: {
+              contains: 'central',
+              mode: 'insensitive',
+            },
+          }),
+        })
+      );
+    });
+
+    it('should filter rides by communityId', async () => {
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+
+      const res = await request(app).get(`/api/v1/rides?communityId=${mockCommunityId}`);
+
+      expect(res.status).toBe(200);
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            communityId: mockCommunityId,
+          }),
+        })
+      );
+    });
+
+    it('should filter rides by status (SCHEDULED)', async () => {
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+
+      const res = await request(app).get('/api/v1/rides?status=SCHEDULED');
+
+      expect(res.status).toBe(200);
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: 'SCHEDULED',
+          }),
+        })
+      );
+    });
+
+    it('should filter rides by availableSeats (greater than or equal to)', async () => {
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+
+      const res = await request(app).get('/api/v1/rides?availableSeats=3');
+
+      expect(res.status).toBe(200);
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            availableSeats: { gte: 3 },
+          }),
+        })
+      );
+    });
+
+    it('should filter rides by minSeats query parameter (alias for availableSeats)', async () => {
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+
+      const res = await request(app).get('/api/v1/rides?minSeats=2');
+
+      expect(res.status).toBe(200);
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            availableSeats: { gte: 2 },
+          }),
+        })
+      );
+    });
+
+    it('should filter rides by vehicleType via vehicle relation', async () => {
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+
+      const res = await request(app).get('/api/v1/rides?vehicleType=SEDAN');
+
+      expect(res.status).toBe(200);
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            vehicle: {
+              vehicleType: {
+                equals: 'SEDAN',
+                mode: 'insensitive',
+              },
+            },
+          }),
+        })
+      );
+    });
+
+    it('should filter rides by single calendar date (YYYY-MM-DD)', async () => {
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+
+      const res = await request(app).get('/api/v1/rides?date=2026-11-23');
+
+      expect(res.status).toBe(200);
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            departureTime: {
+              gte: new Date('2026-11-23T00:00:00.000Z'),
+              lte: new Date('2026-11-23T23:59:59.999Z'),
+            },
+          }),
+        })
+      );
+    });
+
+    it('should filter rides by date range (startDate and endDate)', async () => {
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+
+      const res = await request(app).get(
+        '/api/v1/rides?startDate=2026-11-23T00:00:00.000Z&endDate=2026-11-24T23:59:59.999Z'
+      );
+
+      expect(res.status).toBe(200);
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            departureTime: {
+              gte: new Date('2026-11-23T00:00:00.000Z'),
+              lte: new Date('2026-11-24T23:59:59.999Z'),
+            },
+          }),
+        })
+      );
+    });
+
+    it('should combine multiple query filters simultaneously', async () => {
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+      const countSpy = vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+
+      const res = await request(app).get(
+        `/api/v1/rides?communityId=${mockCommunityId}&source=SRM&destination=Central&status=SCHEDULED&availableSeats=2&vehicleType=SEDAN&date=2026-11-23`
+      );
+
+      expect(res.status).toBe(200);
+      expect(countSpy).toHaveBeenCalledWith({
+        where: {
+          communityId: mockCommunityId,
+          source: { contains: 'SRM', mode: 'insensitive' },
+          destination: { contains: 'Central', mode: 'insensitive' },
+          status: 'SCHEDULED',
+          availableSeats: { gte: 2 },
+          vehicle: { vehicleType: { equals: 'SEDAN', mode: 'insensitive' } },
+          departureTime: {
+            gte: new Date('2026-11-23T00:00:00.000Z'),
+            lte: new Date('2026-11-23T23:59:59.999Z'),
+          },
+        },
+      });
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            communityId: mockCommunityId,
+            source: { contains: 'SRM', mode: 'insensitive' },
+            destination: { contains: 'Central', mode: 'insensitive' },
+            status: 'SCHEDULED',
+            availableSeats: { gte: 2 },
+            vehicle: { vehicleType: { equals: 'SEDAN', mode: 'insensitive' } },
+            departureTime: {
+              gte: new Date('2026-11-23T00:00:00.000Z'),
+              lte: new Date('2026-11-23T23:59:59.999Z'),
+            },
+          },
+        })
+      );
+    });
+
+    it('should sort rides deterministically by custom sortBy and sortOrder', async () => {
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+
+      const res = await request(app).get('/api/v1/rides?sortBy=farePerSeat&sortOrder=desc');
+
+      expect(res.status).toBe(200);
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: [
+            { farePerSeat: 'desc' },
+            { rideId: 'asc' },
+          ],
+        })
+      );
+    });
+
+    it('should handle custom pagination (page=2, limit=10)', async () => {
+      const findManySpy = vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(25);
+
+      const res = await request(app).get('/api/v1/rides?page=2&limit=10');
+
+      expect(res.status).toBe(200);
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 10,
+          take: 10,
+        })
+      );
+      expect(res.body.meta.pagination).toEqual({
+        page: 2,
+        limit: 10,
+        total: 25,
+        totalPages: 3,
+        hasNext: true,
+        hasPrev: true,
+      });
+    });
+
+    it('should return empty results when no rides match criteria (200 OK)', async () => {
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(0);
+      vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([]);
+
+      const res = await request(app).get('/api/v1/rides?source=NonexistentPlace');
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.rides).toEqual([]);
+      expect(res.body.meta.pagination).toEqual({
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false,
+      });
+    });
+
+    it('should accept boundary conditions (limit=1, limit=100, availableSeats=1, availableSeats=8)', async () => {
+      vi.spyOn(prisma.ride, 'count').mockResolvedValue(0);
+      vi.spyOn(prisma.ride, 'findMany').mockResolvedValue([]);
+
+      const resMin = await request(app).get('/api/v1/rides?limit=1&availableSeats=1');
+      expect(resMin.status).toBe(200);
+
+      const resMax = await request(app).get('/api/v1/rides?limit=100&availableSeats=8');
+      expect(resMax.status).toBe(200);
+    });
+
+    it('should reject invalid communityId format (422 Unprocessable Entity)', async () => {
+      const res = await request(app).get('/api/v1/rides?communityId=not-a-valid-uuid');
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should reject invalid status enum (422 Unprocessable Entity)', async () => {
+      const res = await request(app).get('/api/v1/rides?status=EXPLODED');
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should reject invalid date format (422 Unprocessable Entity)', async () => {
+      const res = await request(app).get('/api/v1/rides?date=23-11-2026');
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should reject invalid date range where startDate is after endDate (422 Unprocessable Entity)', async () => {
+      const res = await request(app).get(
+        '/api/v1/rides?startDate=2026-11-25T00:00:00.000Z&endDate=2026-11-24T00:00:00.000Z'
+      );
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should reject out-of-bound limit such as limit=0 or limit=101 (422 Unprocessable Entity)', async () => {
+      const resZero = await request(app).get('/api/v1/rides?limit=0');
+      expect(resZero.status).toBe(422);
+      expect(resZero.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+
+      const resOver = await request(app).get('/api/v1/rides?limit=101');
+      expect(resOver.status).toBe(422);
+      expect(resOver.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should reject invalid page numbers such as page=0 or negative page (422 Unprocessable Entity)', async () => {
+      const res = await request(app).get('/api/v1/rides?page=0');
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should reject invalid sortBy field (422 Unprocessable Entity)', async () => {
+      const res = await request(app).get('/api/v1/rides?sortBy=passwordHash');
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should reject invalid sortOrder (422 Unprocessable Entity)', async () => {
+      const res = await request(app).get('/api/v1/rides?sortOrder=diagonal');
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should reject unexpected query parameters due to strict schema (422 Unprocessable Entity)', async () => {
+      const res = await request(app).get('/api/v1/rides?maliciousInject=dropTable');
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.code).toBe('UNPROCESSABLE_ENTITY');
+    });
+
+    it('should strictly prevent exposure of driver credentials and sensitive profile fields', async () => {
+      vi.spyOn(prisma.ride, 'count').mockResolvedValueOnce(1);
+      vi.spyOn(prisma.ride, 'findMany').mockResolvedValueOnce([sampleRide as any]);
+
+      const res = await request(app).get('/api/v1/rides');
+
+      expect(res.status).toBe(200);
+      const ride = res.body.data.rides[0];
+      expect(ride.driver).toBeDefined();
+      expect(ride.driver.userId).toBe(mockDriverId);
+      expect(ride.driver.name).toBe('Rohan Sharma');
+      expect(ride.driver.email).toBe('rohan.driver@rydora.in');
+      expect(ride.driver.averageRating).toBe('5.00');
+      expect(ride.driver.ratingCount).toBe(10);
+
+      // Verify strict omission of sensitive credentials
+      expect(ride.driver.passwordHash).toBeUndefined();
+      expect(ride.driver.walletBalance).toBeUndefined();
+      expect(ride.driver.licenseNumber).toBeUndefined();
+      expect(ride.driver.licenseExpiry).toBeUndefined();
+      expect(ride.driver.phone).toBeUndefined();
+    });
+  });
 });

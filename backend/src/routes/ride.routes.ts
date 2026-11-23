@@ -6,6 +6,7 @@ import {
   createRideSchema,
   rideIdParamSchema,
   driverRidesQuerySchema,
+  rideQuerySchema,
 } from '../validators/rideValidator.js';
 import { RideController } from '../controllers/ride.controller.js';
 
@@ -61,6 +62,22 @@ export const validateDriverRidesQuery = (
 };
 
 /**
+ * Request query validation middleware for ride listing and discovery.
+ */
+export const validateRideQuery = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    rideQuerySchema.parse(req.query);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * GET /api/v1/rides/me
  * Protected endpoint for authenticated drivers to view their published rides.
  * NOTE: Declared BEFORE /:rideId to prevent route parameter collision.
@@ -77,6 +94,29 @@ rideRouter.get(
   requireRoles(UserRole.DRIVER),
   validateDriverRidesQuery,
   RideController.listDriverRides
+);
+
+/**
+ * GET /api/v1/rides/search
+ * Public & authenticated discovery alias for carpool ride listings.
+ * NOTE: Declared before /:rideId to prevent route parameter collision.
+ */
+rideRouter.get(
+  '/search',
+  validateRideQuery,
+  RideController.listRides
+);
+
+/**
+ * GET /api/v1/rides
+ * Public & authenticated discovery endpoint for listing and searching available carpool rides.
+ * Supports filtering by community, route (source/destination), status, seats, vehicle, and date ranges.
+ * NOTE: Declared before /:rideId to prevent route parameter collision.
+ */
+rideRouter.get(
+  '/',
+  validateRideQuery,
+  RideController.listRides
 );
 
 /**

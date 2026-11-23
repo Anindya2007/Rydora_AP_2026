@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
 import { RideStatus, UserRole } from '../generated/prisma/client.js';
-import type { CreateRideInput, DriverRidesQueryInput } from '../validators/rideValidator.js';
+import type { CreateRideInput, DriverRidesQueryInput, RideQueryInput } from '../validators/rideValidator.js';
 import {
   BadRequestError,
   ConflictError,
@@ -62,6 +62,11 @@ export interface RideDetailOutput extends RideOutput {
 }
 
 export interface PaginatedDriverRidesResult {
+  rides: RideDetailOutput[];
+  pagination: PaginationMeta;
+}
+
+export interface PaginatedRidesResult {
   rides: RideDetailOutput[];
   pagination: PaginationMeta;
 }
@@ -441,8 +446,131 @@ export async function listDriverRides(
   };
 }
 
+/**
+ * Lists and searches public/community carpool rides (GET /api/v1/rides).
+ *
+ * Security & Data Privacy:
+ * 1. Public / Authenticated Discovery: Does not require elevated DRIVER role.
+ * 2. Zero Private Leakage: Output is strictly projected through rideDetailSelectProjection
+ *    which hides driver passwordHash, walletBalance, licenseNumber, and licenseExpiry.
+ * 3. Database-Level Filtering: Applies all conditions (communityId, source, destination, status,
+ *    availableSeats, vehicleType, departure date ranges) directly in PostgreSQL via Prisma.
+ * 4. Deterministic Ordering: Orders by requested field (default: departureTime asc) with rideId tie-breaker.
+ * 5. Safe Bounded Pagination: Computes standard PaginationMeta with bounded page and limit.
+ *
+ * @param options Validated ride query options and pagination parameters.
+ * @returns Paginated list of public ride summaries and pagination metadata.
+ */
+export async function listRides(
+  options?: RideQueryInput
+): Promise<PaginatedRidesResult> {
+  const page = options?.page ?? 1;
+  const limit = options?.limit ?? 20;
+  const skip = (page - 1) * limit;
+
+  const where: any = {};
+
+  if (options?.communityId) {
+    where.communityId = options.communityId;
+  }
+
+  if (options?.source) {
+    where.source = {
+      contains: options.source,
+      mode: 'insensitive',
+    };
+  }
+
+  if (options?.destination) {
+    where.destination = {
+      contains: options.destination,
+      mode: 'insensitive',
+    };
+  }
+
+  if (options?.status) {
+    where.status = options.status;
+  }
+
+  // Seats filter: either availableSeats or minSeats
+  const requiredSeats = options?.minSeats ?? options?.availableSeats;
+  if (requiredSeats !== undefined) {
+    where.availableSeats = {
+      gte: requiredSeats,
+    };
+  }
+
+  // Vehicle type filter via vehicle relation
+  if (options?.vehicleType) {
+    where.vehicle = {
+      vehicleType: {
+        equals: options.vehicleType,
+        mode: 'insensitive',
+      },
+    };
+  }
+
+  // Date and date range handling on departureTime
+  if (options?.date) {
+    const dayStart = new Date(`${options.date}T00:00:00.000Z`);
+    const dayEnd = new Date(`${options.date}T23:59:59.999Z`);
+    where.departureTime = {
+      gte: dayStart,
+      lte: dayEnd,
+    };
+  } else if (options?.startDate || options?.endDate) {
+    const departureFilter: { gte?: Date; lte?: Date } = {};
+    if (options.startDate) {
+      departureFilter.gte = options.startDate.includes('T')
+        ? new Date(options.startDate)
+        : new Date(`${options.startDate}T00:00:00.000Z`);
+    }
+    if (options.endDate) {
+      departureFilter.lte = options.endDate.includes('T')
+        ? new Date(options.endDate)
+        : new Date(`${options.endDate}T23:59:59.999Z`);
+    }
+    where.departureTime = departureFilter;
+  }
+
+  const sortBy = options?.sortBy ?? 'departureTime';
+  const sortOrder = options?.sortOrder ?? 'asc';
+
+  // Deterministic sorting with secondary tie-breaker on rideId
+  const orderBy: any = [
+    { [sortBy]: sortOrder },
+    { rideId: 'asc' },
+  ];
+
+  const [total, records] = await Promise.all([
+    prisma.ride.count({ where }),
+    prisma.ride.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy,
+      select: rideDetailSelectProjection,
+    }),
+  ]);
+
+  const totalPages = Math.ceil(total / limit) || 0;
+
+  return {
+    rides: records.map(formatRideDetailOutput),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
+  };
+}
+
 export const rideService = {
   createRide,
   getRideById,
   listDriverRides,
+  listRides,
 };
