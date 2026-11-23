@@ -7,6 +7,7 @@ import {
   RideStatus,
   TransactionType,
   TransactionStatus,
+  UserRole,
 } from '../generated/prisma/client.js';
 import type { PaginationMeta } from '../utils/response.js';
 import {
@@ -24,6 +25,7 @@ import {
 import type {
   ProcessPaymentInput,
   ListTransactionsQueryInput,
+  DriverEarningsQueryInput,
 } from '../validators/payment.validator.js';
 
 export interface TransactionOutput {
@@ -720,12 +722,301 @@ export async function listUserTransactions(
   };
 }
 
+export const driverEarningTransactionSelectProjection = {
+  transactionId: true,
+  bookingId: true,
+  senderId: true,
+  receiverId: true,
+  amount: true,
+  currency: true,
+  type: true,
+  status: true,
+  paymentMethod: true,
+  providerReference: true,
+  referenceTransactionId: true,
+  description: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+  booking: {
+    select: {
+      bookingId: true,
+      rideId: true,
+      seatsBooked: true,
+      status: true,
+      totalAmount: true,
+      rider: {
+        select: {
+          userId: true,
+          name: true,
+        },
+      },
+      ride: {
+        select: {
+          rideId: true,
+          source: true,
+          destination: true,
+          departureTime: true,
+          status: true,
+        },
+      },
+    },
+  },
+};
+
+export interface DriverEarningsSummary {
+  driverId: string;
+  currency: string;
+  totalGrossEarnings: string;
+  totalRefundsDeducted: string;
+  totalPlatformFees: string;
+  totalNetEarnings: string;
+  completedPaymentsCount: number;
+  refundedTransactionsCount: number;
+}
+
+export interface DriverEarningHistoryItem {
+  transactionId: string;
+  bookingId: string;
+  rideId: string;
+  type: TransactionType;
+  status: TransactionStatus;
+  amount: string;
+  currency: string;
+  paymentMethod: string | null;
+  providerReference: string | null;
+  referenceTransactionId: string | null;
+  description: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  completedAt: Date | null;
+  booking?: {
+    bookingId: string;
+    seatsBooked: number;
+    totalAmount: string;
+    status: BookingStatus;
+    rider?: {
+      userId: string;
+      name: string;
+    };
+  };
+  ride?: {
+    rideId: string;
+    source: string;
+    destination: string;
+    departureTime: Date;
+    status: RideStatus;
+  };
+}
+
+export interface DriverEarningsResult {
+  summary: DriverEarningsSummary;
+  history: DriverEarningHistoryItem[];
+  pagination: PaginationMeta;
+}
+
+export function formatDriverEarningHistoryItem(raw: any): DriverEarningHistoryItem {
+  return {
+    transactionId: raw.transactionId,
+    bookingId: raw.bookingId,
+    rideId: raw.booking?.rideId || raw.booking?.ride?.rideId || '',
+    type: raw.type,
+    status: raw.status,
+    amount: raw.amount ? new Prisma.Decimal(raw.amount.toString()).toFixed(2) : '0.00',
+    currency: raw.currency || 'INR',
+    paymentMethod: raw.paymentMethod,
+    providerReference: raw.providerReference,
+    referenceTransactionId: raw.referenceTransactionId,
+    description: raw.description,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+    completedAt: raw.completedAt,
+    booking: raw.booking
+      ? {
+          bookingId: raw.booking.bookingId,
+          seatsBooked: raw.booking.seatsBooked,
+          totalAmount: raw.booking.totalAmount
+            ? new Prisma.Decimal(raw.booking.totalAmount.toString()).toFixed(2)
+            : '0.00',
+          status: raw.booking.status,
+          rider: raw.booking.rider
+            ? {
+                userId: raw.booking.rider.userId,
+                name: raw.booking.rider.name,
+              }
+            : undefined,
+        }
+      : undefined,
+    ride: raw.booking?.ride
+      ? {
+          rideId: raw.booking.ride.rideId,
+          source: raw.booking.ride.source,
+          destination: raw.booking.ride.destination,
+          departureTime: raw.booking.ride.departureTime,
+          status: raw.booking.ride.status,
+        }
+      : undefined,
+  };
+}
+
+/**
+ * Retrieves driver earnings summary and paginated transaction history (M9.3.1).
+ *
+ * Requirements & Invariants:
+ * 1. Target Driver Verification: Verifies user exists and possesses the DRIVER role.
+ * 2. Gross Earnings: Sum of COMPLETED BOOKING_PAYMENT where receiverId is the driver.
+ * 3. Refund Deductions: Sum of COMPLETED REFUND where senderId is the driver,
+ *    and referenceTransactionId links to a driver's original BOOKING_PAYMENT.
+ * 4. Net Earnings: Gross earnings minus refund deductions. Platform fee is 0.00.
+ * 5. Decimal Financial Precision: Uses Prisma.Decimal arithmetic exclusively (zero JS floating point math).
+ * 6. Date Range Filtering: Filters by completedAt (financial event timestamp) with inclusive bounds.
+ * 7. Exclusions: Excludes PENDING, FAILED, and REVERSED transactions. Never counts refunds received as rider.
+ * 8. Sorting: Orders history newest first by completedAt descending, with transactionId descending secondary tiebreaker.
+ */
+export async function getDriverEarnings(
+  targetDriverId: string,
+  query: DriverEarningsQueryInput,
+  isAdmin = false
+): Promise<DriverEarningsResult> {
+  // 1. Verify target driver exists and is a driver
+  const driverUser = await prisma.user.findUnique({
+    where: { userId: targetDriverId },
+    select: { userId: true, roles: true },
+  });
+
+  if (!driverUser) {
+    throw new NotFoundError('Driver not found');
+  }
+
+  if (!driverUser.roles.includes(UserRole.DRIVER)) {
+    throw new BadRequestError('Specified user is not a driver');
+  }
+
+  const { page = 1, limit = 20, startDate, endDate, rideId } = query;
+  const skip = (page - 1) * limit;
+
+  // 2. Build date boundary filter on completedAt
+  const completedAtCondition: any = { not: null };
+  if (startDate) {
+    completedAtCondition.gte = startDate.includes('T')
+      ? new Date(startDate)
+      : new Date(`${startDate}T00:00:00.000Z`);
+  }
+  if (endDate) {
+    completedAtCondition.lte = endDate.includes('T')
+      ? new Date(endDate)
+      : new Date(`${endDate}T23:59:59.999Z`);
+  }
+
+  // 3. Build where clauses for gross earnings (BOOKING_PAYMENT received)
+  const paymentWhere: Prisma.TransactionWhereInput = {
+    receiverId: targetDriverId,
+    type: TransactionType.BOOKING_PAYMENT,
+    status: TransactionStatus.COMPLETED,
+    completedAt: completedAtCondition,
+  };
+  if (rideId) {
+    paymentWhere.booking = { rideId };
+  }
+
+  // 4. Build where clauses for refund deductions (REFUND debited, linked to driver's original payment)
+  const refundWhere: Prisma.TransactionWhereInput = {
+    senderId: targetDriverId,
+    type: TransactionType.REFUND,
+    status: TransactionStatus.COMPLETED,
+    completedAt: completedAtCondition,
+    referenceTransaction: {
+      receiverId: targetDriverId,
+      type: TransactionType.BOOKING_PAYMENT,
+    },
+  };
+  if (rideId) {
+    refundWhere.booking = { rideId };
+  }
+
+  // 5. Build combined history where clause
+  const historyWhere: Prisma.TransactionWhereInput = {
+    OR: [paymentWhere, refundWhere],
+  };
+
+  // 6. Execute aggregation and paginated history query concurrently
+  const [paymentsAgg, refundsAgg, totalCount, records] = await Promise.all([
+    prisma.transaction.aggregate({
+      where: paymentWhere,
+      _sum: { amount: true },
+      _count: { transactionId: true },
+    }),
+    prisma.transaction.aggregate({
+      where: refundWhere,
+      _sum: { amount: true },
+      _count: { transactionId: true },
+    }),
+    prisma.transaction.count({
+      where: historyWhere,
+    }),
+    prisma.transaction.findMany({
+      where: historyWhere,
+      skip,
+      take: limit,
+      orderBy: [
+        { completedAt: 'desc' },
+        { transactionId: 'desc' },
+      ],
+      select: driverEarningTransactionSelectProjection,
+    }),
+  ]);
+
+  // 7. Calculate Decimal financial summaries
+  const grossDecimal = paymentsAgg._sum.amount
+    ? new Prisma.Decimal(paymentsAgg._sum.amount.toString())
+    : new Prisma.Decimal('0.00');
+
+  const refundDecimal = refundsAgg._sum.amount
+    ? new Prisma.Decimal(refundsAgg._sum.amount.toString())
+    : new Prisma.Decimal('0.00');
+
+  const platformFeeDecimal = new Prisma.Decimal('0.00');
+
+  const netDecimal = grossDecimal
+    .sub(refundDecimal)
+    .sub(platformFeeDecimal)
+    .toDecimalPlaces(2, Prisma.Decimal.ROUND_DOWN);
+
+  const completedPaymentsCount = paymentsAgg._count.transactionId || 0;
+  const refundedTransactionsCount = refundsAgg._count.transactionId || 0;
+
+  const totalPages = Math.ceil(totalCount / limit) || 1;
+
+  return {
+    summary: {
+      driverId: targetDriverId,
+      currency: 'INR',
+      totalGrossEarnings: grossDecimal.toFixed(2),
+      totalRefundsDeducted: refundDecimal.toFixed(2),
+      totalPlatformFees: platformFeeDecimal.toFixed(2),
+      totalNetEarnings: netDecimal.toFixed(2),
+      completedPaymentsCount,
+      refundedTransactionsCount,
+    },
+    history: records.map(formatDriverEarningHistoryItem),
+    pagination: {
+      total: totalCount,
+      page,
+      limit,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    },
+  };
+}
+
 export const paymentService = {
   processBookingPayment,
   processBookingRefund,
   getTransactionById,
   getBookingTransactions,
   listUserTransactions,
+  getDriverEarnings,
 };
 
 export interface ProcessBookingRefundInput {

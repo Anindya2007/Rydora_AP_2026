@@ -1,11 +1,14 @@
 import type { Request, Response, NextFunction } from 'express';
 import { paymentService } from '../services/payment.service.js';
 import { sendSuccess } from '../utils/response.js';
+import { ForbiddenError } from '../utils/errors.js';
 import {
   type ProcessPaymentInput,
   type ProcessRefundInput,
   type ListTransactionsQueryInput,
+  type DriverEarningsQueryInput,
   listTransactionsQuerySchema,
+  driverEarningsQuerySchema,
 } from '../validators/payment.validator.js';
 
 export class PaymentController {
@@ -187,6 +190,50 @@ export class PaymentController {
         res,
         { transactions },
         'User transactions retrieved successfully',
+        200,
+        pagination
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/v1/payments/driver/earnings
+   * GET /api/v1/transactions/driver/earnings
+   * Retrieves driver earnings summary and paginated history.
+   */
+  static async getDriverEarnings(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const requester = req.user!;
+      const isAdmin = requester.roles.includes('ADMIN');
+      const query = driverEarningsQuerySchema.parse(req.query);
+
+      // Drivers can only access their own earnings; Admins may specify a target driverId
+      if (!isAdmin && query.driverId && query.driverId !== requester.userId) {
+        throw new ForbiddenError(
+          'Access denied: Drivers can only view their own earnings'
+        );
+      }
+
+      const targetDriverId =
+        isAdmin && query.driverId ? query.driverId : requester.userId;
+
+      const { summary, history, pagination } =
+        await paymentService.getDriverEarnings(
+          targetDriverId,
+          query,
+          isAdmin
+        );
+
+      sendSuccess(
+        res,
+        { summary, history },
+        'Driver earnings retrieved successfully',
         200,
         pagination
       );

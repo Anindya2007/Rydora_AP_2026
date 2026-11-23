@@ -116,3 +116,77 @@ export type ProcessRefundInput = z.infer<typeof processRefundSchema>;
 export type ListTransactionsQueryInput = z.infer<
   typeof listTransactionsQuerySchema
 >;
+
+export const driverEarningsQuerySchema = z
+  .object({
+    page: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((val) => {
+        if (val === undefined || val === null) return 1;
+        const n = typeof val === 'number' ? val : parseInt(val, 10);
+        return isNaN(n) ? 1 : n;
+      })
+      .refine((val) => val >= 1, {
+        message: 'page must be a positive integer',
+      }),
+    limit: z
+      .union([z.string(), z.number()])
+      .optional()
+      .transform((val) => {
+        if (val === undefined || val === null) return 20;
+        const n = typeof val === 'number' ? val : parseInt(val, 10);
+        return isNaN(n) ? 20 : n;
+      })
+      .refine((val) => val >= 1 && val <= 100, {
+        message: 'limit must be between 1 and 100',
+      }),
+    startDate: z
+      .string()
+      .trim()
+      .optional()
+      .refine(
+        (val) => {
+          if (!val) return true;
+          return !isNaN(new Date(val).getTime());
+        },
+        { message: 'startDate must be a valid ISO date string' }
+      ),
+    endDate: z
+      .string()
+      .trim()
+      .optional()
+      .refine(
+        (val) => {
+          if (!val) return true;
+          return !isNaN(new Date(val).getTime());
+        },
+        { message: 'endDate must be a valid ISO date string' }
+      ),
+    rideId: z
+      .string()
+      .trim()
+      .regex(UUID_REGEX, { message: 'rideId must be a valid UUID' })
+      .optional(),
+    driverId: z
+      .string()
+      .trim()
+      .regex(UUID_REGEX, { message: 'driverId must be a valid UUID' })
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.startDate && data.endDate) {
+        return new Date(data.startDate).getTime() <= new Date(data.endDate).getTime();
+      }
+      return true;
+    },
+    {
+      message: 'startDate cannot be later than endDate',
+      path: ['startDate'],
+    }
+  );
+
+export type DriverEarningsQueryInput = z.infer<
+  typeof driverEarningsQuerySchema
+>;

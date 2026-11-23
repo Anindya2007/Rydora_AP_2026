@@ -1,11 +1,14 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { authenticate } from '../middleware/auth.js';
+import { requireRoles } from '../middleware/rbac.js';
+import { UserRole } from '../generated/prisma/client.js';
 import {
   processPaymentSchema,
   processRefundSchema,
   transactionIdParamSchema,
   bookingPaymentsParamSchema,
   listTransactionsQuerySchema,
+  driverEarningsQuerySchema,
 } from '../validators/payment.validator.js';
 import { PaymentController } from '../controllers/payment.controller.js';
 
@@ -76,6 +79,19 @@ export const validateListTransactionsQuery = (
   }
 };
 
+export const validateDriverEarningsQuery = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    driverEarningsQuerySchema.parse(req.query);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
 /**
  * POST /api/v1/payments
  * POST /api/v1/payments/payment
@@ -130,6 +146,19 @@ paymentRouter.get(
   authenticate,
   validateBookingPaymentsParam,
   PaymentController.getBookingTransactions
+);
+
+/**
+ * GET /api/v1/payments/driver/earnings
+ * GET /api/v1/transactions/driver/earnings
+ * Protected endpoint for authorized drivers (and platform admins) to view driver earnings summary and history.
+ */
+paymentRouter.get(
+  '/driver/earnings',
+  authenticate,
+  requireRoles(UserRole.DRIVER, 'ADMIN'),
+  validateDriverEarningsQuery,
+  PaymentController.getDriverEarnings
 );
 
 /**
