@@ -5,6 +5,7 @@ import { authRouter } from './auth.routes.js';
 import { userRouter } from './user.routes.js';
 import { communityRouter } from './community.routes.js';
 import { vehicleRouter } from './vehicle.routes.js';
+import { rideRouter } from './ride.routes.js';
 
 export const apiV1Router = Router();
 
@@ -90,3 +91,6 @@ apiV1Router.use('/communities', communityRouter);
 
 // Fleet & Vehicles (M5):
 apiV1Router.use('/vehicles', vehicleRouter);
+
+// Rides Management (M6):
+apiV1Router.use('/rides', rideRouter);
