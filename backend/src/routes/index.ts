@@ -9,6 +9,7 @@ import { rideRouter } from './ride.routes.js';
 import { bookingRouter } from './booking.routes.js';
 import { emergencyContactRouter } from './emergency-contact.routes.js';
 import { sosRouter } from './sos.routes.js';
+import { paymentRouter } from './payment.routes.js';
 
 export const apiV1Router = Router();
 
@@ -106,3 +107,7 @@ apiV1Router.use('/emergency-contacts', emergencyContactRouter);
 
 // Safety & SOS Activation (M8.2):
 apiV1Router.use('/sos', sosRouter);
+
+// Financial Transactions & Payments (M9.1):
+apiV1Router.use('/payments', paymentRouter);
+apiV1Router.use('/transactions', paymentRouter);

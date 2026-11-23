@@ -1,0 +1,149 @@
+import type { Request, Response, NextFunction } from 'express';
+import { paymentService } from '../services/payment.service.js';
+import { sendSuccess } from '../utils/response.js';
+import {
+  type ProcessPaymentInput,
+  type ListTransactionsQueryInput,
+  listTransactionsQuerySchema,
+} from '../validators/payment.validator.js';
+
+export class PaymentController {
+  /**
+   * POST /api/v1/payments
+   * POST /api/v1/transactions/payment
+   * Initiates and records a financial payment transaction for a booking.
+   */
+  static async processPayment(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const isAdmin = req.user?.roles?.includes('ADMIN') || false;
+      const input = req.body as ProcessPaymentInput;
+
+      // Extract optional Idempotency-Key header if not present in request body
+      const idempotencyHeader = req.headers['idempotency-key'] as
+        | string
+        | undefined;
+      if (idempotencyHeader && !input.idempotencyKey) {
+        input.idempotencyKey = idempotencyHeader.trim();
+      }
+
+      const { transaction, duplicateSuppressed } =
+        await paymentService.processBookingPayment(
+          userId,
+          input,
+          undefined,
+          isAdmin
+        );
+
+      const statusCode = duplicateSuppressed ? 200 : 201;
+      const message = duplicateSuppressed
+        ? 'Payment transaction replayed idempotently'
+        : transaction.status === 'COMPLETED'
+        ? 'Payment processed and booking confirmed successfully'
+        : transaction.status === 'PENDING'
+        ? 'Payment initiated and awaiting provider completion'
+        : 'Payment transaction failed: Provider declined';
+
+      sendSuccess(res, { transaction, duplicateSuppressed }, message, statusCode);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/v1/payments/:transactionId
+   * GET /api/v1/transactions/:transactionId
+   * Retrieves single transaction details with participant authorization.
+   */
+  static async getTransactionById(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const isAdmin = req.user?.roles?.includes('ADMIN') || false;
+      const transactionId = req.params.transactionId as string;
+
+      const transaction = await paymentService.getTransactionById(
+        userId,
+        transactionId,
+        isAdmin
+      );
+
+      sendSuccess(
+        res,
+        { transaction },
+        'Financial transaction retrieved successfully',
+        200
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/v1/bookings/:bookingId/payments
+   * GET /api/v1/bookings/:bookingId/transactions
+   * Retrieves payment transaction history for a specific booking.
+   */
+  static async getBookingTransactions(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const isAdmin = req.user?.roles?.includes('ADMIN') || false;
+      const bookingId = req.params.bookingId as string;
+
+      const transactions = await paymentService.getBookingTransactions(
+        userId,
+        bookingId,
+        isAdmin
+      );
+
+      sendSuccess(
+        res,
+        { transactions },
+        'Booking transaction history retrieved successfully',
+        200
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/v1/payments
+   * GET /api/v1/transactions
+   * Lists the authenticated user's financial transactions (sent or received).
+   */
+  static async listUserTransactions(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const query = listTransactionsQuerySchema.parse(req.query);
+
+      const { transactions, pagination } =
+        await paymentService.listUserTransactions(userId, query);
+
+      sendSuccess(
+        res,
+        { transactions },
+        'User transactions retrieved successfully',
+        200,
+        pagination
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+}

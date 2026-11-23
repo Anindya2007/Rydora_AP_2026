@@ -8,6 +8,8 @@ import {
   rejectBookingSchema,
 } from '../validators/bookingValidator.js';
 import { BookingController } from '../controllers/booking.controller.js';
+import { PaymentController } from '../controllers/payment.controller.js';
+import { validateProcessPayment } from './payment.routes.js';
 
 export const bookingRouter = Router();
 
@@ -217,4 +219,32 @@ bookingRouter.get(
   authenticate,
   validateBookingIdParam,
   BookingController.getBookingById
+);
+
+/**
+ * GET /api/v1/bookings/:bookingId/payments
+ * Protected endpoint to retrieve financial transactions associated with a booking.
+ */
+bookingRouter.get(
+  '/:bookingId/payments',
+  authenticate,
+  validateBookingIdParam,
+  PaymentController.getBookingTransactions
+);
+
+/**
+ * POST /api/v1/bookings/:bookingId/payments
+ * Protected endpoint to process a payment directly for a booking.
+ */
+bookingRouter.post(
+  '/:bookingId/payments',
+  authenticate,
+  validateBookingIdParam,
+  (req, _res, next) => {
+    // Inject bookingId from path parameter into body for validation
+    req.body = { ...req.body, bookingId: req.params.bookingId };
+    next();
+  },
+  validateProcessPayment,
+  PaymentController.processPayment
 );
