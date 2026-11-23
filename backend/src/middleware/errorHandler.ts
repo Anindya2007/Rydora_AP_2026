@@ -40,7 +40,8 @@ export function errorHandler(
   else if (err instanceof ZodError) {
     statusCode = 422;
     errorCode = 'UNPROCESSABLE_ENTITY';
-    message = 'Validation failed';
+    const firstIssue = err.issues[0];
+    message = firstIssue ? firstIssue.message : 'Validation failed';
     details = err.issues.map((issue) => ({
       field: issue.path.join('.'),
       message: issue.message,

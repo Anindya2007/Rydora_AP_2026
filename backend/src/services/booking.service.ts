@@ -15,9 +15,17 @@ import {
   NotFoundError,
 } from '../utils/errors.js';
 
+export interface BookingDriverSummary {
+  userId: string;
+  name: string;
+  phone?: string | null;
+  profileImage: string | null;
+}
+
 export interface BookingRiderSummary {
   userId: string;
   name: string;
+  phone?: string | null;
   email?: string;
   profileImage: string | null;
 }
@@ -30,6 +38,7 @@ export interface BookingRideSummary {
   departureTime: Date;
   farePerSeat: string;
   status: RideStatus;
+  driver?: BookingDriverSummary;
 }
 
 export interface BookingOutput {
@@ -68,6 +77,7 @@ export const bookingDetailSelectProjection = {
     select: {
       userId: true,
       name: true,
+      phone: true,
       email: true,
       profileImage: true,
     },
@@ -81,6 +91,14 @@ export const bookingDetailSelectProjection = {
       departureTime: true,
       farePerSeat: true,
       status: true,
+      driver: {
+        select: {
+          userId: true,
+          name: true,
+          phone: true,
+          profileImage: true,
+        },
+      },
     },
   },
 };
@@ -105,6 +123,7 @@ export const manifestBookingSelectProjection = {
     select: {
       userId: true,
       name: true,
+      phone: true,
       profileImage: true,
       // email is omitted for privacy
     },
@@ -118,6 +137,13 @@ export const manifestBookingSelectProjection = {
       departureTime: true,
       farePerSeat: true,
       status: true,
+      driver: {
+        select: {
+          userId: true,
+          name: true,
+          profileImage: true,
+        },
+      },
     },
   },
 };
@@ -142,6 +168,7 @@ export function formatManifestBookingOutput(raw: any): BookingOutput {
       ? {
           userId: raw.rider.userId,
           name: raw.rider.name,
+          phone: raw.rider.phone ?? null,
           profileImage: raw.rider.profileImage ?? null,
         }
       : undefined,
@@ -154,6 +181,14 @@ export function formatManifestBookingOutput(raw: any): BookingOutput {
           departureTime: raw.ride.departureTime,
           farePerSeat: raw.ride.farePerSeat ? raw.ride.farePerSeat.toString() : '0.00',
           status: raw.ride.status,
+          driver: raw.ride.driver
+            ? {
+                userId: raw.ride.driver.userId,
+                name: raw.ride.driver.name,
+                phone: raw.ride.driver.phone ?? null,
+                profileImage: raw.ride.driver.profileImage ?? null,
+              }
+            : undefined,
         }
       : undefined,
   };
@@ -179,6 +214,7 @@ export function formatBookingOutput(raw: any): BookingOutput {
       ? {
           userId: raw.rider.userId,
           name: raw.rider.name,
+          phone: raw.rider.phone ?? null,
           email: raw.rider.email,
           profileImage: raw.rider.profileImage ?? null,
         }
@@ -192,6 +228,14 @@ export function formatBookingOutput(raw: any): BookingOutput {
           departureTime: raw.ride.departureTime,
           farePerSeat: raw.ride.farePerSeat ? raw.ride.farePerSeat.toString() : '0.00',
           status: raw.ride.status,
+          driver: raw.ride.driver
+            ? {
+                userId: raw.ride.driver.userId,
+                name: raw.ride.driver.name,
+                phone: raw.ride.driver.phone ?? null,
+                profileImage: raw.ride.driver.profileImage ?? null,
+              }
+            : undefined,
         }
       : undefined,
   };
@@ -257,22 +301,23 @@ export async function createBooking(
       throw new BadRequestError('Cannot book a ride whose scheduled departure time has passed');
     }
 
-    // 4. Strict Community Silo (Decision 07): Verify active passenger membership
-    const membership = await tx.communityMembership.findUnique({
+    // 4. Open Booking for Everyone:
+    // Anyone from any community (or not in any community) can book seats.
+    // Automatically affiliation-upsert passenger in the ride's community.
+    await tx.communityMembership.upsert({
       where: {
         communityId_userId: {
           communityId: ride.communityId,
           userId: riderId,
         },
       },
-      select: { status: true },
+      update: { status: 'ACTIVE' },
+      create: {
+        communityId: ride.communityId,
+        userId: riderId,
+        status: 'ACTIVE',
+      },
     });
-
-    if (!membership || membership.status !== 'ACTIVE') {
-      throw new ForbiddenError(
-        'You must be an active member of this community to book a ride'
-      );
-    }
 
     // 5. Duplicate Active Booking Prevention (Decision 10)
     const existingActiveBooking = await tx.booking.findFirst({

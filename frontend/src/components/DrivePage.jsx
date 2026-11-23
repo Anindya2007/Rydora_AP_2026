@@ -41,12 +41,17 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
   const [ridePublishMsg, setRidePublishMsg] = useState('');
   const [ridePublishError, setRidePublishError] = useState('');
   const [rideSubmitting, setRideSubmitting] = useState(false);
+  const getInitialDepartureTime = () => {
+    const d = new Date(Date.now() + 2 * 3600 * 1000);
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+  };
+
   const [newRide, setNewRide] = useState({
-    communityId: '',
     vehicleId: '',
     source: '',
     destination: '',
-    departureTime: '',
+    departureTime: getInitialDepartureTime(),
     totalSeats: 3,
     farePerSeat: 150,
   });
@@ -67,7 +72,7 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
       api.driver
         .getVehicles()
         .then((data) => {
-          const list = Array.isArray(data) ? data : [];
+          const list = Array.isArray(data) ? data : (data?.vehicles || []);
           setVehicles(list);
           if (list.length > 0) {
             setNewRide((prev) => ({ ...prev, vehicleId: prev.vehicleId || list[0].vehicleId }));
@@ -76,12 +81,15 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
         .catch(() => {});
       api.rides
         .getDriverRides()
-        .then((data) => setDriverRides(Array.isArray(data) ? data : []))
+        .then((data) => {
+          const list = Array.isArray(data) ? data : (data?.rides || []);
+          setDriverRides(list);
+        })
         .catch(() => {});
       api.communities
         .list()
         .then((data) => {
-          const commList = Array.isArray(data) ? data : (data?.items || []);
+          const commList = Array.isArray(data) ? data : (data?.communities || data?.items || []);
           setCommunities(commList);
           if (commList.length > 0) {
             setNewRide((prev) => ({ ...prev, communityId: prev.communityId || commList[0].communityId }));
@@ -125,10 +133,10 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
       alert('Vehicle registered successfully!');
       setShowVehicleForm(false);
       const v = await api.driver.getVehicles();
-      const list = Array.isArray(v) ? v : [];
+      const list = Array.isArray(v) ? v : (v?.vehicles || []);
       setVehicles(list);
       if (list.length > 0) {
-        setNewRide((prev) => ({ ...prev, vehicleId: prev.vehicleId || list[0].vehicleId }));
+        setNewRide((prev) => ({ ...prev, vehicleId: list[0].vehicleId }));
       }
     } catch (err) {
       alert(err.response?.data?.error?.message || 'Could not register vehicle.');
@@ -137,40 +145,46 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
 
   const handlePublishRide = async (e) => {
     e.preventDefault();
-    if (!newRide.source.trim() || !newRide.destination.trim() || !newRide.departureTime || !newRide.vehicleId || !newRide.communityId) {
-      setRidePublishError('Please specify route, departure time, vehicle, and community.');
+    if (!newRide.source.trim() || !newRide.destination.trim() || !newRide.departureTime || !newRide.vehicleId) {
+      setRidePublishError('Please specify pickup point, destination, departure time, and vehicle.');
       return;
     }
+
+    const depDate = new Date(newRide.departureTime);
+    if (isNaN(depDate.getTime()) || depDate.getTime() <= Date.now() - 30000) {
+      setRidePublishError('Departure time must be set to a future date and time.');
+      return;
+    }
+
     setRideSubmitting(true);
     setRidePublishError('');
     setRidePublishMsg('');
     try {
-      try {
-        await api.communities.join(newRide.communityId);
-      } catch {}
-
       await api.rides.publish({
-        communityId: newRide.communityId,
         vehicleId: newRide.vehicleId,
         source: newRide.source.trim(),
         destination: newRide.destination.trim(),
-        departureTime: new Date(newRide.departureTime).toISOString(),
+        departureTime: depDate.toISOString(),
         totalSeats: Number(newRide.totalSeats),
         farePerSeat: Number(newRide.farePerSeat),
       });
 
-      setRidePublishMsg('Carpool ride published successfully! Riders can now reserve seats.');
+      setRidePublishMsg('Carpool ride published successfully! Available for riders to book.');
       setShowRideForm(false);
       setNewRide((prev) => ({
         ...prev,
         source: '',
         destination: '',
-        departureTime: '',
+        departureTime: getInitialDepartureTime(),
       }));
       const updatedRides = await api.rides.getDriverRides();
-      setDriverRides(Array.isArray(updatedRides) ? updatedRides : []);
+      setDriverRides(Array.isArray(updatedRides) ? updatedRides : (updatedRides?.rides || []));
     } catch (err) {
-      setRidePublishError(err.response?.data?.error?.message || 'Could not publish carpool ride.');
+      const errMsg =
+        err.response?.data?.error?.message ||
+        err.response?.data?.error?.details?.[0]?.message ||
+        'Could not publish carpool ride.';
+      setRidePublishError(errMsg);
     } finally {
       setRideSubmitting(false);
     }
@@ -205,7 +219,7 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
       const bookings = Array.isArray(res) ? res : (res?.bookings || []);
       setManifestMap((prev) => ({ ...prev, [rideId]: bookings }));
       const updatedRides = await api.rides.getDriverRides();
-      setDriverRides(Array.isArray(updatedRides) ? updatedRides : []);
+      setDriverRides(Array.isArray(updatedRides) ? updatedRides : (updatedRides?.rides || []));
     } catch (err) {
       setManifestActionMsg(err.response?.data?.error?.message || 'Failed to approve booking.');
     } finally {
@@ -224,7 +238,7 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
       const bookings = Array.isArray(res) ? res : (res?.bookings || []);
       setManifestMap((prev) => ({ ...prev, [rideId]: bookings }));
       const updatedRides = await api.rides.getDriverRides();
-      setDriverRides(Array.isArray(updatedRides) ? updatedRides : []);
+      setDriverRides(Array.isArray(updatedRides) ? updatedRides : (updatedRides?.rides || []));
     } catch (err) {
       setManifestActionMsg(err.response?.data?.error?.message || 'Failed to decline booking.');
     } finally {
@@ -238,7 +252,7 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
       await api.rides.cancel(rideId);
       alert('Ride cancelled successfully.');
       const updatedRides = await api.rides.getDriverRides();
-      setDriverRides(Array.isArray(updatedRides) ? updatedRides : []);
+      setDriverRides(Array.isArray(updatedRides) ? updatedRides : (updatedRides?.rides || []));
     } catch (err) {
       alert(err.response?.data?.error?.message || 'Could not cancel ride.');
     }
@@ -743,16 +757,64 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                   >
                     <div>
                       <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
-                        Make & Model
+                        Vehicle Type
+                      </label>
+                      <select
+                        value={vehicleData.vehicleType}
+                        onChange={(e) => setVehicleData((prev) => ({ ...prev, vehicleType: e.target.value }))}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'rgba(30, 27, 46, 0.95)',
+                          border: '1px solid rgba(255, 255, 255, 0.16)',
+                          borderRadius: '12px',
+                          color: '#ffffff',
+                          fontSize: '13.5px',
+                          boxSizing: 'border-box',
+                        }}
+                      >
+                        <option value="SEDAN">Sedan</option>
+                        <option value="HATCHBACK">Hatchback</option>
+                        <option value="SUV">SUV</option>
+                        <option value="CAR">Car</option>
+                        <option value="BIKE">Bike</option>
+                        <option value="VAN">Van</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
+                        Make (Brand)
                       </label>
                       <input
                         type="text"
                         required
-                        value={`${vehicleData.make} ${vehicleData.model}`}
-                        onChange={(e) => {
-                          const parts = e.target.value.split(' ');
-                          setVehicleData((prev) => ({ ...prev, make: parts[0] || 'Car', model: parts.slice(1).join(' ') || 'Model' }));
+                        placeholder="e.g. Hyundai, Honda, Maruti"
+                        value={vehicleData.make}
+                        onChange={(e) => setVehicleData((prev) => ({ ...prev, make: e.target.value }))}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.16)',
+                          borderRadius: '12px',
+                          color: '#ffffff',
+                          fontSize: '13.5px',
+                          boxSizing: 'border-box',
                         }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
+                        Model
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Verna, City, Swift"
+                        value={vehicleData.model}
+                        onChange={(e) => setVehicleData((prev) => ({ ...prev, model: e.target.value }))}
                         style={{
                           width: '100%',
                           padding: '10px 14px',
@@ -983,11 +1045,12 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
 
                     <div>
                       <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
-                        Departure Time
+                        Departure Time (Future)
                       </label>
                       <input
                         type="datetime-local"
                         required
+                        min={new Date().toISOString().slice(0, 16)}
                         value={newRide.departureTime}
                         onChange={(e) => setNewRide((prev) => ({ ...prev, departureTime: e.target.value }))}
                         style={{
@@ -1026,34 +1089,6 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                         {vehicles.map((v) => (
                           <option key={v.vehicleId} value={v.vehicleId}>
                             {v.make} {v.model} ({v.registrationNumber}) - {v.seatCapacity} seats
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', display: 'block', marginBottom: '4px' }}>
-                        Community
-                      </label>
-                      <select
-                        required
-                        value={newRide.communityId}
-                        onChange={(e) => setNewRide((prev) => ({ ...prev, communityId: e.target.value }))}
-                        style={{
-                          width: '100%',
-                          padding: '10px 14px',
-                          background: 'rgba(30, 27, 46, 0.95)',
-                          border: '1px solid rgba(255, 255, 255, 0.16)',
-                          borderRadius: '12px',
-                          color: '#ffffff',
-                          fontSize: '13.5px',
-                          boxSizing: 'border-box',
-                        }}
-                      >
-                        {communities.length === 0 && <option value="">General Rydora Corridor</option>}
-                        {communities.map((c) => (
-                          <option key={c.communityId} value={c.communityId}>
-                            {c.name} ({c.type || 'Open'})
                           </option>
                         ))}
                       </select>
@@ -1253,7 +1288,12 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                                       >
                                         <div>
                                           <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#ffffff' }}>
-                                            {b.passenger?.name || 'Community Rider'}
+                                            {b.rider?.name || b.passenger?.name || 'Community Rider'}
+                                            {b.rider?.phone && (
+                                              <span style={{ fontSize: '12px', fontWeight: 400, color: 'rgba(255, 255, 255, 0.65)', marginLeft: '6px' }}>
+                                                ({b.rider.phone})
+                                              </span>
+                                            )}
                                             <span
                                               style={{
                                                 marginLeft: '8px',

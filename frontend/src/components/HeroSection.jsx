@@ -199,27 +199,33 @@ export const HeroSection = ({ user, onLoginClick }) => {
         .catch(() => {});
 
       api.safety
-        .getActiveSOS()
-        .then((alert) => {
-          if (alert) setActiveSOS(alert);
-        })
-        .catch(() => {});
-
-      api.safety
-        .getGuardianAlerts()
-        .then((res) => {
-          const list = Array.isArray(res) ? res : (res?.alerts || []);
-          setGuardianAlerts(list);
-        })
-        .catch(() => {});
-
-      api.safety
         .getEmergencyContacts()
         .then((res) => {
           const list = Array.isArray(res) ? res : (res?.contacts || []);
           setEmergencyContacts(list);
         })
         .catch(() => {});
+
+      const pollAlerts = () => {
+        api.safety
+          .getActiveSOS()
+          .then((alert) => {
+            setActiveSOS(alert || null);
+          })
+          .catch(() => {});
+
+        api.safety
+          .getGuardianAlerts()
+          .then((res) => {
+            const list = Array.isArray(res) ? res : (res?.alerts || []);
+            setGuardianAlerts(list);
+          })
+          .catch(() => {});
+      };
+
+      pollAlerts();
+      const interval = setInterval(pollAlerts, 5000);
+      return () => clearInterval(interval);
     } else {
       setMyBookings([]);
       setActiveSOS(null);
@@ -237,13 +243,26 @@ export const HeroSection = ({ user, onLoginClick }) => {
         source: pickup.trim(),
         destination: dropoff.trim(),
       };
-      if (selectedCommunityId) {
-        searchParams.communityId = selectedCommunityId;
-      }
       const results = await api.rides.search(searchParams);
-      setRides(Array.isArray(results) ? results : []);
+      let list = Array.isArray(results) ? results : (results?.rides || []);
+      if (selectedCommunityId && list.length > 0) {
+        list = [...list].sort((a, b) => {
+          const aMatch =
+            a.communityId === selectedCommunityId ||
+            a.community?.communityId === selectedCommunityId
+              ? 1
+              : 0;
+          const bMatch =
+            b.communityId === selectedCommunityId ||
+            b.community?.communityId === selectedCommunityId
+              ? 1
+              : 0;
+          return bMatch - aMatch;
+        });
+      }
+      setRides(list);
       setHasSearched(true);
-      if (!results || results.length === 0) {
+      if (!list || list.length === 0) {
         setSearchMessage('No scheduled rides found for this exact route yet. Check popular corridors or schedule later.');
       }
     } catch {
@@ -321,8 +340,9 @@ export const HeroSection = ({ user, onLoginClick }) => {
 
   const handleResolveSOS = async (alertId) => {
     try {
-      await api.safety.resolveSOS(alertId, 'Resolved safely by passenger');
+      await api.safety.resolveSOS(alertId, 'Resolved safely by guardian or passenger');
       setActiveSOS(null);
+      setGuardianAlerts((prev) => prev.filter((g) => (g.alert?.alertId || g.alertId) !== alertId));
       setSosStatusMsg('SOS Alert resolved.');
     } catch (err) {
       alert(err.response?.data?.error?.message || 'Could not resolve SOS alert.');
@@ -536,7 +556,7 @@ export const HeroSection = ({ user, onLoginClick }) => {
                 }}
               >
                 <option value="" style={{ background: '#181428', color: '#ffffff' }}>
-                  🌐 All Communities & Corridors
+                  🌐 Open Community / All Corridors
                 </option>
                 {communities.map((c) => (
                   <option key={c.communityId} value={c.communityId} style={{ background: '#181428', color: '#ffffff' }}>
@@ -936,7 +956,7 @@ export const HeroSection = ({ user, onLoginClick }) => {
             </div>
             <button
               type="button"
-              onClick={() => handleResolveSOS(activeSOS.alertId)}
+              onClick={() => handleResolveSOS(activeSOS.alert?.alertId || activeSOS.alertId)}
               style={{
                 background: '#ffffff',
                 border: 'none',
@@ -1179,15 +1199,40 @@ export const HeroSection = ({ user, onLoginClick }) => {
                           <span
                             style={{
                               fontSize: '11px',
-                              background: 'rgba(99, 102, 241, 0.25)',
-                              border: '1px solid rgba(129, 140, 248, 0.4)',
-                              color: '#c7d2fe',
+                              background:
+                                selectedCommunityId &&
+                                (ride.communityId === selectedCommunityId ||
+                                  ride.community?.communityId === selectedCommunityId)
+                                  ? 'rgba(16, 185, 129, 0.25)'
+                                  : 'rgba(99, 102, 241, 0.25)',
+                              border:
+                                selectedCommunityId &&
+                                (ride.communityId === selectedCommunityId ||
+                                  ride.community?.communityId === selectedCommunityId)
+                                  ? '1px solid rgba(52, 211, 153, 0.5)'
+                                  : '1px solid rgba(129, 140, 248, 0.4)',
+                              color:
+                                selectedCommunityId &&
+                                (ride.communityId === selectedCommunityId ||
+                                  ride.community?.communityId === selectedCommunityId)
+                                  ? '#a7f3d0'
+                                  : '#c7d2fe',
                               padding: '2px 8px',
                               borderRadius: '9999px',
                               fontWeight: 600,
                             }}
                           >
-                            🏢 {ride.community.name}
+                            {selectedCommunityId &&
+                            (ride.communityId === selectedCommunityId ||
+                              ride.community?.communityId === selectedCommunityId)
+                              ? '⭐ '
+                              : '🏢 '}
+                            {ride.community.name}
+                            {selectedCommunityId &&
+                            (ride.communityId === selectedCommunityId ||
+                              ride.community?.communityId === selectedCommunityId)
+                              ? ' (Priority)'
+                              : ''}
                           </span>
                         )}
                       </div>
@@ -1205,20 +1250,35 @@ export const HeroSection = ({ user, onLoginClick }) => {
                         <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.5)' }}>per seat</div>
                       </div>
 
-                      <LiquidGlassButton
-                        scale={0.88}
-                        disabled={bookingLoading || ride.availableSeats <= 0}
-                        onClick={() => handleBook(ride.rideId)}
-                        style={{
-                          background: 'rgba(99, 102, 241, 0.3)',
-                          border: '1px solid rgba(99, 102, 241, 0.45)',
-                          color: '#ffffff',
-                          padding: '0 16px',
-                          height: '36px',
-                        }}
-                      >
-                        {bookingLoading ? 'Reserving...' : 'Book Ride'}
-                      </LiquidGlassButton>
+                      {myBookings.some((b) => b.rideId === ride.rideId && ['PENDING', 'CONFIRMED'].includes(b.status)) ? (
+                        <LiquidGlassButton
+                          scale={0.88}
+                          disabled={true}
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            color: 'rgba(255, 255, 255, 0.65)',
+                            padding: '0 16px',
+                            cursor: 'not-allowed',
+                          }}
+                        >
+                          ✓ Already Booked
+                        </LiquidGlassButton>
+                      ) : (
+                        <LiquidGlassButton
+                          scale={0.88}
+                          disabled={bookingLoading || ride.availableSeats <= 0}
+                          onClick={() => handleBook(ride.rideId)}
+                          style={{
+                            background: 'rgba(99, 102, 241, 0.3)',
+                            border: '1px solid rgba(99, 102, 241, 0.45)',
+                            color: '#ffffff',
+                            padding: '0 18px',
+                          }}
+                        >
+                          {ride.availableSeats <= 0 ? 'Full' : 'Request Seat'}
+                        </LiquidGlassButton>
+                      )}
                     </div>
                   </div>
                 ))
@@ -1269,32 +1329,38 @@ export const HeroSection = ({ user, onLoginClick }) => {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
-                      <span style={{ fontSize: '13.5px', fontWeight: 600, color: '#ffffff' }}>
-                        {b.ride?.source || 'Origin'} → {b.ride?.destination || 'Destination'}
-                      </span>
-                      <span
-                        style={{
-                          marginLeft: '8px',
-                          fontSize: '11px',
-                          padding: '2px 8px',
-                          borderRadius: '9999px',
-                          fontWeight: 600,
-                          background:
-                            b.status === 'COMPLETED'
-                              ? 'rgba(34, 197, 94, 0.15)'
-                              : b.status === 'CANCELLED'
-                              ? 'rgba(239, 68, 68, 0.15)'
-                              : 'rgba(99, 102, 241, 0.15)',
-                          color:
-                            b.status === 'COMPLETED'
-                              ? '#4ade80'
-                              : b.status === 'CANCELLED'
-                              ? '#f87171'
-                              : '#818cf8',
-                        }}
-                      >
-                        {b.status}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '13.5px', fontWeight: 600, color: '#ffffff' }}>
+                          {b.ride?.source || 'Origin'} → {b.ride?.destination || 'Destination'}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            padding: '2px 8px',
+                            borderRadius: '9999px',
+                            fontWeight: 600,
+                            background:
+                              b.status === 'COMPLETED'
+                                ? 'rgba(34, 197, 94, 0.15)'
+                                : b.status === 'CANCELLED'
+                                ? 'rgba(239, 68, 68, 0.15)'
+                                : 'rgba(99, 102, 241, 0.15)',
+                            color:
+                              b.status === 'COMPLETED'
+                                ? '#4ade80'
+                                : b.status === 'CANCELLED'
+                                ? '#f87171'
+                                : '#818cf8',
+                          }}
+                        >
+                          {b.status}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.65)', marginTop: '2px' }}>
+                        Driver: <strong style={{ color: '#ffffff' }}>{b.ride?.driver?.name || 'Verified Driver'}</strong>
+                        {b.ride?.driver?.phone ? ` • ${b.ride.driver.phone}` : ''}
+                        {b.ride?.departureTime ? ` • Departure: ${new Date(b.ride.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                      </div>
                     </div>
 
                     <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>

@@ -272,12 +272,38 @@ export async function createRide(
   }
 
   // --------------------------------------------------------------------------
-  // STEP 4: Verify Community Membership (Decision 07 - Strict Community Silo)
-  // Rides are private to communities. Drivers can only publish rides in
-  // communities where they hold an ACTIVE membership.
+  // STEP 4: Resolve Target Community & Ensure Active Driver Membership
+  // Drivers publish open carpool rides. If no communityId is provided,
+  // automatically defaults to the Open Community.
   // --------------------------------------------------------------------------
+  let targetCommunityId = input.communityId;
+  if (!targetCommunityId) {
+    const openComm = await prisma.community.findFirst({
+      where: {
+        OR: [
+          { domain: 'open.rydora.com' },
+          { name: { contains: 'Open', mode: 'insensitive' } },
+        ],
+      },
+      select: { communityId: true },
+    });
+    if (openComm) {
+      targetCommunityId = openComm.communityId;
+    } else {
+      const anyActive = await prisma.community.findFirst({
+        where: { status: 'ACTIVE' },
+        select: { communityId: true },
+      });
+      targetCommunityId = anyActive?.communityId;
+    }
+  }
+
+  if (!targetCommunityId) {
+    throw new BadRequestError('No active community available for carpool publication');
+  }
+
   const community = await prisma.community.findUnique({
-    where: { communityId: input.communityId },
+    where: { communityId: targetCommunityId },
     select: {
       communityId: true,
       status: true,
@@ -288,21 +314,21 @@ export async function createRide(
     throw new NotFoundError('Community not found or is inactive');
   }
 
-  const membership = await prisma.communityMembership.findUnique({
+  // Ensure driver holds active membership so carpool publishing always succeeds
+  await prisma.communityMembership.upsert({
     where: {
       communityId_userId: {
-        communityId: input.communityId,
+        communityId: targetCommunityId,
         userId: driverId,
       },
     },
-    select: {
-      status: true,
+    update: { status: 'ACTIVE' },
+    create: {
+      communityId: targetCommunityId,
+      userId: driverId,
+      status: 'ACTIVE',
     },
   });
-
-  if (!membership || membership.status !== 'ACTIVE') {
-    throw new ForbiddenError('Forbidden: Driver must be an active member of the community to publish a ride');
-  }
 
   // --------------------------------------------------------------------------
   // STEP 5: Scheduling Conflict Check
@@ -334,7 +360,7 @@ export async function createRide(
     data: {
       driverId,
       vehicleId: input.vehicleId,
-      communityId: input.communityId,
+      communityId: targetCommunityId,
       source: input.source.trim(),
       destination: input.destination.trim(),
       departureTime: input.departureTime,
@@ -380,28 +406,6 @@ export async function getRideById(
 
   if (!ride) {
     throw new NotFoundError('Ride not found');
-  }
-
-  // Visibility / Access Control:
-  // Driver and platform admin are permitted directly
-  const isDriver = ride.driverId === userId;
-  const isAdmin = env.ADMIN_USER_IDS.includes(userId.toLowerCase());
-
-  if (!isDriver && !isAdmin) {
-    // Rider must be an ACTIVE member of the community hosting the ride
-    const membership = await prisma.communityMembership.findUnique({
-      where: {
-        communityId_userId: {
-          communityId: ride.communityId,
-          userId,
-        },
-      },
-      select: { status: true },
-    });
-
-    if (!membership || membership.status !== 'ACTIVE') {
-      throw new ForbiddenError('Forbidden: Must be an active member of the community to view this ride');
-    }
   }
 
   return formatRideDetailOutput(ride);
@@ -482,7 +486,8 @@ export async function listDriverRides(
  * @returns Paginated list of public ride summaries and pagination metadata.
  */
 export async function listRides(
-  options?: RideQueryInput
+  options?: RideQueryInput,
+  userId?: string
 ): Promise<PaginatedRidesResult> {
   const page = options?.page ?? 1;
   const limit = options?.limit ?? 20;
@@ -575,8 +580,29 @@ export async function listRides(
 
   const totalPages = Math.ceil(total / limit) || 0;
 
+  let userCommunityIds: string[] = [];
+  if (userId) {
+    const memberships = await prisma.communityMembership.findMany({
+      where: { userId, status: 'ACTIVE' },
+      select: { communityId: true },
+    });
+    userCommunityIds = memberships.map((m) => m.communityId);
+  }
+
+  let formattedRides = records.map(formatRideDetailOutput);
+  if (userCommunityIds.length > 0) {
+    formattedRides.sort((a, b) => {
+      const aIsMember = a.community && userCommunityIds.includes(a.community.communityId) ? 1 : 0;
+      const bIsMember = b.community && userCommunityIds.includes(b.community.communityId) ? 1 : 0;
+      if (aIsMember !== bIsMember) {
+        return bIsMember - aIsMember; // member's community rides prioritized at the top
+      }
+      return 0;
+    });
+  }
+
   return {
-    rides: records.map(formatRideDetailOutput),
+    rides: formattedRides,
     pagination: {
       page,
       limit,

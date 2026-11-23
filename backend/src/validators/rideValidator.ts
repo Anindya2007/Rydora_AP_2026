@@ -47,9 +47,11 @@ const longitudeSchema = z.preprocess(
 export const createRideSchema = z
   .object({
     communityId: z
-      .string({ message: 'Community ID is required' })
+      .string({ message: 'Community ID must be a string' })
       .trim()
-      .regex(UUID_REGEX, 'Community ID must be a valid UUID'),
+      .regex(UUID_REGEX, 'Community ID must be a valid UUID')
+      .nullable()
+      .optional(),
     vehicleId: z
       .string({ message: 'Vehicle ID is required' })
       .trim()
@@ -73,7 +75,7 @@ export const createRideSchema = z
       ])
       .transform((val) => (val instanceof Date ? val : new Date(val)))
       .refine(
-        (date) => date.getTime() > Date.now(),
+        (date) => date.getTime() > Date.now() - 60000,
         'Departure time must be in the future'
       ),
     totalSeats: z

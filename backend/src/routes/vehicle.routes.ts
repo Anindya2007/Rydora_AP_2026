@@ -63,6 +63,13 @@ vehicleRouter.get(
   VehicleController.listVehicles
 );
 
+vehicleRouter.get(
+  '/',
+  authenticate,
+  requireRoles(UserRole.DRIVER),
+  VehicleController.listVehicles
+);
+
 /**
  * GET /api/v1/vehicles/:vehicleId
  * Protected endpoint to retrieve an individual vehicle belonging to the authenticated DRIVER.

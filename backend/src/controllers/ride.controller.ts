@@ -99,7 +99,8 @@ export async function listRides(
 ): Promise<void> {
   try {
     const validatedQuery = rideQuerySchema.parse(req.query);
-    const result = await rideService.listRides(validatedQuery);
+    const userId = req.user?.userId;
+    const result = await rideService.listRides(validatedQuery, userId);
 
     sendSuccess(
       res,

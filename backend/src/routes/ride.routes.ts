@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, authenticateOptional } from '../middleware/auth.js';
 import { requireRoles } from '../middleware/rbac.js';
 import { UserRole } from '../generated/prisma/client.js';
 import {
@@ -138,6 +138,7 @@ rideRouter.get(
  */
 rideRouter.get(
   '/search',
+  authenticateOptional,
   validateRideQuery,
   RideController.listRides
 );
@@ -150,6 +151,7 @@ rideRouter.get(
  */
 rideRouter.get(
   '/',
+  authenticateOptional,
   validateRideQuery,
   RideController.listRides
 );

@@ -206,5 +206,30 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
   }
 }
 
+/**
+ * Optional Authentication Middleware:
+ * If a token or session is present in cookies or headers, attempts to authenticate the caller.
+ * If authentication fails or no credentials are supplied, silently continues without attaching req.user.
+ */
+export async function authenticateOptional(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (
+      req.cookies?.token ||
+      req.headers.authorization ||
+      req.cookies?.sessionId ||
+      req.headers['x-session-id']
+    ) {
+      await authenticate(req, res, () => {});
+    }
+  } catch {
+    // Silently ignore auth failure for optional routes
+  }
+  next();
+}
+
 export const authMiddleware = authenticate;
 export default authenticate;

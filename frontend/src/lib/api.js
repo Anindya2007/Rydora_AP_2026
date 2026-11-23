@@ -113,68 +113,68 @@ export const api = {
   rides: {
     async search(params = {}) {
       const response = await apiClient.get('/rides', { params });
-      return response.data.data;
+      return response.data.data?.rides || response.data.data || [];
     },
 
     async getById(rideId) {
       const response = await apiClient.get(`/rides/${rideId}`);
-      return response.data.data;
+      return response.data.data?.ride || response.data.data;
     },
 
     async getDriverRides(params = {}) {
       const response = await apiClient.get('/rides/me', { params });
-      return response.data.data;
+      return response.data.data?.rides || response.data.data || [];
     },
 
     async publish(rideData) {
       const response = await apiClient.post('/rides', rideData);
-      return response.data.data;
+      return response.data.data?.ride || response.data.data;
     },
 
     async cancel(rideId) {
       const response = await apiClient.post(`/rides/${rideId}/cancel`);
-      return response.data.data;
+      return response.data.data?.ride || response.data.data;
     },
   },
 
   bookings: {
     async create(rideId, seatsBooked = 1) {
       const response = await apiClient.post('/bookings', { rideId, seatsBooked });
-      return response.data.data;
+      return response.data.data?.booking || response.data.data;
     },
 
     async getMyBookings(params = {}) {
       const response = await apiClient.get('/bookings/me', { params });
-      return response.data.data;
+      return response.data.data?.bookings || response.data.data || [];
     },
 
     async getById(bookingId) {
       const response = await apiClient.get(`/bookings/${bookingId}`);
-      return response.data.data;
+      return response.data.data?.booking || response.data.data;
     },
 
     async cancel(bookingId, cancellationReason = '') {
       const response = await apiClient.patch(`/bookings/${bookingId}/cancel`, {
         cancellationReason,
       });
-      return response.data.data;
+      return response.data.data?.booking || response.data.data;
     },
 
     async approve(bookingId) {
       const response = await apiClient.patch(`/bookings/${bookingId}/approve`);
-      return response.data.data;
+      return response.data.data?.booking || response.data.data;
     },
 
     async reject(bookingId, reason = '') {
       const response = await apiClient.patch(`/bookings/${bookingId}/reject`, {
         reason,
       });
-      return response.data.data;
+      return response.data.data?.booking || response.data.data;
     },
 
     async getRideManifest(rideId) {
       const response = await apiClient.get(`/rides/${rideId}/bookings`);
-      return response.data.data;
+      return response.data.data?.bookings || response.data.data || [];
     },
 
     async requestRefund(bookingId, reason = '') {
@@ -229,16 +229,17 @@ export const api = {
 
     async getActiveSOS() {
       const response = await apiClient.get('/sos/active');
-      return response.data.data;
+      return response.data.data?.alert || response.data.data;
     },
 
     async getGuardianAlerts() {
       const response = await apiClient.get('/sos/guardian-alerts');
-      return response.data.data;
+      return response.data.data?.alerts || response.data.data || [];
     },
 
     async resolveSOS(alertId, resolutionNotes = 'Resolved safely by user') {
       const response = await apiClient.patch(`/sos/${alertId}/resolve`, {
+        notes: resolutionNotes,
         resolutionNotes,
       });
       return response.data.data;
@@ -251,7 +252,7 @@ export const api = {
 
     async getEmergencyContacts() {
       const response = await apiClient.get('/emergency-contacts');
-      return response.data.data;
+      return response.data.data?.contacts || response.data.data || [];
     },
 
     async addEmergencyContact({ name, phone, relationship = 'Family', isPrimary = false }) {
@@ -261,7 +262,7 @@ export const api = {
         relationship,
         isPrimary,
       });
-      return response.data.data;
+      return response.data.data?.contact || response.data.data;
     },
 
     async deleteEmergencyContact(contactId) {
@@ -286,29 +287,29 @@ export const api = {
 
     async getVehicles() {
       const response = await apiClient.get('/vehicles/me');
-      return response.data.data;
+      return response.data.data?.vehicles || response.data.data || [];
     },
 
     async registerVehicle(vehicleData) {
       const response = await apiClient.post('/vehicles', vehicleData);
-      return response.data.data;
+      return response.data.data?.vehicle || response.data.data;
     },
   },
 
   communities: {
     async list(params = {}) {
       const response = await apiClient.get('/communities', { params });
-      return response.data.data;
+      return response.data.data?.communities || response.data.data?.items || response.data.data || [];
     },
 
     async getById(communityId) {
       const response = await apiClient.get(`/communities/${communityId}`);
-      return response.data.data;
+      return response.data.data?.community || response.data.data;
     },
 
     async join(communityId) {
       const response = await apiClient.post(`/communities/${communityId}/join`);
-      return response.data.data;
+      return response.data.data?.membership || response.data.data;
     },
   },
 };
