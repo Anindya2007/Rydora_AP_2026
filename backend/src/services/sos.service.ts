@@ -489,15 +489,14 @@ export async function resolveSOSAlert(
 
       let isGuardian = false;
       if (requester?.phone) {
-        const guardianMatch = await tx.emergencyContact.findFirst({
-          where: {
-            userId: alert.userId,
-            phone: requester.phone,
-          },
+        const cleanRequester = requester.phone.replace(/\D/g, '').slice(-10);
+        const contacts = await tx.emergencyContact.findMany({
+          where: { userId: alert.userId },
+          select: { phone: true },
         });
-        if (guardianMatch) {
-          isGuardian = true;
-        }
+        isGuardian = contacts.some(
+          (c) => c.phone.replace(/\D/g, '').slice(-10) === cleanRequester
+        );
       }
 
       if (!isGuardian) {

@@ -160,7 +160,8 @@ export async function resolveSOS(
     }
 
     const { alertId } = alertIdParamSchema.parse(req.params);
-    const { notes } = resolveSOSAlertSchema.parse(req.body || {});
+    const body = resolveSOSAlertSchema.parse(req.body || {});
+    const notes = body.notes || body.resolutionNotes || null;
     const isAdmin = isUserAdmin(req);
 
     const alert = await sosService.resolveSOSAlert(

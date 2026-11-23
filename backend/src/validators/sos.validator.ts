@@ -103,6 +103,12 @@ export const resolveSOSAlertSchema = z
       .max(500, 'Notes cannot exceed 500 characters')
       .nullable()
       .optional(),
+    resolutionNotes: z
+      .string({ message: 'Resolution notes must be a string' })
+      .trim()
+      .max(500, 'Resolution notes cannot exceed 500 characters')
+      .nullable()
+      .optional(),
   })
   .strict();
 
