@@ -183,6 +183,11 @@ export const api = {
       return response.data.data?.booking || response.data.data;
     },
 
+    async complete(bookingId) {
+      const response = await apiClient.post(`/bookings/${bookingId}/complete`);
+      return response.data.data?.booking || response.data.data;
+    },
+
     async getRideManifest(rideId) {
       const response = await apiClient.get(`/rides/${rideId}/bookings`);
       return response.data.data?.bookings || response.data.data || [];

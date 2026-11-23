@@ -400,7 +400,7 @@ export const HeroSection = ({ user, onLoginClick }) => {
     setRefundStatusMsg('');
     try {
       await api.bookings.requestRefund(bookingId, 'Passenger requested refund on cancelled booking');
-      setRefundStatusMsg('Refund initiated successfully! Funds will credit back to your account.');
+      setRefundStatusMsg('Refund request sent to driver for review & approval.');
       const updated = await api.bookings.getMyBookings();
       setMyBookings(Array.isArray(updated) ? updated : []);
     } catch (err) {

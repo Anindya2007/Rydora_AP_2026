@@ -153,6 +153,25 @@ bookingRouter.post(
 );
 
 /**
+ * PATCH /api/v1/bookings/:bookingId/complete
+ * POST  /api/v1/bookings/:bookingId/complete
+ * Protected endpoint for authorized drivers to mark a confirmed passenger booking as complete.
+ */
+bookingRouter.patch(
+  '/:bookingId/complete',
+  authenticate,
+  validateBookingIdParam,
+  BookingController.completePassengerBooking
+);
+
+bookingRouter.post(
+  '/:bookingId/complete',
+  authenticate,
+  validateBookingIdParam,
+  BookingController.completePassengerBooking
+);
+
+/**
  * PATCH /api/v1/bookings/:bookingId/reject
  * POST  /api/v1/bookings/:bookingId/reject
  * Protected endpoint for authorized drivers to reject a pending booking request.

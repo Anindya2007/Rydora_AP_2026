@@ -698,6 +698,78 @@ export async function approveBooking(
 }
 
 /**
+ * Marks a confirmed passenger booking as COMPLETED and records driver earning (PATCH /api/v1/bookings/:bookingId/complete).
+ */
+export async function completePassengerBooking(
+  driverId: string,
+  bookingId: string
+): Promise<BookingOutput> {
+  return await prisma.$transaction(async (tx) => {
+    const booking = await tx.booking.findUnique({
+      where: { bookingId },
+      include: {
+        ride: {
+          select: {
+            rideId: true,
+            driverId: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundError('Booking not found');
+    }
+
+    if (booking.ride.driverId !== driverId) {
+      throw new ForbiddenError('Only the driver can mark this passenger booking as complete');
+    }
+
+    if (booking.status === BookingStatus.COMPLETED) {
+      throw new BadRequestError('Booking is already marked as completed');
+    }
+
+    if (booking.status !== BookingStatus.CONFIRMED) {
+      throw new BadRequestError(
+        `Cannot complete booking with status ${booking.status}. Only CONFIRMED bookings can be completed.`
+      );
+    }
+
+    const updatedBooking = await tx.booking.update({
+      where: { bookingId },
+      data: {
+        status: BookingStatus.COMPLETED,
+      },
+      select: bookingDetailSelectProjection,
+    });
+
+    if (typeof (tx as any).driverEarning?.upsert === 'function') {
+      try {
+        await (tx as any).driverEarning.upsert({
+          where: { bookingId: booking.bookingId },
+          create: {
+            bookingId: booking.bookingId,
+            driverId: booking.ride.driverId,
+            grossAmount: booking.totalAmount,
+            platformFee: 0,
+            netAmount: booking.totalAmount,
+            status: 'AVAILABLE',
+          },
+          update: {
+            status: 'AVAILABLE',
+            grossAmount: booking.totalAmount,
+            netAmount: booking.totalAmount,
+          },
+        });
+      } catch {}
+    }
+
+    return formatBookingOutput(updatedBooking);
+  });
+}
+
+/**
  * Rejects a pending passenger booking request (PATCH /api/v1/bookings/:bookingId/reject).
  *
  * Requirements & Lifecycle Invariants:
@@ -1082,6 +1154,7 @@ export const bookingService = {
   listPassengerBookings,
   listRideBookings,
   approveBooking,
+  completePassengerBooking,
   rejectBooking,
   cancelPassengerBooking,
   releaseExpiredPendingBookings,

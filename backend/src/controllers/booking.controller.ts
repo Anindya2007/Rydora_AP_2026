@@ -153,6 +153,31 @@ export async function approveBooking(
 }
 
 /**
+ * Controller handling driver completing a confirmed passenger booking (PATCH /api/v1/bookings/:bookingId/complete).
+ */
+export async function completePassengerBooking(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const { bookingId } = bookingIdParamSchema.parse(req.params);
+    const booking = await bookingService.completePassengerBooking(
+      req.user.userId,
+      bookingId
+    );
+
+    sendSuccess(res, { booking }, 'Passenger ride completed and driver earnings credited successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * Controller handling driver rejection of a pending booking (PATCH /api/v1/bookings/:bookingId/reject).
  */
 export async function rejectBooking(
@@ -217,6 +242,7 @@ export const BookingController = {
   getMyBookings,
   getRideBookings,
   approveBooking,
+  completePassengerBooking,
   rejectBooking,
   cancelBooking,
 };

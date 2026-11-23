@@ -65,39 +65,70 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
 
   useEffect(() => {
     if (user && isDriver) {
-      api.driver
-        .getEarnings()
-        .then((data) => setDriverEarnings(data))
-        .catch(() => {});
-      api.driver
-        .getVehicles()
-        .then((data) => {
-          const list = Array.isArray(data) ? data : (data?.vehicles || []);
-          setVehicles(list);
-          if (list.length > 0) {
-            setNewRide((prev) => ({ ...prev, vehicleId: prev.vehicleId || list[0].vehicleId }));
-          }
-        })
-        .catch(() => {});
-      api.rides
-        .getDriverRides()
-        .then((data) => {
-          const list = Array.isArray(data) ? data : (data?.rides || []);
-          setDriverRides(list);
-        })
-        .catch(() => {});
-      api.communities
-        .list()
-        .then((data) => {
-          const commList = Array.isArray(data) ? data : (data?.communities || data?.items || []);
-          setCommunities(commList);
-          if (commList.length > 0) {
-            setNewRide((prev) => ({ ...prev, communityId: prev.communityId || commList[0].communityId }));
-          }
-        })
-        .catch(() => {});
+      const fetchDriverData = () => {
+        api.driver
+          .getEarnings()
+          .then((data) => setDriverEarnings(data))
+          .catch(() => {});
+        api.driver
+          .getVehicles()
+          .then((data) => {
+            const list = Array.isArray(data) ? data : (data?.vehicles || []);
+            setVehicles(list);
+            if (list.length > 0) {
+              setNewRide((prev) => ({ ...prev, vehicleId: prev.vehicleId || list[0].vehicleId }));
+            }
+          })
+          .catch(() => {});
+        api.rides
+          .getDriverRides()
+          .then((data) => {
+            const list = Array.isArray(data) ? data : (data?.rides || []);
+            setDriverRides(list);
+          })
+          .catch(() => {});
+        api.communities
+          .list()
+          .then((data) => {
+            const commList = Array.isArray(data) ? data : (data?.communities || data?.items || []);
+            setCommunities(commList);
+            if (commList.length > 0) {
+              setNewRide((prev) => ({ ...prev, communityId: prev.communityId || commList[0].communityId }));
+            }
+          })
+          .catch(() => {});
+      };
+
+      fetchDriverData();
+      // Poll driver rides and manifests every 5 seconds so cancellations and bookings sync in real time
+      const pollInterval = setInterval(() => {
+        api.rides
+          .getDriverRides()
+          .then((data) => {
+            const list = Array.isArray(data) ? data : (data?.rides || []);
+            setDriverRides(list);
+          })
+          .catch(() => {});
+
+        api.driver
+          .getEarnings()
+          .then((data) => setDriverEarnings(data))
+          .catch(() => {});
+
+        if (expandedManifestRideId) {
+          api.bookings
+            .getRideManifest(expandedManifestRideId)
+            .then((res) => {
+              const bookings = Array.isArray(res) ? res : (res?.bookings || []);
+              setManifestMap((prev) => ({ ...prev, [expandedManifestRideId]: bookings }));
+            })
+            .catch(() => {});
+        }
+      }, 5000);
+
+      return () => clearInterval(pollInterval);
     }
-  }, [user, isDriver]);
+  }, [user, isDriver, expandedManifestRideId]);
 
   const handleSubmitVerification = async (e) => {
     e.preventDefault();
@@ -241,6 +272,44 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
       setDriverRides(Array.isArray(updatedRides) ? updatedRides : (updatedRides?.rides || []));
     } catch (err) {
       setManifestActionMsg(err.response?.data?.error?.message || 'Failed to decline booking.');
+    } finally {
+      setManifestActionLoading(null);
+    }
+  };
+
+  const handleCompleteBooking = async (rideId, bookingId) => {
+    if (!confirm("Mark this passenger's ride as completed? Driver earnings will be credited.")) return;
+    setManifestActionLoading(bookingId);
+    setManifestActionMsg('');
+    try {
+      await api.bookings.complete(bookingId);
+      setManifestActionMsg('Passenger ride marked as complete! Driver earnings credited.');
+      const res = await api.bookings.getRideManifest(rideId);
+      setManifestMap((prev) => ({ ...prev, [rideId]: Array.isArray(res) ? res : (res?.bookings || []) }));
+      const updatedRides = await api.rides.getDriverRides();
+      setDriverRides(Array.isArray(updatedRides) ? updatedRides : (updatedRides?.rides || []));
+      const earningsRes = await api.driver.getEarnings();
+      setDriverEarnings(earningsRes);
+    } catch (err) {
+      setManifestActionMsg(err.response?.data?.error?.message || 'Could not complete passenger booking.');
+    } finally {
+      setManifestActionLoading(null);
+    }
+  };
+
+  const handleApproveRefund = async (rideId, bookingId) => {
+    if (!confirm('Approve and process refund for this passenger?')) return;
+    setManifestActionLoading(bookingId);
+    setManifestActionMsg('');
+    try {
+      await api.bookings.requestRefund(bookingId, 'Driver approved refund request');
+      setManifestActionMsg('Refund approved and processed successfully!');
+      const res = await api.bookings.getRideManifest(rideId);
+      setManifestMap((prev) => ({ ...prev, [rideId]: Array.isArray(res) ? res : (res?.bookings || []) }));
+      const earningsRes = await api.driver.getEarnings();
+      setDriverEarnings(earningsRes);
+    } catch (err) {
+      setManifestActionMsg(err.response?.data?.error?.message || 'Could not process refund approval.');
     } finally {
       setManifestActionLoading(null);
     }
@@ -724,7 +793,7 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                   >
                     <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)' }}>Total Earnings</span>
                     <div style={{ fontSize: '26px', fontWeight: 800, color: '#ffffff', marginTop: '4px' }}>
-                      ₹{driverEarnings?.summary?.netEarnings || '0.00'}
+                      ₹{driverEarnings?.summary?.totalNetEarnings || driverEarnings?.summary?.netEarnings || '0.00'}
                     </div>
                   </div>
 
@@ -738,7 +807,7 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                   >
                     <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)' }}>Completed Trips</span>
                     <div style={{ fontSize: '26px', fontWeight: 800, color: '#a78bfa', marginTop: '4px' }}>
-                      {driverEarnings?.summary?.completedTrips || 0}
+                      {driverEarnings?.summary?.completedPaymentsCount || driverEarnings?.summary?.completedTrips || 0}
                     </div>
                   </div>
 
@@ -1392,6 +1461,50 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                                               }}
                                             >
                                               Decline
+                                            </button>
+                                          </div>
+                                        )}
+
+                                        {b.status === 'CONFIRMED' && (
+                                          <div style={{ display: 'flex', gap: '6px' }}>
+                                            <button
+                                              type="button"
+                                              disabled={manifestActionLoading === b.bookingId}
+                                              onClick={() => handleCompleteBooking(ride.rideId, b.bookingId)}
+                                              style={{
+                                                background: 'rgba(34, 197, 94, 0.15)',
+                                                border: '1px solid rgba(34, 197, 94, 0.35)',
+                                                borderRadius: '9999px',
+                                                padding: '4px 12px',
+                                                color: '#86efac',
+                                                fontSize: '11.5px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                              }}
+                                            >
+                                              {manifestActionLoading === b.bookingId ? 'Processing...' : '✓ Complete Ride'}
+                                            </button>
+                                          </div>
+                                        )}
+
+                                        {b.status === 'CANCELLED' && (
+                                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                            <button
+                                              type="button"
+                                              disabled={manifestActionLoading === b.bookingId}
+                                              onClick={() => handleApproveRefund(ride.rideId, b.bookingId)}
+                                              style={{
+                                                background: 'rgba(56, 189, 248, 0.15)',
+                                                border: '1px solid rgba(56, 189, 248, 0.35)',
+                                                borderRadius: '9999px',
+                                                padding: '4px 12px',
+                                                color: '#38bdf8',
+                                                fontSize: '11.5px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                              }}
+                                            >
+                                              {manifestActionLoading === b.bookingId ? 'Processing...' : 'Approve Refund'}
                                             </button>
                                           </div>
                                         )}

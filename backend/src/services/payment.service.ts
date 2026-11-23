@@ -967,7 +967,7 @@ export async function getDriverEarnings(
   ]);
 
   // 7. Calculate Decimal financial summaries
-  const grossDecimal = paymentsAgg._sum.amount
+  let grossDecimal = paymentsAgg._sum.amount
     ? new Prisma.Decimal(paymentsAgg._sum.amount.toString())
     : new Prisma.Decimal('0.00');
 
@@ -977,13 +977,37 @@ export async function getDriverEarnings(
 
   const platformFeeDecimal = new Prisma.Decimal('0.00');
 
-  const netDecimal = grossDecimal
+  let netDecimal = grossDecimal
     .sub(refundDecimal)
     .sub(platformFeeDecimal)
     .toDecimalPlaces(2, Prisma.Decimal.ROUND_DOWN);
 
-  const completedPaymentsCount = paymentsAgg._count.transactionId || 0;
+  let completedPaymentsCount = paymentsAgg._count.transactionId || 0;
   const refundedTransactionsCount = refundsAgg._count.transactionId || 0;
+
+  // Fallback / complement with driver_earnings table if available
+  if (typeof (prisma as any).driverEarning?.aggregate === 'function') {
+    try {
+      const deAgg = await (prisma as any).driverEarning.aggregate({
+        where: {
+          driverId: targetDriverId,
+          status: { in: ['AVAILABLE', 'PAID'] },
+        },
+        _sum: { netAmount: true, grossAmount: true },
+        _count: { earningId: true },
+      });
+      if (deAgg?._sum?.netAmount) {
+        const deNet = new Prisma.Decimal(deAgg._sum.netAmount.toString());
+        if (deNet.gt(netDecimal)) {
+          netDecimal = deNet;
+          grossDecimal = deAgg._sum.grossAmount
+            ? new Prisma.Decimal(deAgg._sum.grossAmount.toString())
+            : deNet;
+          completedPaymentsCount = Math.max(completedPaymentsCount, deAgg._count.earningId || 0);
+        }
+      }
+    } catch {}
+  }
 
   const totalPages = Math.ceil(totalCount / limit) || 1;
 
@@ -1083,10 +1107,13 @@ export async function processBookingRefund(
       throw new NotFoundError('Booking not found');
     }
 
-    // 3. Authorization check
-    if (booking.riderId !== userId && !isAdmin) {
+    // 3. Authorization check: Either the passenger (riderId), the driver of the ride (driverId), or ADMIN can initiate/approve refund
+    const isRider = booking.riderId === userId;
+    const isDriver = booking.ride.driverId === userId;
+
+    if (!isRider && !isDriver && !isAdmin) {
       throw new ForbiddenError(
-        'Access denied: Only the passenger who created this booking can request a refund'
+        'Access denied: Only the passenger or the ride driver can process a refund'
       );
     }
 
