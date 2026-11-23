@@ -173,6 +173,43 @@ rideRouter.patch(
 );
 
 /**
+ * POST /api/v1/rides/:rideId/cancel
+ * PATCH /api/v1/rides/:rideId/cancel
+ * DELETE /api/v1/rides/:rideId
+ * Protected endpoint for authorized drivers to cancel their scheduled ride.
+ * Supports POST, PATCH, and DELETE HTTP verbs for seamless integration.
+ *
+ * Security & Middleware Execution Sequence:
+ * 1. authenticate - Validates JWT Bearer token and attaches fresh user state to req.user.
+ * 2. requireRoles(UserRole.DRIVER) - Enforces global DRIVER role on req.user.roles.
+ * 3. validateRideIdParam - Validates rideId parameter as a well-formed UUID.
+ * 4. RideController.cancelRide - Enforces ownership, checks status transitions, and executes atomic cancellation.
+ */
+rideRouter.post(
+  '/:rideId/cancel',
+  authenticate,
+  requireRoles(UserRole.DRIVER),
+  validateRideIdParam,
+  RideController.cancelRide
+);
+
+rideRouter.patch(
+  '/:rideId/cancel',
+  authenticate,
+  requireRoles(UserRole.DRIVER),
+  validateRideIdParam,
+  RideController.cancelRide
+);
+
+rideRouter.delete(
+  '/:rideId',
+  authenticate,
+  requireRoles(UserRole.DRIVER),
+  validateRideIdParam,
+  RideController.cancelRide
+);
+
+/**
  * POST /api/v1/rides
  * Protected endpoint for verified drivers to publish a new carpool ride.
  *

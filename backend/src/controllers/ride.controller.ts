@@ -141,10 +141,34 @@ export async function updateRide(
   }
 }
 
+/**
+ * Controller handling ride cancellation (POST/PATCH /api/v1/rides/:rideId/cancel or DELETE /api/v1/rides/:rideId).
+ * Enforces driver ownership, non-repeatable cancellation, and atomic lifecycle consistency.
+ */
+export async function cancelRide(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const { rideId } = rideIdParamSchema.parse(req.params);
+    const ride = await rideService.cancelRide(req.user.userId, rideId);
+
+    sendSuccess(res, { ride }, 'Ride cancelled successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const RideController = {
   createRide,
   listDriverRides,
   getRideById,
   listRides,
   updateRide,
+  cancelRide,
 };

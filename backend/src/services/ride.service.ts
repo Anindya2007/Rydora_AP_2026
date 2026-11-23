@@ -747,10 +747,105 @@ export async function updateRide(
   return formatRideDetailOutput(updatedRide);
 }
 
+/**
+ * Cancels a scheduled ride belonging to the authenticated driver.
+ *
+ * Security & Lifecycle Rules:
+ * 1. Existence Check: Finds ride by rideId. If not found, throws NotFoundError (404).
+ * 2. Ownership Check: If ride.driverId !== driverId, throws ForbiddenError (403).
+ * 3. Non-Repeatable & State Transitions:
+ *    - If status === CANCELLED, throws BadRequestError ('Ride is already cancelled') (400).
+ *    - If status === COMPLETED, throws BadRequestError ('Cannot cancel a completed ride') (400).
+ *    - If status === IN_PROGRESS, throws BadRequestError ('Cannot cancel a ride that is currently in progress') (400).
+ *    - Only SCHEDULED rides may be cancelled.
+ * 4. Concurrency Safety:
+ *    - Uses atomic conditional mutation `tx.ride.updateMany({ where: { rideId, driverId, status: RideStatus.SCHEDULED }, data: { status: RideStatus.CANCELLED } })`.
+ *    - If `updateResult.count === 0`, throws ConflictError ('Ride cancellation conflict: ride status was modified concurrently') (409).
+ * 5. Safe Response:
+ *    - Returns updated RideDetailOutput without sensitive driver credentials.
+ *
+ * @param driverId UUID of the authenticated driver.
+ * @param rideId UUID of the target ride.
+ * @returns Standardized RideDetailOutput with status CANCELLED.
+ */
+export async function cancelRide(
+  driverId: string,
+  rideId: string
+): Promise<RideDetailOutput> {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Fetch current ride state
+    const ride = await tx.ride.findUnique({
+      where: { rideId },
+      select: {
+        rideId: true,
+        driverId: true,
+        status: true,
+      },
+    });
+
+    if (!ride) {
+      throw new NotFoundError('Ride not found');
+    }
+
+    // 2. Ownership enforcement
+    if (ride.driverId !== driverId) {
+      throw new ForbiddenError('You are not authorized to cancel this ride');
+    }
+
+    // 3. Lifecycle state transition validation
+    if (ride.status === RideStatus.CANCELLED) {
+      throw new BadRequestError('Ride is already cancelled');
+    }
+
+    if (ride.status === RideStatus.COMPLETED) {
+      throw new BadRequestError('Cannot cancel a completed ride');
+    }
+
+    if (ride.status === RideStatus.IN_PROGRESS) {
+      throw new BadRequestError('Cannot cancel a ride that is currently in progress');
+    }
+
+    if (ride.status !== RideStatus.SCHEDULED) {
+      throw new BadRequestError(`Invalid status transition: cannot cancel ride with status ${ride.status}`);
+    }
+
+    // 4. Atomic conditional update to guard against concurrent race conditions
+    const updateResult = await tx.ride.updateMany({
+      where: {
+        rideId,
+        driverId,
+        status: RideStatus.SCHEDULED,
+      },
+      data: {
+        status: RideStatus.CANCELLED,
+      },
+    });
+
+    if (updateResult.count === 0) {
+      throw new ConflictError(
+        'Ride cancellation conflict: ride status was modified concurrently'
+      );
+    }
+
+    // 5. Retrieve updated ride with safe relations
+    const updatedRide = await tx.ride.findUnique({
+      where: { rideId },
+      select: rideDetailSelectProjection,
+    });
+
+    if (!updatedRide) {
+      throw new NotFoundError('Ride not found');
+    }
+
+    return formatRideDetailOutput(updatedRide);
+  });
+}
+
 export const rideService = {
   createRide,
   getRideById,
   listDriverRides,
   listRides,
   updateRide,
+  cancelRide,
 };
