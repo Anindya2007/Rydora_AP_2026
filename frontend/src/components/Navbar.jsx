@@ -379,11 +379,18 @@ export const Navbar = ({
                     }}
                   >
                     <div style={{ paddingBottom: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
-                        {user.name || 'Atharv'}
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <span>{user.name || 'Member'}</span>
+                        <span style={{ fontSize: '11px', color: '#fde047', background: 'rgba(250, 204, 21, 0.15)', padding: '1px 6px', borderRadius: '6px', fontWeight: 600 }}>
+                          ★ {Number(user.averageRating || 5.0).toFixed(1)}
+                        </span>
                       </div>
                       <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.55)', marginTop: '2px' }}>
                         {user.email || 'Member'}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', fontSize: '11px' }}>
+                        <span style={{ color: 'rgba(255, 255, 255, 0.6)' }}>Wallet Balance:</span>
+                        <span style={{ color: '#86efac', fontWeight: 600 }}>₹{user.walletBalance || '0.00'}</span>
                       </div>
                     </div>
                     <button

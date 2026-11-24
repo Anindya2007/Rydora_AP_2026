@@ -23,3 +23,9 @@ ratingRouter.get('/me', authenticate, RatingController.getMyRatings);
  */
 ratingRouter.get('/user/:userId', authenticate, RatingController.getUserRatings);
 ratingRouter.get('/:userId', authenticate, RatingController.getUserRatings);
+
+/**
+ * GET /api/v1/ratings/booking/:bookingId/status
+ * Check whether authenticated user has rated a specific booking.
+ */
+ratingRouter.get('/booking/:bookingId/status', authenticate, RatingController.checkBookingRatingStatus);

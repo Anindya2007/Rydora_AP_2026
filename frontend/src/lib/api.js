@@ -230,6 +230,11 @@ export const api = {
       const response = await apiClient.get(`/ratings/${userId}`);
       return response.data.data;
     },
+
+    async checkStatus(bookingId) {
+      const response = await apiClient.get(`/ratings/booking/${bookingId}/status`);
+      return response.data.data;
+    },
   },
 
   safety: {

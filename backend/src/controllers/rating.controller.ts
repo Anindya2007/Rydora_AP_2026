@@ -60,4 +60,19 @@ export class RatingController {
       next(error);
     }
   }
+
+  /**
+   * GET /api/v1/ratings/booking/:bookingId/status
+   * Check whether authenticated user has submitted a rating for a specific booking.
+   */
+  static async checkBookingRatingStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const bookingId = String(req.params.bookingId);
+      const isRated = RatingService.isBookingRated(bookingId, userId);
+      sendSuccess(res, { bookingId, isRated }, 'Rating status retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
 }

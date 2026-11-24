@@ -60,6 +60,16 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
   const [manifestLoading, setManifestLoading] = useState(false);
   const [manifestActionLoading, setManifestActionLoading] = useState(null);
   const [manifestActionMsg, setManifestActionMsg] = useState('');
+  const [ratedPassengers, setRatedPassengers] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('rydora_driver_rated_passengers') || '{}');
+    } catch {
+      return {};
+    }
+  });
+  const [passengerRatingBookingId, setPassengerRatingBookingId] = useState(null);
+  const [passengerRatingScore, setPassengerRatingScore] = useState(5);
+  const [passengerRatingComment, setPassengerRatingComment] = useState('');
 
   const isDriver = user?.roles?.includes('DRIVER') || user?.driverVerified;
 
@@ -310,6 +320,30 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
       setDriverEarnings(earningsRes);
     } catch (err) {
       setManifestActionMsg(err.response?.data?.error?.message || 'Could not process refund approval.');
+    } finally {
+      setManifestActionLoading(null);
+    }
+  };
+
+  const handleSubmitPassengerRating = async (rideId, bookingId, passengerName = 'Passenger') => {
+    try {
+      setManifestActionLoading(bookingId);
+      await api.ratings.submit(bookingId, passengerRatingScore, passengerRatingComment);
+      const newRated = {
+        ...ratedPassengers,
+        [bookingId]: { score: passengerRatingScore, comment: passengerRatingComment, ratedAt: new Date().toISOString() },
+      };
+      setRatedPassengers(newRated);
+      try {
+        localStorage.setItem('rydora_driver_rated_passengers', JSON.stringify(newRated));
+      } catch {}
+      alert(`⭐ Rating of ${passengerRatingScore} ★ for passenger ${passengerName} submitted successfully!`);
+      setPassengerRatingBookingId(null);
+      setPassengerRatingComment('');
+      const res = await api.bookings.getRideManifest(rideId);
+      setManifestMap((prev) => ({ ...prev, [rideId]: Array.isArray(res) ? res : (res?.bookings || []) }));
+    } catch (err) {
+      alert(err.response?.data?.error?.message || 'Could not submit rating for passenger.');
     } finally {
       setManifestActionLoading(null);
     }
@@ -808,6 +842,23 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                     <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)' }}>Completed Trips</span>
                     <div style={{ fontSize: '26px', fontWeight: 800, color: '#a78bfa', marginTop: '4px' }}>
                       {driverEarnings?.summary?.completedPaymentsCount || driverEarnings?.summary?.completedTrips || 0}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      borderRadius: '18px',
+                      padding: '20px',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                    }}
+                  >
+                    <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)' }}>Driver Rating</span>
+                    <div style={{ fontSize: '26px', fontWeight: 800, color: '#fde047', marginTop: '4px' }}>
+                      ★ {Number(user?.averageRating || 5.0).toFixed(1)}
+                      <span style={{ fontSize: '12px', fontWeight: 500, color: 'rgba(255, 255, 255, 0.55)', marginLeft: '6px' }}>
+                        ({user?.ratingCount || 0})
+                      </span>
                     </div>
                   </div>
 
@@ -1399,6 +1450,20 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                                             )}
                                             <span
                                               style={{
+                                                fontSize: '11px',
+                                                background: 'rgba(250, 204, 21, 0.15)',
+                                                color: '#fde047',
+                                                padding: '1px 6px',
+                                                borderRadius: '6px',
+                                                marginLeft: '6px',
+                                                fontWeight: 600,
+                                              }}
+                                            >
+                                              ★ {Number(b.rider?.averageRating || 5.0).toFixed(1)}
+                                              {b.rider?.ratingCount ? ` (${b.rider.ratingCount})` : ''}
+                                            </span>
+                                            <span
+                                              style={{
                                                 marginLeft: '8px',
                                                 fontSize: '10.5px',
                                                 padding: '2px 6px',
@@ -1506,6 +1571,138 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                                             >
                                               {manifestActionLoading === b.bookingId ? 'Processing...' : 'Approve Refund'}
                                             </button>
+                                          </div>
+                                        )}
+
+                                        {b.status === 'COMPLETED' && (
+                                          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                            {ratedPassengers[b.bookingId] ? (
+                                              <span
+                                                style={{
+                                                  background: 'rgba(34, 197, 94, 0.15)',
+                                                  border: '1px solid rgba(34, 197, 94, 0.35)',
+                                                  color: '#86efac',
+                                                  fontSize: '11px',
+                                                  fontWeight: 600,
+                                                  padding: '3px 10px',
+                                                  borderRadius: '9999px',
+                                                }}
+                                              >
+                                                ✓ Rated ★ {ratedPassengers[b.bookingId].score || 5}
+                                              </span>
+                                            ) : passengerRatingBookingId !== b.bookingId ? (
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setPassengerRatingBookingId(b.bookingId);
+                                                  setPassengerRatingScore(5);
+                                                  setPassengerRatingComment('');
+                                                }}
+                                                style={{
+                                                  background: 'rgba(250, 204, 21, 0.15)',
+                                                  border: '1px solid rgba(250, 204, 21, 0.35)',
+                                                  borderRadius: '9999px',
+                                                  padding: '4px 12px',
+                                                  color: '#fde047',
+                                                  fontSize: '11.5px',
+                                                  fontWeight: 600,
+                                                  cursor: 'pointer',
+                                                }}
+                                              >
+                                                Rate Passenger ★
+                                              </button>
+                                            ) : null}
+                                          </div>
+                                        )}
+
+                                        {/* Driver Rating Passenger Form */}
+                                        {b.status === 'COMPLETED' && passengerRatingBookingId === b.bookingId && !ratedPassengers[b.bookingId] && (
+                                          <div
+                                            style={{
+                                              width: '100%',
+                                              marginTop: '8px',
+                                              padding: '10px 14px',
+                                              background: 'rgba(0, 0, 0, 0.35)',
+                                              borderRadius: '12px',
+                                              border: '1px solid rgba(250, 204, 21, 0.25)',
+                                              display: 'flex',
+                                              flexDirection: 'column',
+                                              gap: '8px',
+                                            }}
+                                          >
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                              <span style={{ fontSize: '12px', fontWeight: 600, color: '#fde047' }}>
+                                                Rate Passenger {b.rider?.name || 'Rider'}:
+                                              </span>
+                                              <div style={{ display: 'flex', gap: '3px' }}>
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                  <button
+                                                    key={star}
+                                                    type="button"
+                                                    onClick={() => setPassengerRatingScore(star)}
+                                                    style={{
+                                                      background: 'transparent',
+                                                      border: 'none',
+                                                      color: star <= passengerRatingScore ? '#fde047' : 'rgba(255, 255, 255, 0.2)',
+                                                      fontSize: '17px',
+                                                      cursor: 'pointer',
+                                                      padding: '2px',
+                                                      lineHeight: 1,
+                                                    }}
+                                                  >
+                                                    ★
+                                                  </button>
+                                                ))}
+                                              </div>
+                                            </div>
+
+                                            <input
+                                              type="text"
+                                              placeholder="Optional passenger feedback (e.g. Courteous, on time)..."
+                                              value={passengerRatingComment}
+                                              onChange={(e) => setPassengerRatingComment(e.target.value)}
+                                              style={{
+                                                background: 'rgba(255, 255, 255, 0.08)',
+                                                border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                borderRadius: '8px',
+                                                padding: '6px 10px',
+                                                color: '#ffffff',
+                                                fontSize: '12px',
+                                                outline: 'none',
+                                              }}
+                                            />
+
+                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                              <button
+                                                type="button"
+                                                onClick={() => setPassengerRatingBookingId(null)}
+                                                style={{
+                                                  background: 'transparent',
+                                                  border: 'none',
+                                                  color: 'rgba(255, 255, 255, 0.6)',
+                                                  fontSize: '11px',
+                                                  cursor: 'pointer',
+                                                }}
+                                              >
+                                                Cancel
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleSubmitPassengerRating(ride.rideId, b.bookingId, b.rider?.name)}
+                                                style={{
+                                                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                                                  border: 'none',
+                                                  color: '#ffffff',
+                                                  borderRadius: '9999px',
+                                                  padding: '4px 12px',
+                                                  fontSize: '11px',
+                                                  fontWeight: 600,
+                                                  cursor: 'pointer',
+                                                }}
+                                              >
+                                                Submit Rating
+                                              </button>
+                                            </div>
                                           </div>
                                         )}
                                       </div>

@@ -53,7 +53,11 @@ export interface UserRatingSummaryOutput {
  *
  * Key format: `${bookingId}:${raterId}`
  */
-const submittedRatings = new Set<string>();
+export const submittedRatings = new Set<string>();
+
+export function isBookingRated(bookingId: string, raterId: string): boolean {
+  return submittedRatings.has(`${bookingId}:${raterId}`);
+}
 
 /**
  * Test helper to reset the in-memory registry between test suites.

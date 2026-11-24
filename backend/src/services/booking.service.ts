@@ -26,6 +26,8 @@ export interface BookingDriverSummary {
   name: string;
   phone?: string | null;
   profileImage: string | null;
+  averageRating?: string;
+  ratingCount?: number;
 }
 
 export interface BookingRiderSummary {
@@ -34,6 +36,8 @@ export interface BookingRiderSummary {
   phone?: string | null;
   email?: string;
   profileImage: string | null;
+  averageRating?: string;
+  ratingCount?: number;
 }
 
 export interface BookingRideSummary {
@@ -86,6 +90,8 @@ export const bookingDetailSelectProjection = {
       phone: true,
       email: true,
       profileImage: true,
+      averageRating: true,
+      ratingCount: true,
     },
   },
   ride: {
@@ -103,6 +109,8 @@ export const bookingDetailSelectProjection = {
           name: true,
           phone: true,
           profileImage: true,
+          averageRating: true,
+          ratingCount: true,
         },
       },
     },
@@ -131,6 +139,8 @@ export const manifestBookingSelectProjection = {
       name: true,
       phone: true,
       profileImage: true,
+      averageRating: true,
+      ratingCount: true,
       // email is omitted for privacy
     },
   },
@@ -148,6 +158,8 @@ export const manifestBookingSelectProjection = {
           userId: true,
           name: true,
           profileImage: true,
+          averageRating: true,
+          ratingCount: true,
         },
       },
     },
@@ -176,6 +188,8 @@ export function formatManifestBookingOutput(raw: any): BookingOutput {
           name: raw.rider.name,
           phone: raw.rider.phone ?? null,
           profileImage: raw.rider.profileImage ?? null,
+          averageRating: raw.rider.averageRating ? raw.rider.averageRating.toString() : '5.00',
+          ratingCount: raw.rider.ratingCount ?? 0,
         }
       : undefined,
     ride: raw.ride
@@ -193,6 +207,8 @@ export function formatManifestBookingOutput(raw: any): BookingOutput {
                 name: raw.ride.driver.name,
                 phone: raw.ride.driver.phone ?? null,
                 profileImage: raw.ride.driver.profileImage ?? null,
+                averageRating: raw.ride.driver.averageRating ? raw.ride.driver.averageRating.toString() : '5.00',
+                ratingCount: raw.ride.driver.ratingCount ?? 0,
               }
             : undefined,
         }
@@ -223,6 +239,8 @@ export function formatBookingOutput(raw: any): BookingOutput {
           phone: raw.rider.phone ?? null,
           email: raw.rider.email,
           profileImage: raw.rider.profileImage ?? null,
+          averageRating: raw.rider.averageRating ? raw.rider.averageRating.toString() : '5.00',
+          ratingCount: raw.rider.ratingCount ?? 0,
         }
       : undefined,
     ride: raw.ride
@@ -240,6 +258,8 @@ export function formatBookingOutput(raw: any): BookingOutput {
                 name: raw.ride.driver.name,
                 phone: raw.ride.driver.phone ?? null,
                 profileImage: raw.ride.driver.profileImage ?? null,
+                averageRating: raw.ride.driver.averageRating ? raw.ride.driver.averageRating.toString() : '5.00',
+                ratingCount: raw.ride.driver.ratingCount ?? 0,
               }
             : undefined,
         }
