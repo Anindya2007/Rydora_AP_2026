@@ -39,6 +39,7 @@ export const Navbar = ({
   const navItems = [
     { id: 'ride', label: 'Ride' },
     { id: 'drive', label: isDriver ? 'Drive' : 'Become a Driver' },
+    ...(user ? [{ id: 'profile', label: 'My Rides' }] : []),
     { id: 'about', label: 'About', hasDropdown: true },
   ];
 

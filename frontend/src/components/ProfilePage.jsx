@@ -50,7 +50,9 @@ export const ProfilePage = ({ user, onLoginClick, onSignUpClick, onSelectTab }) 
     }
     try {
       setLoading(true);
-      const res = await api.rides.getMyBookings();
+      setErrorMsg('');
+      const apiFn = api.bookings?.getMyBookings || api.rides?.getMyBookings;
+      const res = await apiFn();
       const list = Array.isArray(res) ? res : (res?.bookings || []);
       setBookings(list);
     } catch (err) {
@@ -64,7 +66,8 @@ export const ProfilePage = ({ user, onLoginClick, onSignUpClick, onSelectTab }) 
     if (!user) return;
     try {
       setLoadingContacts(true);
-      const res = await api.sos.getEmergencyContacts();
+      const apiFn = api.safety?.getEmergencyContacts || api.sos?.getEmergencyContacts;
+      const res = await apiFn();
       const list = Array.isArray(res) ? res : (res?.contacts || []);
       setContacts(list);
     } catch {
@@ -77,13 +80,31 @@ export const ProfilePage = ({ user, onLoginClick, onSignUpClick, onSelectTab }) 
   useEffect(() => {
     fetchBookings();
     fetchContacts();
+
+    if (user) {
+      // Poll every 5s so bookings and ratings stay in sync with the database in real time
+      const pollInterval = setInterval(() => {
+        const apiFn = api.bookings?.getMyBookings || api.rides?.getMyBookings;
+        if (apiFn) {
+          apiFn()
+            .then((res) => {
+              const list = Array.isArray(res) ? res : (res?.bookings || []);
+              setBookings(list);
+            })
+            .catch(() => {});
+        }
+      }, 5000);
+
+      return () => clearInterval(pollInterval);
+    }
   }, [user]);
 
   const handleCancelBooking = async (bookingId) => {
     if (!window.confirm('Are you sure you want to cancel this booking?')) return;
     try {
       setActionMsg('Cancelling booking...');
-      await api.rides.cancelBooking(bookingId);
+      const cancelFn = api.bookings?.cancel || api.rides?.cancelBooking;
+      await cancelFn(bookingId, 'Passenger requested cancellation');
       setActionMsg('Booking cancelled successfully.');
       setTimeout(() => setActionMsg(''), 4000);
       fetchBookings();
@@ -96,7 +117,8 @@ export const ProfilePage = ({ user, onLoginClick, onSignUpClick, onSelectTab }) 
   const handleRequestRefund = async (bookingId) => {
     try {
       setActionMsg('Submitting refund request...');
-      await api.rides.requestRefund(bookingId, 'Passenger requested refund');
+      const refundFn = api.bookings?.requestRefund || api.rides?.requestRefund;
+      await refundFn(bookingId, 'Passenger requested refund');
       setActionMsg('Refund request submitted to driver for approval.');
       setTimeout(() => setActionMsg(''), 4000);
       fetchBookings();

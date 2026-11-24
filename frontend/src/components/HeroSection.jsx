@@ -199,12 +199,19 @@ export const HeroSection = ({ user, onLoginClick, onSelectTab }) => {
 
   useEffect(() => {
     if (user) {
-      api.bookings
-        .getMyBookings()
-        .then((res) => {
-          if (Array.isArray(res)) setMyBookings(res);
-        })
-        .catch(() => {});
+      const fetchBookings = () => {
+        const getFn = api.bookings?.getMyBookings || api.rides?.getMyBookings;
+        if (getFn) {
+          getFn()
+            .then((res) => {
+              const list = Array.isArray(res) ? res : (res?.bookings || []);
+              setMyBookings(list);
+            })
+            .catch(() => {});
+        }
+      };
+
+      fetchBookings();
 
       api.safety
         .getEmergencyContacts()
@@ -214,7 +221,9 @@ export const HeroSection = ({ user, onLoginClick, onSelectTab }) => {
         })
         .catch(() => {});
 
-      const pollAlerts = () => {
+      const pollData = () => {
+        fetchBookings();
+
         api.safety
           .getActiveSOS()
           .then((alert) => {
@@ -231,8 +240,8 @@ export const HeroSection = ({ user, onLoginClick, onSelectTab }) => {
           .catch(() => {});
       };
 
-      pollAlerts();
-      const interval = setInterval(pollAlerts, 5000);
+      pollData();
+      const interval = setInterval(pollData, 5000);
       return () => clearInterval(interval);
     } else {
       setMyBookings([]);
@@ -1365,55 +1374,96 @@ export const HeroSection = ({ user, onLoginClick, onSelectTab }) => {
           </div>
         )}
 
-        {/* User Active Bookings & Profile Past Rides Link */}
-        {user && (() => {
+        {/* User Bookings (Active & Past) */}
+        {user && myBookings.length > 0 && (() => {
           const activeBookings = myBookings.filter((b) => ['PENDING', 'CONFIRMED'].includes(b.status));
-          if (activeBookings.length > 0) {
-            return (
-              <div style={{ marginTop: '20px' }}>
-                <LiquidGlassPanel
-                  radius={20}
-                  frosted={true}
-                  style={{
-                    padding: '16px 20px',
-                    background: 'rgba(15, 15, 25, 0.7)',
-                    border: '1px solid rgba(99, 102, 241, 0.3)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>
-                        🚗 Active Booking ({activeBookings.length})
-                      </span>
-                      <span style={{ fontSize: '11px', background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', padding: '2px 8px', borderRadius: '9999px', fontWeight: 600 }}>
-                        Scheduled
-                      </span>
-                    </div>
+          const pastBookings = myBookings.filter((b) => ['COMPLETED', 'CANCELLED'].includes(b.status));
+          const displayedBookings = bookingTab === 'active' ? activeBookings : pastBookings;
+
+          return (
+            <div style={{ marginTop: '20px' }}>
+              <LiquidGlassPanel
+                radius={20}
+                frosted={true}
+                style={{
+                  padding: '16px 20px',
+                  background: 'rgba(15, 15, 25, 0.7)',
+                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '6px', background: 'rgba(255, 255, 255, 0.06)', padding: '3px', borderRadius: '12px' }}>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (onSelectTab) onSelectTab('profile');
-                        else window.location.hash = '#profile';
-                      }}
+                      onClick={() => setBookingTab('active')}
                       style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: '#c7d2fe',
-                        fontSize: '12px',
+                        background: bookingTab === 'active' ? 'rgba(99, 102, 241, 0.4)' : 'transparent',
+                        border: bookingTab === 'active' ? '1px solid rgba(129, 140, 248, 0.4)' : 'none',
+                        borderRadius: '9px',
+                        padding: '4px 12px',
+                        color: bookingTab === 'active' ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
+                        fontSize: '12.5px',
                         fontWeight: 600,
                         cursor: 'pointer',
-                        padding: 0,
-                        textDecoration: 'underline',
+                        transition: 'all 0.15s ease',
                       }}
                     >
-                      View All & Past Rides in Profile →
+                      🚗 Active Rides ({activeBookings.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBookingTab('past')}
+                      style={{
+                        background: bookingTab === 'past' ? 'rgba(99, 102, 241, 0.4)' : 'transparent',
+                        border: bookingTab === 'past' ? '1px solid rgba(129, 140, 248, 0.4)' : 'none',
+                        borderRadius: '9px',
+                        padding: '4px 12px',
+                        color: bookingTab === 'past' ? '#ffffff' : 'rgba(255, 255, 255, 0.65)',
+                        fontSize: '12.5px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      🕒 Past Rides ({pastBookings.length})
                     </button>
                   </div>
 
-                  {activeBookings.map((b) => (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (onSelectTab) onSelectTab('profile');
+                      else window.location.hash = '#profile';
+                    }}
+                    style={{
+                      background: 'rgba(99, 102, 241, 0.15)',
+                      border: '1px solid rgba(99, 102, 241, 0.3)',
+                      borderRadius: '9999px',
+                      color: '#c7d2fe',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      padding: '5px 12px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <span>Full Profile & Reviews →</span>
+                  </button>
+                </div>
+
+                {displayedBookings.length === 0 ? (
+                  <div style={{ padding: '12px', textAlign: 'center', color: 'rgba(255, 255, 255, 0.55)', fontSize: '13px' }}>
+                    {bookingTab === 'active'
+                      ? 'No active rides scheduled right now.'
+                      : 'No past rides recorded yet.'}
+                  </div>
+                ) : (
+                  displayedBookings.map((b) => (
                     <div
                       key={b.bookingId}
                       style={{
@@ -1429,8 +1479,32 @@ export const HeroSection = ({ user, onLoginClick, onSelectTab }) => {
                       }}
                     >
                       <div>
-                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>
-                          {b.ride?.source || 'Origin'} → {b.ride?.destination || 'Destination'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>
+                            {b.ride?.source || 'Origin'} → {b.ride?.destination || 'Destination'}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              padding: '2px 8px',
+                              borderRadius: '9999px',
+                              fontWeight: 600,
+                              background:
+                                b.status === 'COMPLETED'
+                                  ? 'rgba(34, 197, 94, 0.15)'
+                                  : b.status === 'CANCELLED'
+                                  ? 'rgba(239, 68, 68, 0.15)'
+                                  : 'rgba(99, 102, 241, 0.15)',
+                              color:
+                                b.status === 'COMPLETED'
+                                  ? '#4ade80'
+                                  : b.status === 'CANCELLED'
+                                  ? '#f87171'
+                                  : '#818cf8',
+                            }}
+                          >
+                            {b.status}
+                          </span>
                         </div>
                         <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.65)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <span>Driver: <strong style={{ color: '#ffffff' }}>{b.ride?.driver?.name || 'Verified Driver'}</strong></span>
@@ -1445,57 +1519,31 @@ export const HeroSection = ({ user, onLoginClick, onSelectTab }) => {
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <span style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff' }}>₹{b.totalAmount}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleCancelBooking(b.bookingId)}
-                          style={{
-                            background: 'rgba(239, 68, 68, 0.12)',
-                            border: '1px solid rgba(239, 68, 68, 0.28)',
-                            borderRadius: '9999px',
-                            padding: '4px 10px',
-                            color: '#f87171',
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Cancel
-                        </button>
+                        {['PENDING', 'CONFIRMED'].includes(b.status) && (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelBooking(b.bookingId)}
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              border: '1px solid rgba(239, 68, 68, 0.28)',
+                              borderRadius: '9999px',
+                              padding: '4px 10px',
+                              color: '#f87171',
+                              fontSize: '11px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </LiquidGlassPanel>
-              </div>
-            );
-          } else if (myBookings.length > 0) {
-            return (
-              <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onSelectTab) onSelectTab('profile');
-                    else window.location.hash = '#profile';
-                  }}
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    borderRadius: '9999px',
-                    padding: '6px 14px',
-                    color: '#c7d2fe',
-                    fontSize: '12px',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <span>🕒 View Past Rides ({myBookings.length}) in Profile →</span>
-                </button>
-              </div>
-            );
-          }
-          return null;
+                  ))
+                )}
+              </LiquidGlassPanel>
+            </div>
+          );
         })()}
       </div>
 

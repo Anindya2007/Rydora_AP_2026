@@ -140,6 +140,27 @@ export const api = {
       const response = await apiClient.post(`/rides/${rideId}/complete`);
       return response.data.data?.ride || response.data.data;
     },
+
+    async getMyBookings(params = {}) {
+      const response = await apiClient.get('/bookings/me', { params });
+      return response.data.data?.bookings || response.data.data || [];
+    },
+
+    async cancelBooking(bookingId, cancellationReason = '') {
+      const reason = cancellationReason.trim() || 'Passenger requested cancellation';
+      const response = await apiClient.patch(`/bookings/${bookingId}/cancel`, {
+        reason,
+        cancellationReason: reason,
+      });
+      return response.data.data?.booking || response.data.data;
+    },
+
+    async requestRefund(bookingId, reason = '') {
+      const response = await apiClient.post(`/bookings/${bookingId}/refund`, {
+        reason: reason || 'Passenger requested refund for cancelled booking',
+      });
+      return response.data.data;
+    },
   },
 
   bookings: {
@@ -331,6 +352,24 @@ export const api = {
     async join(communityId) {
       const response = await apiClient.post(`/communities/${communityId}/join`);
       return response.data.data?.membership || response.data.data;
+    },
+  },
+
+  sos: {
+    async triggerSOS(data) {
+      return api.safety.triggerSOS(data);
+    },
+    async cancelSOS(alertId) {
+      return api.safety.cancelSOS(alertId);
+    },
+    async getEmergencyContacts() {
+      return api.safety.getEmergencyContacts();
+    },
+    async addEmergencyContact(data) {
+      return api.safety.addEmergencyContact(data);
+    },
+    async deleteEmergencyContact(contactId) {
+      return api.safety.deleteEmergencyContact(contactId);
     },
   },
 };
