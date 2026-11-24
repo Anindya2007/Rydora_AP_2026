@@ -1,0 +1,131 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 1.5 - Resolve Complete User Profile with Preferences & Driver Eligibility
+Module: Identity, Auth & Sessions | Operation: -- READ
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+SELECT 
+    u."userId",
+    u."name",
+    u."email",
+    u."phone",
+    u."profileImage",
+    u."accountStatus",
+    u."createdAt",
+    up."language",
+    up."theme",
+    dp."licenseNumber",
+    dp."eligibilityStatus" AS "driverStatus",
+    COALESCE(ARRAY_AGG(DISTINCT ur."role"), '{}') AS "roles",
+    COUNT(DISTINCT r."ratingId") AS "totalRatingsReceived",
+    COALESCE(ROUND(AVG(r."score"), 2), 5.00) AS "averageRating"
+FROM "users" u
+LEFT JOIN "user_preferences" up ON u."userId" = up."userId"
+LEFT JOIN "driver_profiles" dp ON u."userId" = dp."userId"
+LEFT JOIN "user_roles" ur ON u."userId" = ur."userId"
+LEFT JOIN "ratings" r ON u."userId" = r."rateeId"
+WHERE u."userId" = $1
+  AND u."deletedAt" IS NULL
+GROUP BY 
+    u."userId", u."name", u."email", u."phone", u."profileImage", 
+    u."accountStatus", u."createdAt", up."language", up."theme", 
+    dp."licenseNumber", dp."eligibilityStatus";
+
+--- Concrete Executed SQL Statement ---
+SELECT 
+    u."userId",
+    u."name",
+    u."email",
+    u."phone",
+    u."profileImage",
+    u."accountStatus",
+    u."createdAt",
+    up."language",
+    up."theme",
+    dp."licenseNumber",
+    dp."eligibilityStatus" AS "driverStatus",
+    COALESCE(ARRAY_AGG(DISTINCT ur."role"), '{}') AS "roles",
+    COUNT(DISTINCT r."ratingId") AS "totalRatingsReceived",
+    COALESCE(ROUND(AVG(r."score"), 2), 5.00) AS "averageRating"
+FROM "users" u
+LEFT JOIN "user_preferences" up ON u."userId" = up."userId"
+LEFT JOIN "driver_profiles" dp ON u."userId" = dp."userId"
+LEFT JOIN "user_roles" ur ON u."userId" = ur."userId"
+LEFT JOIN "ratings" r ON u."userId" = r."rateeId"
+WHERE u."userId" = '33333333-3333-4333-8333-333333333333'
+  AND u."deletedAt" IS NULL
+GROUP BY 
+    u."userId", u."name", u."email", u."phone", u."profileImage", 
+    u."accountStatus", u."createdAt", up."language", up."theme", 
+    dp."licenseNumber", dp."eligibilityStatus";
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+GroupAggregate  (cost=50.11..50.53 rows=1 width=1088) (actual time=0.075..0.076 rows=1.00 loops=1)
+  Output: u."userId", u.name, u.email, u.phone, u."profileImage", u."accountStatus", u."createdAt", up.language, up.theme, dp."licenseNumber", dp."eligibilityStatus", COALESCE(array_agg(DISTINCT ur.role), '{}'::"RoleType"[]), count(DISTINCT r."ratingId"), COALESCE(round(avg(r.score), 2), 5.00)
+  Group Key: u.email, up.language, up.theme, dp."licenseNumber", dp."eligibilityStatus"
+  Buffers: shared hit=21
+  ->  Sort  (cost=50.11..50.15 rows=18 width=1040) (actual time=0.058..0.059 rows=2.00 loops=1)
+        Output: u.email, up.language, up.theme, dp."licenseNumber", dp."eligibilityStatus", u."userId", u.name, u.phone, u."profileImage", u."accountStatus", u."createdAt", ur.role, r."ratingId", r.score
+        Sort Key: u.email, up.language, up.theme, dp."licenseNumber", dp."eligibilityStatus", ur.role
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=18
+        ->  Nested Loop Left Join  (cost=8.81..49.73 rows=18 width=1040) (actual time=0.037..0.040 rows=2.00 loops=1)
+              Output: u.email, up.language, up.theme, dp."licenseNumber", dp."eligibilityStatus", u."userId", u.name, u.phone, u."profileImage", u."accountStatus", u."createdAt", ur.role, r."ratingId", r.score
+              Buffers: shared hit=10
+              ->  Nested Loop Left Join  (cost=4.61..35.82 rows=3 width=1036) (actual time=0.024..0.025 rows=1.00 loops=1)
+                    Output: u."userId", u.name, u.email, u.phone, u."profileImage", u."accountStatus", u."createdAt", up.language, up.theme, dp."licenseNumber", dp."eligibilityStatus", r."ratingId", r.score
+                    Buffers: shared hit=8
+                    ->  Nested Loop Left Join  (cost=0.44..24.51 rows=1 width=1016) (actual time=0.015..0.016 rows=1.00 loops=1)
+                          Output: u."userId", u.name, u.email, u.phone, u."profileImage", u."accountStatus", u."createdAt", up.language, up.theme, dp."licenseNumber", dp."eligibilityStatus"
+                          Inner Unique: true
+                          Buffers: shared hit=6
+                          ->  Nested Loop Left Join  (cost=0.29..16.34 rows=1 width=894) (actual time=0.011..0.012 rows=1.00 loops=1)
+                                Output: u."userId", u.name, u.email, u.phone, u."profileImage", u."accountStatus", u."createdAt", up.language, up.theme
+                                Inner Unique: true
+                                Buffers: shared hit=4
+                                ->  Index Scan using users_pkey on rydora_benchmark.users u  (cost=0.14..8.16 rows=1 width=852) (actual time=0.005..0.005 rows=1.00 loops=1)
+                                      Output: u."userId", u.name, u.email, u.phone, u."phoneVerifiedAt", u."passwordHash", u."profileImage", u."accountStatus", u."emailVerifiedAt", u."createdAt", u."updatedAt", u."deletedAt"
+                                      Index Cond: (u."userId" = '33333333-3333-4333-8333-333333333333'::uuid)
+                                      Filter: (u."deletedAt" IS NULL)
+                                      Index Searches: 1
+                                      Buffers: shared hit=2
+                                ->  Index Scan using "user_preferences_userId_key" on rydora_benchmark.user_preferences up  (cost=0.15..8.17 rows=1 width=58) (actual time=0.005..0.005 rows=1.00 loops=1)
+                                      Output: up."preferenceId", up."userId", up.language, up.theme, up."accessibilitySettings", up."createdAt", up."updatedAt"
+                                      Index Cond: (up."userId" = '33333333-3333-4333-8333-333333333333'::uuid)
+                                      Index Searches: 1
+                                      Buffers: shared hit=2
+                          ->  Index Scan using "driver_profiles_userId_key" on rydora_benchmark.driver_profiles dp  (cost=0.15..8.17 rows=1 width=138) (actual time=0.003..0.003 rows=1.00 loops=1)
+                                Output: dp."driverProfileId", dp."userId", dp."driverVerificationStatus", dp."licenseVerificationStatus", dp."licenseNumber", dp."eligibilityStatus", dp."approvedAt", dp."createdAt", dp."updatedAt"
+                                Index Cond: (dp."userId" = '33333333-3333-4333-8333-333333333333'::uuid)
+                                Index Searches: 1
+                                Buffers: shared hit=2
+                    ->  Bitmap Heap Scan on rydora_benchmark.ratings r  (cost=4.17..11.28 rows=3 width=36) (actual time=0.008..0.008 rows=1.00 loops=1)
+                          Output: r."ratingId", r."bookingId", r."rideId", r."raterId", r."rateeId", r.score, r.comment, r."createdAt"
+                          Recheck Cond: (r."rateeId" = '33333333-3333-4333-8333-333333333333'::uuid)
+                          Heap Blocks: exact=1
+                          Buffers: shared hit=2
+                          ->  Bitmap Index Scan on "ratings_rateeId_idx"  (cost=0.00..4.17 rows=3 width=0) (actual time=0.002..0.002 rows=1.00 loops=1)
+                                Index Cond: (r."rateeId" = '33333333-3333-4333-8333-333333333333'::uuid)
+                                Index Searches: 1
+                                Buffers: shared hit=1
+              ->  Materialize  (cost=4.20..13.70 rows=6 width=20) (actual time=0.013..0.014 rows=2.00 loops=1)
+                    Output: ur.role, ur."userId"
+                    Storage: Memory  Maximum Storage: 17kB
+                    Buffers: shared hit=2
+                    ->  Bitmap Heap Scan on rydora_benchmark.user_roles ur  (cost=4.20..13.67 rows=6 width=20) (actual time=0.011..0.011 rows=2.00 loops=1)
+                          Output: ur.role, ur."userId"
+                          Recheck Cond: (ur."userId" = '33333333-3333-4333-8333-333333333333'::uuid)
+                          Heap Blocks: exact=1
+                          Buffers: shared hit=2
+                          ->  Bitmap Index Scan on "user_roles_userId_role_key"  (cost=0.00..4.20 rows=6 width=0) (actual time=0.008..0.008 rows=2.00 loops=1)
+                                Index Cond: (ur."userId" = '33333333-3333-4333-8333-333333333333'::uuid)
+                                Index Searches: 1
+                                Buffers: shared hit=1
+Query Identifier: -3381259030390408764
+Planning:
+  Buffers: shared hit=85
+Planning Time: 0.315 ms
+Execution Time: 0.140 ms

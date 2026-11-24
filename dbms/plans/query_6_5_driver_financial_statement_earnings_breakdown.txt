@@ -1,0 +1,99 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 6.5 - Driver Financial Statement & Earnings Breakdown
+Module: Finance, Ledger & Earnings | Operation: -- READ
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+SELECT 
+    de."earningId",
+    de."grossEarning",
+    de."netEarning",
+    de."status" AS "earningStatus",
+    de."createdAt" AS "earnedAt",
+    r."rideId",
+    r."originAddress",
+    r."destinationAddress",
+    r."departureTime",
+    u."name" AS "passengerName",
+    b."seatCount"
+FROM "driver_earnings" de
+INNER JOIN "rides" r ON de."rideId" = r."rideId"
+LEFT JOIN "bookings" b ON de."bookingId" = b."bookingId"
+LEFT JOIN "users" u ON b."riderId" = u."userId"
+WHERE de."driverId" = $1
+ORDER BY de."createdAt" DESC;
+
+--- Concrete Executed SQL Statement ---
+SELECT 
+    de."earningId",
+    de."grossEarning",
+    de."netEarning",
+    de."status" AS "earningStatus",
+    de."createdAt" AS "earnedAt",
+    r."rideId",
+    r."originAddress",
+    r."destinationAddress",
+    r."departureTime",
+    u."name" AS "passengerName",
+    b."seatCount"
+FROM "driver_earnings" de
+INNER JOIN "rides" r ON de."rideId" = r."rideId"
+LEFT JOIN "bookings" b ON de."bookingId" = b."bookingId"
+LEFT JOIN "users" u ON b."riderId" = u."userId"
+WHERE de."driverId" = '33333333-3333-4333-8333-333333333333'
+ORDER BY de."createdAt" DESC;
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Sort  (cost=32.76..32.77 rows=2 width=1338) (actual time=0.046..0.048 rows=1.00 loops=1)
+  Output: de."earningId", de."grossEarning", de."netEarning", de.status, de."createdAt", r."rideId", r."originAddress", r."destinationAddress", r."departureTime", u.name, b."seatCount"
+  Sort Key: de."createdAt" DESC
+  Sort Method: quicksort  Memory: 25kB
+  Buffers: shared hit=6
+  ->  Nested Loop Left Join  (cost=20.12..32.75 rows=2 width=1338) (actual time=0.039..0.043 rows=1.00 loops=1)
+        Output: de."earningId", de."grossEarning", de."netEarning", de.status, de."createdAt", r."rideId", r."originAddress", r."destinationAddress", r."departureTime", u.name, b."seatCount"
+        Inner Unique: true
+        Buffers: shared hit=6
+        ->  Hash Right Join  (cost=19.98..30.81 rows=2 width=1136) (actual time=0.032..0.037 rows=1.00 loops=1)
+              Output: de."earningId", de."grossEarning", de."netEarning", de.status, de."createdAt", r."rideId", r."originAddress", r."destinationAddress", r."departureTime", b."seatCount", b."riderId"
+              Hash Cond: (b."bookingId" = de."bookingId")
+              Buffers: shared hit=4
+              ->  Seq Scan on rydora_benchmark.bookings b  (cost=0.00..10.60 rows=60 width=36) (actual time=0.004..0.004 rows=3.00 loops=1)
+                    Output: b."bookingId", b."rideId", b."riderId", b."pickupAddress", b."pickupLat", b."pickupLng", b."dropoffAddress", b."dropoffLat", b."dropoffLng", b."seatCount", b."bookingStatus", b."totalFare", b."fareQuoteId", b."confirmedAt", b."createdAt", b."updatedAt"
+                    Buffers: shared hit=1
+              ->  Hash  (cost=19.95..19.95 rows=2 width=1132) (actual time=0.026..0.027 rows=1.00 loops=1)
+                    Output: de."earningId", de."grossEarning", de."netEarning", de.status, de."createdAt", de."bookingId", r."rideId", r."originAddress", r."destinationAddress", r."departureTime"
+                    Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                    Buffers: shared hit=3
+                    ->  Hash Join  (cost=9.53..19.95 rows=2 width=1132) (actual time=0.025..0.026 rows=1.00 loops=1)
+                          Output: de."earningId", de."grossEarning", de."netEarning", de.status, de."createdAt", de."bookingId", r."rideId", r."originAddress", r."destinationAddress", r."departureTime"
+                          Hash Cond: (r."rideId" = de."rideId")
+                          Buffers: shared hit=3
+                          ->  Seq Scan on rydora_benchmark.rides r  (cost=0.00..10.30 rows=30 width=1056) (actual time=0.009..0.009 rows=1.00 loops=1)
+                                Output: r."rideId", r."driverId", r."vehicleId", r."originAddress", r."originLat", r."originLng", r."originPlaceId", r."destinationAddress", r."destinationLat", r."destinationLng", r."destinationPlaceId", r."departureTime", r."totalSeats", r."availableSeats", r."farePerSeat", r."rideStatus", r."plannedDistanceKm", r."plannedDurationMinutes", r.notes, r."createdAt", r."updatedAt"
+                                Buffers: shared hit=1
+                          ->  Hash  (cost=9.50..9.50 rows=2 width=92) (actual time=0.012..0.013 rows=1.00 loops=1)
+                                Output: de."earningId", de."grossEarning", de."netEarning", de.status, de."createdAt", de."rideId", de."bookingId"
+                                Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                Buffers: shared hit=2
+                                ->  Bitmap Heap Scan on rydora_benchmark.driver_earnings de  (cost=4.16..9.50 rows=2 width=92) (actual time=0.010..0.010 rows=1.00 loops=1)
+                                      Output: de."earningId", de."grossEarning", de."netEarning", de.status, de."createdAt", de."rideId", de."bookingId"
+                                      Recheck Cond: (de."driverId" = '33333333-3333-4333-8333-333333333333'::uuid)
+                                      Heap Blocks: exact=1
+                                      Buffers: shared hit=2
+                                      ->  Bitmap Index Scan on "driver_earnings_driverId_idx"  (cost=0.00..4.16 rows=2 width=0) (actual time=0.003..0.003 rows=4.00 loops=1)
+                                            Index Cond: (de."driverId" = '33333333-3333-4333-8333-333333333333'::uuid)
+                                            Index Searches: 1
+                                            Buffers: shared hit=1
+        ->  Index Scan using users_pkey on rydora_benchmark.users u  (cost=0.14..0.96 rows=1 width=234) (actual time=0.004..0.004 rows=1.00 loops=1)
+              Output: u."userId", u.name, u.email, u.phone, u."phoneVerifiedAt", u."passwordHash", u."profileImage", u."accountStatus", u."emailVerifiedAt", u."createdAt", u."updatedAt", u."deletedAt"
+              Index Cond: (u."userId" = b."riderId")
+              Index Searches: 1
+              Buffers: shared hit=2
+Query Identifier: -5653345590572284992
+Planning:
+  Buffers: shared hit=36
+Planning Time: 0.315 ms
+Execution Time: 0.092 ms

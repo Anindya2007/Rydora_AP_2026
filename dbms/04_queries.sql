@@ -139,7 +139,7 @@ GROUP BY
 -- WRITE
 UPDATE "user_sessions"
 SET "revokedAt" = CURRENT_TIMESTAMP
-WHERE "sessionId" = $1
+WHERE "userId" = $1
   AND "revokedAt" IS NULL;
 
 
@@ -155,11 +155,10 @@ WHERE "sessionId" = $1
 SELECT 
     c."communityId",
     c."name" AS "communityName",
-    c."slug",
     c."type" AS "communityType",
     c."status" AS "communityStatus",
-    cd."domain",
-    cd."isPrimary"
+    c."description",
+    cd."domain"
 FROM "communities" c
 INNER JOIN "community_domains" cd ON c."communityId" = cd."communityId"
 WHERE LOWER(cd."domain") = LOWER($1)
@@ -174,21 +173,21 @@ WHERE LOWER(cd."domain") = LOWER($1)
 INSERT INTO "communities" (
     "communityId",
     "name",
-    "slug",
     "type",
-    "status",
     "description",
+    "status",
+    "isDiscoverable",
     "createdById",
     "createdAt",
     "updatedAt"
 ) VALUES (
     $1, -- communityId
     $2, -- name
-    LOWER(TRIM($3)), -- slug
-    $4, -- type ('UNIVERSITY', 'OFFICE', etc.)
+    $3, -- type ('UNIVERSITY', 'OFFICE', etc.)
+    $4, -- description
     'ACTIVE',
-    $5, -- description
-    $6, -- createdById
+    true,
+    $5, -- createdById
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 );
@@ -202,14 +201,12 @@ INSERT INTO "community_domains" (
     "domainId",
     "communityId",
     "domain",
-    "isPrimary",
     "isActive",
     "createdAt"
 ) VALUES (
     $1, -- domainId
     $2, -- communityId
     LOWER(TRIM($3)), -- domain
-    $4, -- isPrimary (BOOLEAN)
     true,
     CURRENT_TIMESTAMP
 );
@@ -223,21 +220,26 @@ INSERT INTO "community_memberships" (
     "membershipId",
     "communityId",
     "userId",
-    "role",
-    "status",
-    "joinedAt"
+    "membershipRole",
+    "membershipStatus",
+    "joinedAt",
+    "createdAt",
+    "updatedAt"
 ) VALUES (
     $1, -- membershipId
     $2, -- communityId
     $3, -- userId
-    $4, -- role ('MEMBER' or 'ADMIN')
+    $4, -- membershipRole ('MEMBER' or 'ADMIN')
     'ACTIVE',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 )
 ON CONFLICT ("communityId", "userId")
 DO UPDATE SET 
-    "status" = 'ACTIVE',
-    "role" = EXCLUDED."role";
+    "membershipStatus" = 'ACTIVE',
+    "membershipRole" = EXCLUDED."membershipRole",
+    "updatedAt" = CURRENT_TIMESTAMP;
 
 -- ---------------------------------------------------------------------
 -- Query 2.5: List User's Communities with Member Statistics
@@ -247,19 +249,18 @@ DO UPDATE SET
 SELECT 
     c."communityId",
     c."name" AS "communityName",
-    c."slug",
     c."type",
-    cm."role" AS "userRole",
+    cm."membershipRole" AS "userRole",
     cm."joinedAt",
     COUNT(m2."userId") AS "totalActiveMembers"
 FROM "community_memberships" cm
 INNER JOIN "communities" c ON cm."communityId" = c."communityId"
 LEFT JOIN "community_memberships" m2 
-    ON c."communityId" = m2."communityId" AND m2."status" = 'ACTIVE'
+    ON c."communityId" = m2."communityId" AND m2."membershipStatus" = 'ACTIVE'
 WHERE cm."userId" = $1
-  AND cm."status" = 'ACTIVE'
+  AND cm."membershipStatus" = 'ACTIVE'
   AND c."status" = 'ACTIVE'
-GROUP BY c."communityId", c."name", c."slug", c."type", cm."role", cm."joinedAt"
+GROUP BY c."communityId", c."name", c."type", cm."membershipRole", cm."joinedAt"
 ORDER BY c."name" ASC;
 
 
@@ -274,27 +275,27 @@ ORDER BY c."name" ASC;
 -- WRITE
 INSERT INTO "vehicles" (
     "vehicleId",
-    "driverId",
+    "ownerId",
+    "vehicleType",
+    "registrationNumber",
     "make",
     "model",
-    "year",
     "color",
-    "licensePlate",
-    "type",
     "seatCapacity",
+    "verificationStatus",
     "isActive",
     "createdAt",
     "updatedAt"
 ) VALUES (
     $1, -- vehicleId
-    $2, -- driverId
-    $3, -- make
-    $4, -- model
-    $5, -- year
-    $6, -- color
-    UPPER(TRIM($7)), -- licensePlate
-    $8, -- type ('SEDAN', 'SUV', etc.)
-    $9, -- seatCapacity
+    $2, -- ownerId (driver userId)
+    $3, -- vehicleType ('SEDAN', 'SUV', etc.)
+    UPPER(TRIM($4)), -- registrationNumber
+    $5, -- make
+    $6, -- model
+    $7, -- color
+    $8, -- seatCapacity
+    'VERIFIED',
     true,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
@@ -309,48 +310,47 @@ INSERT INTO "driver_profiles" (
     "driverProfileId",
     "userId",
     "licenseNumber",
-    "licenseExpiry",
     "eligibilityStatus",
+    "approvedAt",
     "createdAt",
     "updatedAt"
 ) VALUES (
     $1, -- driverProfileId
     $2, -- userId
     UPPER(TRIM($3)), -- licenseNumber
-    $4, -- licenseExpiry (DATE)
     'ELIGIBLE',
+    CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 )
 ON CONFLICT ("userId")
 DO UPDATE SET 
     "licenseNumber" = EXCLUDED."licenseNumber",
-    "licenseExpiry" = EXCLUDED."licenseExpiry",
     "eligibilityStatus" = 'ELIGIBLE',
+    "approvedAt" = CURRENT_TIMESTAMP,
     "updatedAt" = CURRENT_TIMESTAMP;
 
 -- ---------------------------------------------------------------------
 -- Query 3.3: Fetch Driver Vehicles with Verification Standing
--- Description: JOINs driver vehicles with driver verification status and trip metrics.
+-- Description: JOINs driver vehicles with driver verification status.
 -- ---------------------------------------------------------------------
 -- READ
 SELECT 
     v."vehicleId",
     v."make",
     v."model",
-    v."year",
     v."color",
-    v."licensePlate",
-    v."type" AS "vehicleType",
+    v."registrationNumber",
+    v."vehicleType",
     v."seatCapacity",
+    v."verificationStatus",
     v."isActive",
     dp."eligibilityStatus",
-    dp."totalTrips",
-    dp."ratingAverage"
+    dp."licenseNumber"
 FROM "vehicles" v
-INNER JOIN "users" u ON v."driverId" = u."userId"
+INNER JOIN "users" u ON v."ownerId" = u."userId"
 LEFT JOIN "driver_profiles" dp ON u."userId" = dp."userId"
-WHERE v."driverId" = $1
+WHERE v."ownerId" = $1
   AND v."isActive" = true
 ORDER BY v."createdAt" DESC;
 
@@ -414,11 +414,13 @@ INSERT INTO "rides" (
 INSERT INTO "ride_communities" (
     "rideCommunityId",
     "rideId",
-    "communityId"
+    "communityId",
+    "createdAt"
 ) VALUES (
     $1, -- rideCommunityId
     $2, -- rideId
-    $3  -- communityId
+    $3, -- communityId
+    CURRENT_TIMESTAMP
 );
 
 -- ---------------------------------------------------------------------
@@ -429,21 +431,23 @@ INSERT INTO "ride_communities" (
 INSERT INTO "ride_stops" (
     "stopId",
     "rideId",
-    "stopOrder",
-    "locationAddress",
+    "stopType",
+    "address",
     "latitude",
     "longitude",
-    "stopType",
-    "plannedTime"
+    "sequence",
+    "estimatedArrivalTime",
+    "createdAt"
 ) VALUES (
     $1, -- stopId
     $2, -- rideId
-    $3, -- stopOrder
-    $4, -- locationAddress
+    $3, -- stopType ('PICKUP', 'DROPOFF', 'WAYPOINT')
+    $4, -- address
     $5, -- latitude
     $6, -- longitude
-    $7, -- stopType ('PICKUP', 'DROPOFF', 'WAYPOINT')
-    $8  -- plannedTime
+    $7, -- sequence
+    $8, -- estimatedArrivalTime
+    CURRENT_TIMESTAMP
 );
 
 -- ---------------------------------------------------------------------
@@ -467,12 +471,11 @@ SELECT
     u."userId" AS "driverId",
     u."name" AS "driverName",
     u."profileImage" AS "driverImage",
-    dp."ratingAverage" AS "driverRating",
-    dp."totalTrips" AS "driverTotalTrips",
+    dp."eligibilityStatus" AS "driverStatus",
     v."make" AS "vehicleMake",
     v."model" AS "vehicleModel",
     v."color" AS "vehicleColor",
-    v."licensePlate",
+    v."registrationNumber",
     c."communityId",
     c."name" AS "communityName"
 FROM "rides" r
@@ -508,17 +511,17 @@ SELECT
     u."phone" AS "driverPhone",
     v."make",
     v."model",
-    v."licensePlate",
-    rs."stopOrder",
-    rs."locationAddress" AS "stopAddress",
+    v."registrationNumber",
+    rs."sequence",
+    rs."address" AS "stopAddress",
     rs."stopType",
-    rs."plannedTime"
+    rs."estimatedArrivalTime"
 FROM "rides" r
 INNER JOIN "users" u ON r."driverId" = u."userId"
 INNER JOIN "vehicles" v ON r."vehicleId" = v."vehicleId"
 LEFT JOIN "ride_stops" rs ON r."rideId" = rs."rideId"
 WHERE r."rideId" = $1
-ORDER BY rs."stopOrder" ASC;
+ORDER BY rs."sequence" ASC;
 
 -- ---------------------------------------------------------------------
 -- Query 4.6: Transition Ride Lifecycle State
@@ -545,7 +548,7 @@ UPDATE "rides"
 SET "availableSeats" = "availableSeats" - $2,
     "updatedAt" = CURRENT_TIMESTAMP
 WHERE "rideId" = $1
-  AND "rideStatus" = 'SCHEDULED'
+  AND "rideStatus" IN ('SCHEDULED', 'ACTIVE')
   AND "availableSeats" >= $2;
 
 -- ---------------------------------------------------------------------
@@ -629,7 +632,7 @@ SELECT
     d."phone" AS "driverPhone",
     v."make" AS "vehicleMake",
     v."model" AS "vehicleModel",
-    v."licensePlate",
+    v."registrationNumber",
     p."paymentStatus",
     rt."score" AS "ratingGiven"
 FROM "bookings" b
@@ -656,16 +659,9 @@ WHERE "bookingId" = $1
 
 -- ---------------------------------------------------------------------
 -- Query 5.6: Booking Cancellation & Atomic Seat Restoration
--- Description: Steps to cancel booking and atomically increment ride available seats.
+-- Description: Restores ride capacity when a reservation is cancelled.
 -- ---------------------------------------------------------------------
--- WRITE (Step A: Cancel Booking)
-UPDATE "bookings"
-SET "bookingStatus" = 'CANCELLED',
-    "updatedAt" = CURRENT_TIMESTAMP
-WHERE "bookingId" = $1
-  AND "bookingStatus" IN ('PENDING', 'CONFIRMED');
-
--- WRITE (Step B: Restore Seats Capped at Total Capacity)
+-- WRITE
 UPDATE "rides"
 SET "availableSeats" = LEAST("totalSeats", "availableSeats" + $2),
     "updatedAt" = CURRENT_TIMESTAMP
@@ -680,7 +676,7 @@ UPDATE "bookings"
 SET "bookingStatus" = 'COMPLETED',
     "updatedAt" = CURRENT_TIMESTAMP
 WHERE "bookingId" = $1
-  AND "bookingStatus" = 'CONFIRMED';
+  AND "bookingStatus" IN ('PENDING', 'CONFIRMED');
 
 
 -- =====================================================================
@@ -754,19 +750,17 @@ INSERT INTO "driver_earnings" (
 -- WRITE
 INSERT INTO "ledger_transactions" (
     "transactionId",
+    "transactionType",
+    "referenceType",
     "referenceId",
-    "type",
-    "amount",
-    "currency",
     "description",
     "createdAt"
 ) VALUES (
     $1, -- transactionId
-    $2, -- referenceId (bookingId/rideId)
     'RIDE_PAYMENT',
-    $3, -- amount
-    'INR',
-    $4, -- description
+    'BOOKING',
+    $2, -- referenceId (bookingId)
+    $3, -- description
     CURRENT_TIMESTAMP
 );
 
@@ -778,6 +772,7 @@ INSERT INTO "ledger_transactions" (
 INSERT INTO "refunds" (
     "refundId",
     "paymentId",
+    "requestedById",
     "amount",
     "reason",
     "refundStatus",
@@ -786,8 +781,9 @@ INSERT INTO "refunds" (
 ) VALUES (
     $1, -- refundId
     $2, -- paymentId
-    $3, -- amount
-    $4, -- reason
+    $3, -- requestedById
+    $4, -- amount
+    $5, -- reason
     'SUCCEEDED',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
@@ -909,8 +905,7 @@ ORDER BY sa."triggeredAt" DESC;
 UPDATE "sos_alerts"
 SET "status" = 'RESOLVED',
     "resolvedAt" = CURRENT_TIMESTAMP,
-    "resolverNotes" = $2,
-    "resolvedById" = $3
+    "resolverNotes" = $2
 WHERE "alertId" = $1
   AND "status" IN ('TRIGGERED', 'ACKNOWLEDGED');
 
@@ -923,7 +918,7 @@ WHERE "alertId" = $1
 -- Query 8.1: Submit User Rating & Review
 -- Description: Persists star score and written review between ride participants.
 -- ---------------------------------------------------------------------
--- WRITE (Step A: Rating)
+-- WRITE
 INSERT INTO "ratings" (
     "ratingId",
     "bookingId",
@@ -944,40 +939,18 @@ INSERT INTO "ratings" (
     CURRENT_TIMESTAMP
 );
 
--- WRITE (Step B: Optional Review Details)
-INSERT INTO "reviews" (
-    "reviewId",
-    "ratingId",
-    "headline",
-    "reviewText",
-    "createdAt"
-) VALUES (
-    $1, -- reviewId
-    $2, -- ratingId
-    $3, -- headline
-    $4, -- reviewText
-    CURRENT_TIMESTAMP
-);
-
 -- ---------------------------------------------------------------------
--- Query 8.2: Recalculate Driver Profile Aggregate Rating
--- Description: Updates driver profile rating average and trip counter based on rating rows.
+-- Query 8.2: Compute User Rating Statistics
+-- Description: Aggregates average rating score and review volume.
 -- ---------------------------------------------------------------------
--- WRITE
-UPDATE "driver_profiles" dp
-SET "ratingAverage" = sub."avgScore",
-    "totalTrips" = sub."totalCount",
-    "updatedAt" = CURRENT_TIMESTAMP
-FROM (
-    SELECT 
-        "rateeId",
-        ROUND(AVG("score"), 2) AS "avgScore",
-        COUNT("ratingId") AS "totalCount"
-    FROM "ratings"
-    WHERE "rateeId" = $1
-    GROUP BY "rateeId"
-) sub
-WHERE dp."userId" = sub."rateeId";
+-- READ
+SELECT 
+    "rateeId",
+    ROUND(AVG("score"), 2) AS "averageRating",
+    COUNT("ratingId") AS "totalReviews"
+FROM "ratings"
+WHERE "rateeId" = $1
+GROUP BY "rateeId";
 
 -- ---------------------------------------------------------------------
 -- Query 8.3: Retrieve User Reviews with Rater Context
@@ -1051,7 +1024,8 @@ LIMIT 25;
 -- ---------------------------------------------------------------------
 -- WRITE
 UPDATE "notifications"
-SET "isRead" = true
+SET "isRead" = true,
+    "readAt" = CURRENT_TIMESTAMP
 WHERE "userId" = $1
   AND "isRead" = false;
 
@@ -1070,14 +1044,18 @@ INSERT INTO "emission_estimates" (
     "rideId",
     "bookingId",
     "distanceKm",
-    "co2SavedGrams",
+    "co2SavedKg",
+    "baselineCo2Kg",
+    "actualCo2Kg",
     "createdAt"
 ) VALUES (
     $1, -- estimateId
     $2, -- rideId
     $3, -- bookingId
     $4, -- distanceKm
-    ROUND($4 * 140.0, 2), -- 140g CO2 saved per shared carpool km
+    ROUND($4 * 0.140, 2), -- 140g CO2 saved per km in kg
+    ROUND($4 * 0.210, 2),
+    ROUND($4 * 0.070, 2),
     CURRENT_TIMESTAMP
 );
 
@@ -1112,7 +1090,7 @@ SELECT
     COUNT(DISTINCT r."rideId") AS "totalRidesCreated",
     COUNT(DISTINCT b."bookingId") FILTER (WHERE b."bookingStatus" = 'COMPLETED') AS "completedCarPoolTrips",
     COALESCE(SUM(b."totalFare") FILTER (WHERE b."bookingStatus" = 'COMPLETED'), 0.00) AS "totalGrossVolumeINR",
-    COALESCE(ROUND(SUM(ee."co2SavedGrams") / 1000.0, 2), 0.00) AS "totalCO2SavedKilograms",
+    COALESCE(ROUND(SUM(ee."co2SavedKg"), 2), 0.00) AS "totalCO2SavedKg",
     COUNT(DISTINCT sa."alertId") AS "totalSOSAlertsTriggered"
 FROM "users" u
 LEFT JOIN "rides" r ON r."driverId" = u."userId"

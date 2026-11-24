@@ -1,0 +1,73 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 6.2 - Record Driver Earning Record
+Module: Finance, Ledger & Earnings | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "driver_earnings" (
+    "earningId",
+    "driverId",
+    "rideId",
+    "bookingId",
+    "grossEarning",
+    "platformFee",
+    "deductions",
+    "netEarning",
+    "status",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    $1, -- earningId
+    $2, -- driverId
+    $3, -- rideId
+    $4, -- bookingId
+    $5, -- grossEarning
+    0.00, -- zero platform fee
+    0.00,
+    $5, -- netEarning equals grossEarning
+    'AVAILABLE',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "driver_earnings" (
+    "earningId",
+    "driverId",
+    "rideId",
+    "bookingId",
+    "grossEarning",
+    "platformFee",
+    "deductions",
+    "netEarning",
+    "status",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    '7d03b7a4-57db-41d8-be94-c57ecd2fbe4d', -- earningId
+    '33333333-3333-4333-8333-333333333333', -- driverId
+    '77777777-7777-4777-8777-777777777777', -- rideId
+    '88888888-2222-4888-8888-888888888888', -- bookingId
+    120.0, -- grossEarning
+    0.00, -- zero platform fee
+    0.00,
+    120.0, -- netEarning equals grossEarning
+    'AVAILABLE',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.driver_earnings  (cost=0.00..0.03 rows=0 width=0) (actual time=0.071..0.072 rows=0.00 loops=1)
+  Buffers: shared hit=11
+  ->  Result  (cost=0.00..0.03 rows=1 width=164) (actual time=0.004..0.005 rows=1.00 loops=1)
+        Output: '7d03b7a4-57db-41d8-be94-c57ecd2fbe4d'::uuid, '33333333-3333-4333-8333-333333333333'::uuid, '77777777-7777-4777-8777-777777777777'::uuid, '88888888-2222-4888-8888-888888888888'::uuid, 120.00::numeric(10,2), 0.00::numeric(10,2), 0.00::numeric(10,2), 120.00::numeric(10,2), 'AVAILABLE'::"DriverEarningStatus", NULL::uuid, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+Query Identifier: -7598504298741815634
+Planning Time: 0.036 ms
+Trigger RI_ConstraintTrigger_c_112893 for constraint driver_earnings_driverId_fkey: time=0.089 calls=1
+Trigger RI_ConstraintTrigger_c_112898 for constraint driver_earnings_rideId_fkey: time=0.046 calls=1
+Trigger RI_ConstraintTrigger_c_112903 for constraint driver_earnings_bookingId_fkey: time=0.040 calls=1
+Execution Time: 0.275 ms

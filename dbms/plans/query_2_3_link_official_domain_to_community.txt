@@ -1,0 +1,47 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 2.3 - Link Official Domain to Community
+Module: Communities & Domains | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "community_domains" (
+    "domainId",
+    "communityId",
+    "domain",
+    "isActive",
+    "createdAt"
+) VALUES (
+    $1, -- domainId
+    $2, -- communityId
+    LOWER(TRIM($3)), -- domain
+    true,
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "community_domains" (
+    "domainId",
+    "communityId",
+    "domain",
+    "isActive",
+    "createdAt"
+) VALUES (
+    '15d8630c-3742-4e21-9816-eb0eff8878fa', -- domainId
+    '44444444-4444-4444-8444-444444444444', -- communityId
+    LOWER(TRIM('subdomain_1_a009.rishihood.edu.in')), -- domain
+    true,
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.community_domains  (cost=0.00..0.02 rows=0 width=0) (actual time=0.055..0.055 rows=0.00 loops=1)
+  Buffers: shared hit=4
+  ->  Result  (cost=0.00..0.02 rows=1 width=565) (actual time=0.003..0.004 rows=1.00 loops=1)
+        Output: '15d8630c-3742-4e21-9816-eb0eff8878fa'::uuid, '44444444-4444-4444-8444-444444444444'::uuid, 'subdomain_1_a009.rishihood.edu.in'::character varying(255), true, NULL::timestamp(3) without time zone, CURRENT_TIMESTAMP
+Query Identifier: -4187536022147100909
+Planning Time: 0.034 ms
+Trigger RI_ConstraintTrigger_c_112673 for constraint community_domains_communityId_fkey: time=0.087 calls=1
+Execution Time: 0.164 ms

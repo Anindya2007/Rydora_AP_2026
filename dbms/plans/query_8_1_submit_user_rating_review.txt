@@ -1,0 +1,62 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 8.1 - Submit User Rating & Review
+Module: Trust, Ratings & Reviews | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "ratings" (
+    "ratingId",
+    "bookingId",
+    "rideId",
+    "raterId",
+    "rateeId",
+    "score",
+    "comment",
+    "createdAt"
+) VALUES (
+    $1, -- ratingId
+    $2, -- bookingId
+    $3, -- rideId
+    $4, -- raterId
+    $5, -- rateeId
+    $6, -- score (1 to 5)
+    $7, -- comment
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "ratings" (
+    "ratingId",
+    "bookingId",
+    "rideId",
+    "raterId",
+    "rateeId",
+    "score",
+    "comment",
+    "createdAt"
+) VALUES (
+    'c942f10d-d1fb-4fa4-b984-96fec5b8f33b', -- ratingId
+    '88888888-2222-4888-8888-888888888888', -- bookingId
+    '77777777-7777-4777-8777-777777777777', -- rideId
+    '22222222-2222-4222-8222-222222222222', -- raterId
+    '33333333-3333-4333-8333-333333333333', -- rateeId
+    5, -- score (1 to 5)
+    'Excellent carpool ride and punctuality!', -- comment
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.ratings  (cost=0.00..0.02 rows=0 width=0) (actual time=0.048..0.048 rows=0.00 loops=1)
+  Buffers: shared hit=5
+  ->  Result  (cost=0.00..0.02 rows=1 width=124) (actual time=0.005..0.005 rows=1.00 loops=1)
+        Output: 'c942f10d-d1fb-4fa4-b984-96fec5b8f33b'::uuid, '88888888-2222-4888-8888-888888888888'::uuid, '77777777-7777-4777-8777-777777777777'::uuid, '22222222-2222-4222-8222-222222222222'::uuid, '33333333-3333-4333-8333-333333333333'::uuid, 5, 'Excellent carpool ride and punctuality!'::text, CURRENT_TIMESTAMP
+Query Identifier: -3494050392238873493
+Planning Time: 0.024 ms
+Trigger RI_ConstraintTrigger_c_112973 for constraint ratings_bookingId_fkey: time=0.099 calls=1
+Trigger RI_ConstraintTrigger_c_112978 for constraint ratings_rideId_fkey: time=0.042 calls=1
+Trigger RI_ConstraintTrigger_c_112983 for constraint ratings_raterId_fkey: time=0.029 calls=1
+Trigger RI_ConstraintTrigger_c_112988 for constraint ratings_rateeId_fkey: time=0.016 calls=1
+Execution Time: 0.262 ms

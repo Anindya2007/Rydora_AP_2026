@@ -1,0 +1,51 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 10.2 - Award Commuter Green Points
+Module: Sustainability & Analytics | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "green_point_transactions" (
+    "transactionId",
+    "userId",
+    "points",
+    "type",
+    "description",
+    "createdAt"
+) VALUES (
+    $1, -- transactionId
+    $2, -- userId
+    $3, -- points (INTEGER)
+    'RIDE_SHARED',
+    $4, -- description
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "green_point_transactions" (
+    "transactionId",
+    "userId",
+    "points",
+    "type",
+    "description",
+    "createdAt"
+) VALUES (
+    '49f1fc20-baab-4082-b8f3-ec94ab511034', -- transactionId
+    '11111111-1111-4111-8111-111111111111', -- userId
+    50, -- points (INTEGER)
+    'RIDE_SHARED',
+    'Carpool shared trip bonus', -- description
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.green_point_transactions  (cost=0.00..0.02 rows=0 width=0) (actual time=0.168..0.169 rows=0.00 loops=1)
+  Buffers: shared hit=46 dirtied=7 written=4
+  ->  Result  (cost=0.00..0.02 rows=1 width=698) (actual time=0.004..0.004 rows=1.00 loops=1)
+        Output: '49f1fc20-baab-4082-b8f3-ec94ab511034'::uuid, '11111111-1111-4111-8111-111111111111'::uuid, 50, 'RIDE_SHARED'::"GreenPointType", NULL::character varying(50), NULL::uuid, 'Carpool shared trip bonus'::character varying(255), CURRENT_TIMESTAMP
+Query Identifier: 620867929312159241
+Planning Time: 0.030 ms
+Trigger RI_ConstraintTrigger_c_113083 for constraint green_point_transactions_userId_fkey: time=0.122 calls=1
+Execution Time: 0.310 ms

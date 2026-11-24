@@ -1,0 +1,44 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 4.2 - Associate Ride with Community Carpool Corridor
+Module: Rides & Routing | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "ride_communities" (
+    "rideCommunityId",
+    "rideId",
+    "communityId",
+    "createdAt"
+) VALUES (
+    $1, -- rideCommunityId
+    $2, -- rideId
+    $3, -- communityId
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "ride_communities" (
+    "rideCommunityId",
+    "rideId",
+    "communityId",
+    "createdAt"
+) VALUES (
+    'b0f9a50d-e2f0-41c1-9797-078e13868df0', -- rideCommunityId
+    '77777777-7777-4777-8777-777777777777', -- rideId
+    '44444444-2222-4444-8444-444444444444', -- communityId
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.ride_communities  (cost=0.00..0.02 rows=0 width=0) (actual time=0.051..0.051 rows=0.00 loops=1)
+  Buffers: shared hit=7
+  ->  Result  (cost=0.00..0.02 rows=1 width=56) (actual time=0.005..0.005 rows=1.00 loops=1)
+        Output: 'b0f9a50d-e2f0-41c1-9797-078e13868df0'::uuid, '77777777-7777-4777-8777-777777777777'::uuid, '44444444-2222-4444-8444-444444444444'::uuid, CURRENT_TIMESTAMP
+Query Identifier: -8591823329583898374
+Planning Time: 0.022 ms
+Trigger RI_ConstraintTrigger_c_112728 for constraint ride_communities_rideId_fkey: time=0.099 calls=1
+Trigger RI_ConstraintTrigger_c_112733 for constraint ride_communities_communityId_fkey: time=0.034 calls=1
+Execution Time: 0.210 ms

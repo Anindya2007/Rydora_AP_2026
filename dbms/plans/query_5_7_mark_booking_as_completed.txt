@@ -1,0 +1,34 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 5.7 - Mark Booking as Completed
+Module: Bookings & Seat Management | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+UPDATE "bookings"
+SET "bookingStatus" = 'COMPLETED',
+    "updatedAt" = CURRENT_TIMESTAMP
+WHERE "bookingId" = $1
+  AND "bookingStatus" IN ('PENDING', 'CONFIRMED');
+
+--- Concrete Executed SQL Statement ---
+UPDATE "bookings"
+SET "bookingStatus" = 'COMPLETED',
+    "updatedAt" = CURRENT_TIMESTAMP
+WHERE "bookingId" = '88888888-1111-4888-8888-888888888888'
+  AND "bookingStatus" IN ('PENDING', 'CONFIRMED');
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Update on rydora_benchmark.bookings  (cost=0.14..8.17 rows=0 width=0) (actual time=0.062..0.063 rows=0.00 loops=1)
+  Buffers: shared hit=11
+  ->  Index Scan using bookings_pkey on rydora_benchmark.bookings  (cost=0.14..8.17 rows=1 width=18) (actual time=0.009..0.010 rows=1.00 loops=1)
+        Output: 'COMPLETED'::"BookingStatus", CURRENT_TIMESTAMP, ctid
+        Index Cond: (bookings."bookingId" = '88888888-1111-4888-8888-888888888888'::uuid)
+        Filter: (bookings."bookingStatus" = ANY ('{PENDING,CONFIRMED}'::"BookingStatus"[]))
+        Index Searches: 1
+        Buffers: shared hit=2
+Query Identifier: -3683132712568637123
+Planning Time: 0.101 ms
+Execution Time: 0.089 ms

@@ -1,0 +1,100 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 4.5 - Retrieve Full Ride Details with En-Route Stops
+Module: Rides & Routing | Operation: -- READ
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+SELECT 
+    r."rideId",
+    r."originAddress",
+    r."destinationAddress",
+    r."departureTime",
+    r."availableSeats",
+    r."farePerSeat",
+    r."rideStatus",
+    u."name" AS "driverName",
+    u."phone" AS "driverPhone",
+    v."make",
+    v."model",
+    v."registrationNumber",
+    rs."sequence",
+    rs."address" AS "stopAddress",
+    rs."stopType",
+    rs."estimatedArrivalTime"
+FROM "rides" r
+INNER JOIN "users" u ON r."driverId" = u."userId"
+INNER JOIN "vehicles" v ON r."vehicleId" = v."vehicleId"
+LEFT JOIN "ride_stops" rs ON r."rideId" = rs."rideId"
+WHERE r."rideId" = $1
+ORDER BY rs."sequence" ASC;
+
+--- Concrete Executed SQL Statement ---
+SELECT 
+    r."rideId",
+    r."originAddress",
+    r."destinationAddress",
+    r."departureTime",
+    r."availableSeats",
+    r."farePerSeat",
+    r."rideStatus",
+    u."name" AS "driverName",
+    u."phone" AS "driverPhone",
+    v."make",
+    v."model",
+    v."registrationNumber",
+    rs."sequence",
+    rs."address" AS "stopAddress",
+    rs."stopType",
+    rs."estimatedArrivalTime"
+FROM "rides" r
+INNER JOIN "users" u ON r."driverId" = u."userId"
+INNER JOIN "vehicles" v ON r."vehicleId" = v."vehicleId"
+LEFT JOIN "ride_stops" rs ON r."rideId" = rs."rideId"
+WHERE r."rideId" = '77777777-7777-4777-8777-777777777777'
+ORDER BY rs."sequence" ASC;
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Sort  (cost=32.96..32.97 rows=1 width=2242) (actual time=0.033..0.034 rows=1.00 loops=1)
+  Output: r."rideId", r."originAddress", r."destinationAddress", r."departureTime", r."availableSeats", r."farePerSeat", r."rideStatus", u.name, u.phone, v.make, v.model, v."registrationNumber", rs.sequence, rs.address, rs."stopType", rs."estimatedArrivalTime"
+  Sort Key: rs.sequence
+  Sort Method: quicksort  Memory: 25kB
+  Buffers: shared hit=12
+  ->  Nested Loop Left Join  (cost=0.57..32.95 rows=1 width=2242) (actual time=0.021..0.023 rows=1.00 loops=1)
+        Output: r."rideId", r."originAddress", r."destinationAddress", r."departureTime", r."availableSeats", r."farePerSeat", r."rideStatus", u.name, u.phone, v.make, v.model, v."registrationNumber", rs.sequence, rs.address, rs."stopType", rs."estimatedArrivalTime"
+        Buffers: shared hit=9
+        ->  Nested Loop  (cost=0.43..24.78 rows=1 width=1710) (actual time=0.015..0.015 rows=1.00 loops=1)
+              Output: r."rideId", r."originAddress", r."destinationAddress", r."departureTime", r."availableSeats", r."farePerSeat", r."rideStatus", u.name, u.phone, v.make, v.model, v."registrationNumber"
+              Inner Unique: true
+              Buffers: shared hit=6
+              ->  Nested Loop  (cost=0.28..16.51 rows=1 width=1372) (actual time=0.011..0.011 rows=1.00 loops=1)
+                    Output: r."rideId", r."originAddress", r."destinationAddress", r."departureTime", r."availableSeats", r."farePerSeat", r."rideStatus", r."vehicleId", u.name, u.phone
+                    Inner Unique: true
+                    Buffers: shared hit=4
+                    ->  Index Scan using rides_pkey on rydora_benchmark.rides r  (cost=0.14..8.15 rows=1 width=1112) (actual time=0.004..0.004 rows=1.00 loops=1)
+                          Output: r."rideId", r."driverId", r."vehicleId", r."originAddress", r."originLat", r."originLng", r."originPlaceId", r."destinationAddress", r."destinationLat", r."destinationLng", r."destinationPlaceId", r."departureTime", r."totalSeats", r."availableSeats", r."farePerSeat", r."rideStatus", r."plannedDistanceKm", r."plannedDurationMinutes", r.notes, r."createdAt", r."updatedAt"
+                          Index Cond: (r."rideId" = '77777777-7777-4777-8777-777777777777'::uuid)
+                          Index Searches: 1
+                          Buffers: shared hit=2
+                    ->  Index Scan using users_pkey on rydora_benchmark.users u  (cost=0.14..8.16 rows=1 width=292) (actual time=0.003..0.003 rows=1.00 loops=1)
+                          Output: u."userId", u.name, u.email, u.phone, u."phoneVerifiedAt", u."passwordHash", u."profileImage", u."accountStatus", u."emailVerifiedAt", u."createdAt", u."updatedAt", u."deletedAt"
+                          Index Cond: (u."userId" = r."driverId")
+                          Index Searches: 1
+                          Buffers: shared hit=2
+              ->  Index Scan using vehicles_pkey on rydora_benchmark.vehicles v  (cost=0.14..8.16 rows=1 width=370) (actual time=0.003..0.003 rows=1.00 loops=1)
+                    Output: v."vehicleId", v."ownerId", v."vehicleType", v."registrationNumber", v.make, v.model, v.color, v."seatCapacity", v."verificationStatus", v."isActive", v."createdAt", v."updatedAt"
+                    Index Cond: (v."vehicleId" = r."vehicleId")
+                    Index Searches: 1
+                    Buffers: shared hit=2
+        ->  Index Scan using "ride_stops_rideId_sequence_key" on rydora_benchmark.ride_stops rs  (cost=0.14..8.16 rows=1 width=548) (actual time=0.006..0.007 rows=1.00 loops=1)
+              Output: rs."stopId", rs."rideId", rs."stopType", rs.address, rs.latitude, rs.longitude, rs."placeId", rs.sequence, rs."estimatedArrivalTime", rs."createdAt"
+              Index Cond: (rs."rideId" = '77777777-7777-4777-8777-777777777777'::uuid)
+              Index Searches: 1
+              Buffers: shared hit=3
+Query Identifier: -6671079539390732591
+Planning:
+  Buffers: shared hit=38
+Planning Time: 0.259 ms
+Execution Time: 0.071 ms

@@ -1,0 +1,31 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 5.6 - Booking Cancellation & Atomic Seat Restoration
+Module: Bookings & Seat Management | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+UPDATE "rides"
+SET "availableSeats" = LEAST("totalSeats", "availableSeats" + $2),
+    "updatedAt" = CURRENT_TIMESTAMP
+WHERE "rideId" = $1;
+
+--- Concrete Executed SQL Statement ---
+UPDATE "rides"
+SET "availableSeats" = LEAST("totalSeats", "availableSeats" + 1),
+    "updatedAt" = CURRENT_TIMESTAMP
+WHERE "rideId" = '88888888-8888-4888-8888-888888888888';
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Update on rydora_benchmark.rides  (cost=0.14..8.17 rows=0 width=0) (actual time=0.004..0.004 rows=0.00 loops=1)
+  Buffers: shared hit=1
+  ->  Index Scan using rides_pkey on rydora_benchmark.rides  (cost=0.14..8.17 rows=1 width=18) (actual time=0.003..0.003 rows=0.00 loops=1)
+        Output: LEAST("totalSeats", ("availableSeats" + 1)), CURRENT_TIMESTAMP, ctid
+        Index Cond: (rides."rideId" = '88888888-8888-4888-8888-888888888888'::uuid)
+        Index Searches: 1
+        Buffers: shared hit=1
+Query Identifier: 4872369065691283650
+Planning Time: 0.070 ms
+Execution Time: 0.045 ms

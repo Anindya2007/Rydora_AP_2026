@@ -1,0 +1,81 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 5.3 - Driver Passenger Manifest for Ride
+Module: Bookings & Seat Management | Operation: -- READ
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+SELECT 
+    b."bookingId",
+    b."seatCount",
+    b."totalFare",
+    b."bookingStatus",
+    b."pickupAddress",
+    b."dropoffAddress",
+    b."createdAt" AS "bookedAt",
+    u."userId" AS "passengerId",
+    u."name" AS "passengerName",
+    u."phone" AS "passengerPhone",
+    u."profileImage" AS "passengerImage",
+    p."paymentStatus"
+FROM "bookings" b
+INNER JOIN "users" u ON b."riderId" = u."userId"
+LEFT JOIN "payments" p ON b."bookingId" = p."bookingId"
+WHERE b."rideId" = $1
+ORDER BY b."createdAt" ASC;
+
+--- Concrete Executed SQL Statement ---
+SELECT 
+    b."bookingId",
+    b."seatCount",
+    b."totalFare",
+    b."bookingStatus",
+    b."pickupAddress",
+    b."dropoffAddress",
+    b."createdAt" AS "bookedAt",
+    u."userId" AS "passengerId",
+    u."name" AS "passengerName",
+    u."phone" AS "passengerPhone",
+    u."profileImage" AS "passengerImage",
+    p."paymentStatus"
+FROM "bookings" b
+INNER JOIN "users" u ON b."riderId" = u."userId"
+LEFT JOIN "payments" p ON b."bookingId" = p."bookingId"
+WHERE b."rideId" = '77777777-7777-4777-8777-777777777777'
+ORDER BY b."createdAt" ASC;
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Sort  (cost=24.70..24.70 rows=2 width=1408) (actual time=0.032..0.032 rows=3.00 loops=1)
+  Output: b."bookingId", b."seatCount", b."totalFare", b."bookingStatus", b."pickupAddress", b."dropoffAddress", b."createdAt", u."userId", u.name, u.phone, u."profileImage", p."paymentStatus"
+  Sort Key: b."createdAt"
+  Sort Method: quicksort  Memory: 25kB
+  Buffers: shared hit=13
+  ->  Nested Loop Left Join  (cost=0.43..24.69 rows=2 width=1408) (actual time=0.018..0.026 rows=3.00 loops=1)
+        Output: b."bookingId", b."seatCount", b."totalFare", b."bookingStatus", b."pickupAddress", b."dropoffAddress", b."createdAt", u."userId", u.name, u.phone, u."profileImage", p."paymentStatus"
+        Buffers: shared hit=13
+        ->  Nested Loop  (cost=0.28..16.52 rows=1 width=1404) (actual time=0.011..0.017 rows=3.00 loops=1)
+              Output: b."bookingId", b."seatCount", b."totalFare", b."bookingStatus", b."pickupAddress", b."dropoffAddress", b."createdAt", u."userId", u.name, u.phone, u."profileImage"
+              Inner Unique: true
+              Buffers: shared hit=9
+              ->  Index Scan using "bookings_rideId_idx" on rydora_benchmark.bookings b  (cost=0.14..8.16 rows=1 width=1096) (actual time=0.004..0.007 rows=3.00 loops=1)
+                    Output: b."bookingId", b."rideId", b."riderId", b."pickupAddress", b."pickupLat", b."pickupLng", b."dropoffAddress", b."dropoffLat", b."dropoffLng", b."seatCount", b."bookingStatus", b."totalFare", b."fareQuoteId", b."confirmedAt", b."createdAt", b."updatedAt"
+                    Index Cond: (b."rideId" = '77777777-7777-4777-8777-777777777777'::uuid)
+                    Index Searches: 1
+                    Buffers: shared hit=3
+              ->  Index Scan using users_pkey on rydora_benchmark.users u  (cost=0.14..8.16 rows=1 width=324) (actual time=0.002..0.002 rows=1.00 loops=3)
+                    Output: u."userId", u.name, u.email, u.phone, u."phoneVerifiedAt", u."passwordHash", u."profileImage", u."accountStatus", u."emailVerifiedAt", u."createdAt", u."updatedAt", u."deletedAt"
+                    Index Cond: (u."userId" = b."riderId")
+                    Index Searches: 3
+                    Buffers: shared hit=6
+        ->  Index Scan using "payments_bookingId_idx" on rydora_benchmark.payments p  (cost=0.14..8.16 rows=1 width=20) (actual time=0.002..0.002 rows=0.33 loops=3)
+              Output: p."paymentId", p."bookingId", p."payerId", p.amount, p.currency, p."paymentMethod", p."paymentStatus", p."paymentGateway", p."gatewayTransactionId", p."isSimulated", p."idempotencyKey", p."paymentMetadata", p."createdAt", p."updatedAt"
+              Index Cond: (p."bookingId" = b."bookingId")
+              Index Searches: 3
+              Buffers: shared hit=4
+Query Identifier: 461857742055340769
+Planning:
+  Buffers: shared hit=53
+Planning Time: 0.283 ms
+Execution Time: 0.067 ms

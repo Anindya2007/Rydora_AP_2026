@@ -1,0 +1,149 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 4.4 - Search Active Rides with Driver, Vehicle & Community JOINs
+Module: Rides & Routing | Operation: -- READ
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+SELECT 
+    r."rideId",
+    r."originAddress",
+    r."originLat",
+    r."originLng",
+    r."destinationAddress",
+    r."destinationLat",
+    r."destinationLng",
+    r."departureTime",
+    r."availableSeats",
+    r."totalSeats",
+    r."farePerSeat",
+    r."rideStatus",
+    u."userId" AS "driverId",
+    u."name" AS "driverName",
+    u."profileImage" AS "driverImage",
+    dp."eligibilityStatus" AS "driverStatus",
+    v."make" AS "vehicleMake",
+    v."model" AS "vehicleModel",
+    v."color" AS "vehicleColor",
+    v."registrationNumber",
+    c."communityId",
+    c."name" AS "communityName"
+FROM "rides" r
+INNER JOIN "users" u ON r."driverId" = u."userId"
+INNER JOIN "vehicles" v ON r."vehicleId" = v."vehicleId"
+LEFT JOIN "driver_profiles" dp ON u."userId" = dp."userId"
+LEFT JOIN "ride_communities" rc ON r."rideId" = rc."rideId"
+LEFT JOIN "communities" c ON rc."communityId" = c."communityId"
+WHERE r."rideStatus" = 'SCHEDULED'
+  AND r."departureTime" > CURRENT_TIMESTAMP
+  AND r."availableSeats" >= $1 -- requested seats
+  AND (
+      $2::UUID IS NULL -- if communityId filter is null (Open category)
+      OR rc."communityId" = $2
+  )
+ORDER BY r."departureTime" ASC
+LIMIT 50;
+
+--- Concrete Executed SQL Statement ---
+SELECT 
+    r."rideId",
+    r."originAddress",
+    r."originLat",
+    r."originLng",
+    r."destinationAddress",
+    r."destinationLat",
+    r."destinationLng",
+    r."departureTime",
+    r."availableSeats",
+    r."totalSeats",
+    r."farePerSeat",
+    r."rideStatus",
+    u."userId" AS "driverId",
+    u."name" AS "driverName",
+    u."profileImage" AS "driverImage",
+    dp."eligibilityStatus" AS "driverStatus",
+    v."make" AS "vehicleMake",
+    v."model" AS "vehicleModel",
+    v."color" AS "vehicleColor",
+    v."registrationNumber",
+    c."communityId",
+    c."name" AS "communityName"
+FROM "rides" r
+INNER JOIN "users" u ON r."driverId" = u."userId"
+INNER JOIN "vehicles" v ON r."vehicleId" = v."vehicleId"
+LEFT JOIN "driver_profiles" dp ON u."userId" = dp."userId"
+LEFT JOIN "ride_communities" rc ON r."rideId" = rc."rideId"
+LEFT JOIN "communities" c ON rc."communityId" = c."communityId"
+WHERE r."rideStatus" = 'SCHEDULED'
+  AND r."departureTime" > CURRENT_TIMESTAMP
+  AND r."availableSeats" >= 1 -- requested seats
+  AND (
+      '44444444-4444-4444-8444-444444444444'::UUID IS NULL -- if communityId filter is null (Open category)
+      OR rc."communityId" = '44444444-4444-4444-8444-444444444444'
+  )
+ORDER BY r."departureTime" ASC
+LIMIT 50;
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Limit  (cost=0.87..44.66 rows=1 width=2152) (actual time=0.050..0.054 rows=1.00 loops=1)
+  Output: r."rideId", r."originAddress", r."originLat", r."originLng", r."destinationAddress", r."destinationLat", r."destinationLng", r."departureTime", r."availableSeats", r."totalSeats", r."farePerSeat", r."rideStatus", u."userId", u.name, u."profileImage", dp."eligibilityStatus", v.make, v.model, v.color, v."registrationNumber", c."communityId", c.name
+  Buffers: shared hit=19
+  ->  Nested Loop Left Join  (cost=0.87..44.66 rows=1 width=2152) (actual time=0.049..0.053 rows=1.00 loops=1)
+        Output: r."rideId", r."originAddress", r."originLat", r."originLng", r."destinationAddress", r."destinationLat", r."destinationLng", r."departureTime", r."availableSeats", r."totalSeats", r."farePerSeat", r."rideStatus", u."userId", u.name, u."profileImage", dp."eligibilityStatus", v.make, v.model, v.color, v."registrationNumber", c."communityId", c.name
+        Inner Unique: true
+        Buffers: shared hit=19
+        ->  Nested Loop Left Join  (cost=0.72..36.49 rows=1 width=1834) (actual time=0.045..0.049 rows=1.00 loops=1)
+              Output: r."rideId", r."originAddress", r."originLat", r."originLng", r."destinationAddress", r."destinationLat", r."destinationLng", r."departureTime", r."availableSeats", r."totalSeats", r."farePerSeat", r."rideStatus", u."userId", u.name, u."profileImage", v.make, v.model, v.color, v."registrationNumber", dp."eligibilityStatus", rc."communityId"
+              Inner Unique: true
+              Buffers: shared hit=17
+              ->  Nested Loop  (cost=0.58..35.72 rows=1 width=1830) (actual time=0.041..0.045 rows=1.00 loops=1)
+                    Output: r."rideId", r."originAddress", r."originLat", r."originLng", r."destinationAddress", r."destinationLat", r."destinationLng", r."departureTime", r."availableSeats", r."totalSeats", r."farePerSeat", r."rideStatus", u."userId", u.name, u."profileImage", v.make, v.model, v.color, v."registrationNumber", rc."communityId"
+                    Inner Unique: true
+                    Buffers: shared hit=15
+                    ->  Nested Loop  (cost=0.43..24.88 rows=1 width=1814) (actual time=0.033..0.036 rows=1.00 loops=1)
+                          Output: r."rideId", r."originAddress", r."originLat", r."originLng", r."destinationAddress", r."destinationLat", r."destinationLng", r."departureTime", r."availableSeats", r."totalSeats", r."farePerSeat", r."rideStatus", u."userId", u.name, u."profileImage", v.make, v.model, v.color, v."registrationNumber"
+                          Inner Unique: true
+                          Buffers: shared hit=13
+                          ->  Nested Loop  (cost=0.28..16.61 rows=1 width=1398) (actual time=0.029..0.032 rows=1.00 loops=1)
+                                Output: r."rideId", r."originAddress", r."originLat", r."originLng", r."destinationAddress", r."destinationLat", r."destinationLng", r."departureTime", r."availableSeats", r."totalSeats", r."farePerSeat", r."rideStatus", r."vehicleId", u."userId", u.name, u."profileImage"
+                                Inner Unique: true
+                                Buffers: shared hit=11
+                                ->  Index Scan using "rides_departureTime_rideStatus_idx" on rydora_benchmark.rides r  (cost=0.14..8.25 rows=1 width=1148) (actual time=0.024..0.027 rows=1.00 loops=1)
+                                      Output: r."rideId", r."driverId", r."vehicleId", r."originAddress", r."originLat", r."originLng", r."originPlaceId", r."destinationAddress", r."destinationLat", r."destinationLng", r."destinationPlaceId", r."departureTime", r."totalSeats", r."availableSeats", r."farePerSeat", r."rideStatus", r."plannedDistanceKm", r."plannedDurationMinutes", r.notes, r."createdAt", r."updatedAt"
+                                      Index Cond: ((r."departureTime" > CURRENT_TIMESTAMP) AND (r."rideStatus" = 'SCHEDULED'::"RideStatus"))
+                                      Filter: (r."availableSeats" >= 1)
+                                      Index Searches: 1
+                                      Buffers: shared hit=9
+                                ->  Index Scan using users_pkey on rydora_benchmark.users u  (cost=0.14..8.16 rows=1 width=266) (actual time=0.003..0.003 rows=1.00 loops=1)
+                                      Output: u."userId", u.name, u.email, u.phone, u."phoneVerifiedAt", u."passwordHash", u."profileImage", u."accountStatus", u."emailVerifiedAt", u."createdAt", u."updatedAt", u."deletedAt"
+                                      Index Cond: (u."userId" = r."driverId")
+                                      Index Searches: 1
+                                      Buffers: shared hit=2
+                          ->  Index Scan using vehicles_pkey on rydora_benchmark.vehicles v  (cost=0.14..8.16 rows=1 width=448) (actual time=0.003..0.003 rows=1.00 loops=1)
+                                Output: v."vehicleId", v."ownerId", v."vehicleType", v."registrationNumber", v.make, v.model, v.color, v."seatCapacity", v."verificationStatus", v."isActive", v."createdAt", v."updatedAt"
+                                Index Cond: (v."vehicleId" = r."vehicleId")
+                                Index Searches: 1
+                                Buffers: shared hit=2
+                    ->  Index Only Scan using "ride_communities_rideId_communityId_key" on rydora_benchmark.ride_communities rc  (cost=0.15..8.17 rows=1 width=32) (actual time=0.008..0.008 rows=1.00 loops=1)
+                          Output: rc."rideId", rc."communityId"
+                          Index Cond: ((rc."rideId" = r."rideId") AND (rc."communityId" = '44444444-4444-4444-8444-444444444444'::uuid))
+                          Heap Fetches: 1
+                          Index Searches: 1
+                          Buffers: shared hit=2
+              ->  Index Scan using "driver_profiles_userId_key" on rydora_benchmark.driver_profiles dp  (cost=0.15..0.77 rows=1 width=20) (actual time=0.003..0.003 rows=1.00 loops=1)
+                    Output: dp."driverProfileId", dp."userId", dp."driverVerificationStatus", dp."licenseVerificationStatus", dp."licenseNumber", dp."eligibilityStatus", dp."approvedAt", dp."createdAt", dp."updatedAt"
+                    Index Cond: (dp."userId" = u."userId")
+                    Index Searches: 1
+                    Buffers: shared hit=2
+        ->  Index Scan using communities_pkey on rydora_benchmark.communities c  (cost=0.14..8.16 rows=1 width=334) (actual time=0.003..0.003 rows=1.00 loops=1)
+              Output: c."communityId", c.name, c.type, c.description, c.status, c."isDiscoverable", c."createdById", c."createdAt", c."updatedAt"
+              Index Cond: (c."communityId" = '44444444-4444-4444-8444-444444444444'::uuid)
+              Index Searches: 1
+              Buffers: shared hit=2
+Query Identifier: 219912629029748125
+Planning:
+  Buffers: shared hit=28
+Planning Time: 0.609 ms
+Execution Time: 0.108 ms

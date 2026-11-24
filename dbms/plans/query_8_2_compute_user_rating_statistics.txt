@@ -1,0 +1,42 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 8.2 - Compute User Rating Statistics
+Module: Trust, Ratings & Reviews | Operation: -- READ
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+SELECT 
+    "rateeId",
+    ROUND(AVG("score"), 2) AS "averageRating",
+    COUNT("ratingId") AS "totalReviews"
+FROM "ratings"
+WHERE "rateeId" = $1
+GROUP BY "rateeId";
+
+--- Concrete Executed SQL Statement ---
+SELECT 
+    "rateeId",
+    ROUND(AVG("score"), 2) AS "averageRating",
+    COUNT("ratingId") AS "totalReviews"
+FROM "ratings"
+WHERE "rateeId" = '33333333-3333-4333-8333-333333333333'
+GROUP BY "rateeId";
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+GroupAggregate  (cost=4.17..11.31 rows=1 width=56) (actual time=0.028..0.028 rows=1.00 loops=1)
+  Output: "rateeId", round(avg(score), 2), count("ratingId")
+  Buffers: shared hit=2
+  ->  Bitmap Heap Scan on rydora_benchmark.ratings  (cost=4.17..11.28 rows=3 width=36) (actual time=0.020..0.020 rows=1.00 loops=1)
+        Output: "ratingId", "bookingId", "rideId", "raterId", "rateeId", score, comment, "createdAt"
+        Recheck Cond: (ratings."rateeId" = '33333333-3333-4333-8333-333333333333'::uuid)
+        Heap Blocks: exact=1
+        Buffers: shared hit=2
+        ->  Bitmap Index Scan on "ratings_rateeId_idx"  (cost=0.00..4.17 rows=3 width=0) (actual time=0.010..0.010 rows=4.00 loops=1)
+              Index Cond: (ratings."rateeId" = '33333333-3333-4333-8333-333333333333'::uuid)
+              Index Searches: 1
+              Buffers: shared hit=1
+Query Identifier: -4710224713945725041
+Planning Time: 0.076 ms
+Execution Time: 0.062 ms

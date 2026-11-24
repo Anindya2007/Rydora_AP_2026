@@ -1,0 +1,53 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 9.2 - Fetch Unread User Notifications
+Module: Push & In-App Notifications | Operation: -- READ
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+SELECT 
+    "notificationId",
+    "type",
+    "title",
+    "body",
+    "createdAt"
+FROM "notifications"
+WHERE "userId" = $1
+  AND "isRead" = false
+ORDER BY "createdAt" DESC
+LIMIT 25;
+
+--- Concrete Executed SQL Statement ---
+SELECT 
+    "notificationId",
+    "type",
+    "title",
+    "body",
+    "createdAt"
+FROM "notifications"
+WHERE "userId" = '11111111-1111-4111-8111-111111111111'
+  AND "isRead" = false
+ORDER BY "createdAt" DESC
+LIMIT 25;
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Limit  (cost=8.17..8.18 rows=1 width=378) (actual time=0.016..0.016 rows=1.00 loops=1)
+  Output: "notificationId", type, title, body, "createdAt"
+  Buffers: shared hit=3
+  ->  Sort  (cost=8.17..8.18 rows=1 width=378) (actual time=0.015..0.015 rows=1.00 loops=1)
+        Output: "notificationId", type, title, body, "createdAt"
+        Sort Key: notifications."createdAt" DESC
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=3
+        ->  Index Scan using "notifications_userId_isRead_idx" on rydora_benchmark.notifications  (cost=0.14..8.16 rows=1 width=378) (actual time=0.007..0.010 rows=1.00 loops=1)
+              Output: "notificationId", type, title, body, "createdAt"
+              Index Cond: ((notifications."userId" = '11111111-1111-4111-8111-111111111111'::uuid) AND (notifications."isRead" = false))
+              Index Searches: 1
+              Buffers: shared hit=3
+Query Identifier: 3905394135309076769
+Planning:
+  Buffers: shared hit=31
+Planning Time: 0.153 ms
+Execution Time: 0.053 ms

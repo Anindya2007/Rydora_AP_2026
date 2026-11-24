@@ -1,0 +1,74 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 2.4 - Upsert Active Community Membership
+Module: Communities & Domains | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "community_memberships" (
+    "membershipId",
+    "communityId",
+    "userId",
+    "membershipRole",
+    "membershipStatus",
+    "joinedAt",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    $1, -- membershipId
+    $2, -- communityId
+    $3, -- userId
+    $4, -- membershipRole ('MEMBER' or 'ADMIN')
+    'ACTIVE',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT ("communityId", "userId")
+DO UPDATE SET 
+    "membershipStatus" = 'ACTIVE',
+    "membershipRole" = EXCLUDED."membershipRole",
+    "updatedAt" = CURRENT_TIMESTAMP;
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "community_memberships" (
+    "membershipId",
+    "communityId",
+    "userId",
+    "membershipRole",
+    "membershipStatus",
+    "joinedAt",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    'f4cb9734-2882-4321-b310-11055960a3ff', -- membershipId
+    '44444444-4444-4444-8444-444444444444', -- communityId
+    '22222222-2222-4222-8222-222222222222', -- userId
+    'MEMBER', -- membershipRole ('MEMBER' or 'ADMIN')
+    'ACTIVE',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT ("communityId", "userId")
+DO UPDATE SET 
+    "membershipStatus" = 'ACTIVE',
+    "membershipRole" = EXCLUDED."membershipRole",
+    "updatedAt" = CURRENT_TIMESTAMP;
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.community_memberships  (cost=0.00..0.03 rows=0 width=0) (actual time=0.045..0.045 rows=0.00 loops=1)
+  Conflict Resolution: UPDATE
+  Conflict Arbiter Indexes: community_memberships_userId_communityId_key
+  Tuples Inserted: 1
+  Conflicting Tuples: 0
+  Buffers: shared hit=7
+  ->  Result  (cost=0.00..0.03 rows=1 width=96) (actual time=0.005..0.005 rows=1.00 loops=1)
+        Output: 'f4cb9734-2882-4321-b310-11055960a3ff'::uuid, '22222222-2222-4222-8222-222222222222'::uuid, '44444444-4444-4444-8444-444444444444'::uuid, 'ACTIVE'::"MembershipStatus", 'MEMBER'::"CommunityRole", 'PENDING'::"VerificationStatus", NULL::"VerificationMethod", NULL::timestamp(3) without time zone, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+Query Identifier: -2427306189464905237
+Planning Time: 0.033 ms
+Trigger RI_ConstraintTrigger_c_112663 for constraint community_memberships_userId_fkey: time=0.074 calls=1
+Trigger RI_ConstraintTrigger_c_112668 for constraint community_memberships_communityId_fkey: time=0.031 calls=1
+Execution Time: 0.208 ms

@@ -1,0 +1,60 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 6.4 - Execute Booking Refund Record
+Module: Finance, Ledger & Earnings | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "refunds" (
+    "refundId",
+    "paymentId",
+    "requestedById",
+    "amount",
+    "reason",
+    "refundStatus",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    $1, -- refundId
+    $2, -- paymentId
+    $3, -- requestedById
+    $4, -- amount
+    $5, -- reason
+    'SUCCEEDED',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "refunds" (
+    "refundId",
+    "paymentId",
+    "requestedById",
+    "amount",
+    "reason",
+    "refundStatus",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    '494be116-e1fd-4ae3-847e-f852dc358aa0', -- refundId
+    '99999999-9999-4999-8999-999999999999', -- paymentId
+    '11111111-1111-4111-8111-111111111111', -- requestedById
+    180.0, -- amount
+    'Driver trip cancellation', -- reason
+    'SUCCEEDED',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.refunds  (cost=0.00..0.03 rows=0 width=0) (actual time=0.211..0.211 rows=0.00 loops=1)
+  Buffers: shared hit=74 dirtied=11 written=6
+  ->  Result  (cost=0.00..0.03 rows=1 width=443) (actual time=0.004..0.004 rows=1.00 loops=1)
+        Output: '494be116-e1fd-4ae3-847e-f852dc358aa0'::uuid, '99999999-9999-4999-8999-999999999999'::uuid, '11111111-1111-4111-8111-111111111111'::uuid, 180.00::numeric(10,2), 'Driver trip cancellation'::text, 'SUCCEEDED'::"RefundStatus", NULL::character varying(150), false, NULL::timestamp(3) without time zone, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+Query Identifier: 2306938579526480471
+Planning Time: 0.031 ms
+Trigger RI_ConstraintTrigger_c_112868 for constraint refunds_paymentId_fkey: time=0.125 calls=1
+Trigger RI_ConstraintTrigger_c_112873 for constraint refunds_requestedById_fkey: time=0.048 calls=1
+Execution Time: 0.404 ms

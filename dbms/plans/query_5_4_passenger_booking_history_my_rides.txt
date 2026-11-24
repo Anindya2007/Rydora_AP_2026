@@ -1,0 +1,127 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 5.4 - Passenger Booking History (My Rides)
+Module: Bookings & Seat Management | Operation: -- READ
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+SELECT 
+    b."bookingId",
+    b."seatCount",
+    b."totalFare",
+    b."bookingStatus",
+    b."createdAt" AS "bookedAt",
+    r."rideId",
+    r."originAddress",
+    r."destinationAddress",
+    r."departureTime",
+    r."rideStatus",
+    d."name" AS "driverName",
+    d."phone" AS "driverPhone",
+    v."make" AS "vehicleMake",
+    v."model" AS "vehicleModel",
+    v."registrationNumber",
+    p."paymentStatus",
+    rt."score" AS "ratingGiven"
+FROM "bookings" b
+INNER JOIN "rides" r ON b."rideId" = r."rideId"
+INNER JOIN "users" d ON r."driverId" = d."userId"
+INNER JOIN "vehicles" v ON r."vehicleId" = v."vehicleId"
+LEFT JOIN "payments" p ON b."bookingId" = p."bookingId"
+LEFT JOIN "ratings" rt ON b."bookingId" = rt."bookingId" AND rt."raterId" = b."riderId"
+WHERE b."riderId" = $1
+ORDER BY b."createdAt" DESC
+LIMIT 50;
+
+--- Concrete Executed SQL Statement ---
+SELECT 
+    b."bookingId",
+    b."seatCount",
+    b."totalFare",
+    b."bookingStatus",
+    b."createdAt" AS "bookedAt",
+    r."rideId",
+    r."originAddress",
+    r."destinationAddress",
+    r."departureTime",
+    r."rideStatus",
+    d."name" AS "driverName",
+    d."phone" AS "driverPhone",
+    v."make" AS "vehicleMake",
+    v."model" AS "vehicleModel",
+    v."registrationNumber",
+    p."paymentStatus",
+    rt."score" AS "ratingGiven"
+FROM "bookings" b
+INNER JOIN "rides" r ON b."rideId" = r."rideId"
+INNER JOIN "users" d ON r."driverId" = d."userId"
+INNER JOIN "vehicles" v ON r."vehicleId" = v."vehicleId"
+LEFT JOIN "payments" p ON b."bookingId" = p."bookingId"
+LEFT JOIN "ratings" rt ON b."bookingId" = rt."bookingId" AND rt."raterId" = b."riderId"
+WHERE b."riderId" = '11111111-1111-4111-8111-111111111111'
+ORDER BY b."createdAt" DESC
+LIMIT 50;
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Limit  (cost=36.77..36.78 rows=2 width=1746) (actual time=0.044..0.046 rows=1.00 loops=1)
+  Output: b."bookingId", b."seatCount", b."totalFare", b."bookingStatus", b."createdAt", r."rideId", r."originAddress", r."destinationAddress", r."departureTime", r."rideStatus", d.name, d.phone, v.make, v.model, v."registrationNumber", p."paymentStatus", rt.score
+  Buffers: shared hit=12
+  ->  Sort  (cost=36.77..36.78 rows=2 width=1746) (actual time=0.044..0.045 rows=1.00 loops=1)
+        Output: b."bookingId", b."seatCount", b."totalFare", b."bookingStatus", b."createdAt", r."rideId", r."originAddress", r."destinationAddress", r."departureTime", r."rideStatus", d.name, d.phone, v.make, v.model, v."registrationNumber", p."paymentStatus", rt.score
+        Sort Key: b."createdAt" DESC
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=12
+        ->  Nested Loop Left Join  (cost=0.86..36.76 rows=2 width=1746) (actual time=0.037..0.039 rows=1.00 loops=1)
+              Output: b."bookingId", b."seatCount", b."totalFare", b."bookingStatus", b."createdAt", r."rideId", r."originAddress", r."destinationAddress", r."departureTime", r."rideStatus", d.name, d.phone, v.make, v.model, v."registrationNumber", p."paymentStatus", rt.score
+              Buffers: shared hit=12
+              ->  Nested Loop Left Join  (cost=0.72..28.59 rows=1 width=1742) (actual time=0.034..0.035 rows=1.00 loops=1)
+                    Output: b."bookingId", b."seatCount", b."totalFare", b."bookingStatus", b."createdAt", r."rideId", r."originAddress", r."destinationAddress", r."departureTime", r."rideStatus", d.name, d.phone, v.make, v.model, v."registrationNumber", rt.score
+                    Inner Unique: true
+                    Buffers: shared hit=10
+                    ->  Nested Loop  (cost=0.57..20.41 rows=1 width=1754) (actual time=0.030..0.031 rows=1.00 loops=1)
+                          Output: b."bookingId", b."seatCount", b."totalFare", b."bookingStatus", b."createdAt", b."riderId", r."rideId", r."originAddress", r."destinationAddress", r."departureTime", r."rideStatus", d.name, d.phone, v.make, v.model, v."registrationNumber"
+                          Inner Unique: true
+                          Buffers: shared hit=8
+                          ->  Nested Loop  (cost=0.42..18.63 rows=1 width=1416) (actual time=0.025..0.025 rows=1.00 loops=1)
+                                Output: b."bookingId", b."seatCount", b."totalFare", b."bookingStatus", b."createdAt", b."riderId", r."rideId", r."originAddress", r."destinationAddress", r."departureTime", r."rideStatus", r."vehicleId", d.name, d.phone
+                                Inner Unique: true
+                                Buffers: shared hit=6
+                                ->  Nested Loop  (cost=0.28..16.83 rows=1 width=1156) (actual time=0.021..0.021 rows=1.00 loops=1)
+                                      Output: b."bookingId", b."seatCount", b."totalFare", b."bookingStatus", b."createdAt", b."riderId", r."rideId", r."originAddress", r."destinationAddress", r."departureTime", r."rideStatus", r."driverId", r."vehicleId"
+                                      Inner Unique: true
+                                      Buffers: shared hit=4
+                                      ->  Index Scan using "bookings_riderId_idx" on rydora_benchmark.bookings b  (cost=0.14..8.16 rows=1 width=80) (actual time=0.014..0.014 rows=1.00 loops=1)
+                                            Output: b."bookingId", b."rideId", b."riderId", b."pickupAddress", b."pickupLat", b."pickupLng", b."dropoffAddress", b."dropoffLat", b."dropoffLng", b."seatCount", b."bookingStatus", b."totalFare", b."fareQuoteId", b."confirmedAt", b."createdAt", b."updatedAt"
+                                            Index Cond: (b."riderId" = '11111111-1111-4111-8111-111111111111'::uuid)
+                                            Index Searches: 1
+                                            Buffers: shared hit=2
+                                      ->  Index Scan using rides_pkey on rydora_benchmark.rides r  (cost=0.14..8.15 rows=1 width=1092) (actual time=0.004..0.004 rows=1.00 loops=1)
+                                            Output: r."rideId", r."driverId", r."vehicleId", r."originAddress", r."originLat", r."originLng", r."originPlaceId", r."destinationAddress", r."destinationLat", r."destinationLng", r."destinationPlaceId", r."departureTime", r."totalSeats", r."availableSeats", r."farePerSeat", r."rideStatus", r."plannedDistanceKm", r."plannedDurationMinutes", r.notes, r."createdAt", r."updatedAt"
+                                            Index Cond: (r."rideId" = b."rideId")
+                                            Index Searches: 1
+                                            Buffers: shared hit=2
+                                ->  Index Scan using users_pkey on rydora_benchmark.users d  (cost=0.14..1.76 rows=1 width=292) (actual time=0.003..0.003 rows=1.00 loops=1)
+                                      Output: d."userId", d.name, d.email, d.phone, d."phoneVerifiedAt", d."passwordHash", d."profileImage", d."accountStatus", d."emailVerifiedAt", d."createdAt", d."updatedAt", d."deletedAt"
+                                      Index Cond: (d."userId" = r."driverId")
+                                      Index Searches: 1
+                                      Buffers: shared hit=2
+                          ->  Index Scan using vehicles_pkey on rydora_benchmark.vehicles v  (cost=0.14..1.76 rows=1 width=370) (actual time=0.004..0.004 rows=1.00 loops=1)
+                                Output: v."vehicleId", v."ownerId", v."vehicleType", v."registrationNumber", v.make, v.model, v.color, v."seatCapacity", v."verificationStatus", v."isActive", v."createdAt", v."updatedAt"
+                                Index Cond: (v."vehicleId" = r."vehicleId")
+                                Index Searches: 1
+                                Buffers: shared hit=2
+                    ->  Index Scan using "ratings_bookingId_raterId_key" on rydora_benchmark.ratings rt  (cost=0.15..8.17 rows=1 width=36) (actual time=0.004..0.004 rows=1.00 loops=1)
+                          Output: rt."ratingId", rt."bookingId", rt."rideId", rt."raterId", rt."rateeId", rt.score, rt.comment, rt."createdAt"
+                          Index Cond: ((rt."bookingId" = b."bookingId") AND (rt."raterId" = '11111111-1111-4111-8111-111111111111'::uuid))
+                          Index Searches: 1
+                          Buffers: shared hit=2
+              ->  Index Scan using "payments_bookingId_idx" on rydora_benchmark.payments p  (cost=0.14..8.16 rows=1 width=20) (actual time=0.002..0.003 rows=1.00 loops=1)
+                    Output: p."paymentId", p."bookingId", p."payerId", p.amount, p.currency, p."paymentMethod", p."paymentStatus", p."paymentGateway", p."gatewayTransactionId", p."isSimulated", p."idempotencyKey", p."paymentMetadata", p."createdAt", p."updatedAt"
+                    Index Cond: (p."bookingId" = b."bookingId")
+                    Index Searches: 1
+                    Buffers: shared hit=2
+Query Identifier: 6059408030810254809
+Planning Time: 0.783 ms
+Execution Time: 0.094 ms

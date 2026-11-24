@@ -1,0 +1,75 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 3.1 - Register Driver Vehicle
+Module: Fleet & Vehicles | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "vehicles" (
+    "vehicleId",
+    "ownerId",
+    "vehicleType",
+    "registrationNumber",
+    "make",
+    "model",
+    "color",
+    "seatCapacity",
+    "verificationStatus",
+    "isActive",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    $1, -- vehicleId
+    $2, -- ownerId (driver userId)
+    $3, -- vehicleType ('SEDAN', 'SUV', etc.)
+    UPPER(TRIM($4)), -- registrationNumber
+    $5, -- make
+    $6, -- model
+    $7, -- color
+    $8, -- seatCapacity
+    'VERIFIED',
+    true,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "vehicles" (
+    "vehicleId",
+    "ownerId",
+    "vehicleType",
+    "registrationNumber",
+    "make",
+    "model",
+    "color",
+    "seatCapacity",
+    "verificationStatus",
+    "isActive",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    '255c8188-aff8-41e5-b4e7-205bf6f5fef3', -- vehicleId
+    '33333333-3333-4333-8333-333333333333', -- ownerId (driver userId)
+    'SEDAN', -- vehicleType ('SEDAN', 'SUV', etc.)
+    UPPER(TRIM('DL1AA127B')), -- registrationNumber
+    'Honda', -- make
+    'City', -- model
+    'Silver', -- color
+    4, -- seatCapacity
+    'VERIFIED',
+    true,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.vehicles  (cost=0.00..0.03 rows=0 width=0) (actual time=0.048..0.048 rows=0.00 loops=1)
+  Buffers: shared hit=5
+  ->  Result  (cost=0.00..0.03 rows=1 width=493) (actual time=0.004..0.004 rows=1.00 loops=1)
+        Output: '255c8188-aff8-41e5-b4e7-205bf6f5fef3'::uuid, '33333333-3333-4333-8333-333333333333'::uuid, 'SEDAN'::"VehicleType", 'DL1AA127B'::character varying(50), 'Honda'::character varying(50), 'City'::character varying(50), 'Silver'::character varying(30), 4, 'VERIFIED'::"VerificationStatus", true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+Query Identifier: -230888355664965490
+Planning Time: 0.036 ms
+Trigger RI_ConstraintTrigger_c_112698 for constraint vehicles_ownerId_fkey: time=0.078 calls=1
+Execution Time: 0.147 ms

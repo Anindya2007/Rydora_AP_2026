@@ -1,0 +1,36 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 7.4 - Acknowledge & Resolve SOS Alert
+Module: Safety, Guardians & SOS | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+UPDATE "sos_alerts"
+SET "status" = 'RESOLVED',
+    "resolvedAt" = CURRENT_TIMESTAMP,
+    "resolverNotes" = $2
+WHERE "alertId" = $1
+  AND "status" IN ('TRIGGERED', 'ACKNOWLEDGED');
+
+--- Concrete Executed SQL Statement ---
+UPDATE "sos_alerts"
+SET "status" = 'RESOLVED',
+    "resolvedAt" = CURRENT_TIMESTAMP,
+    "resolverNotes" = 'False alarm verified by campus security dispatch'
+WHERE "alertId" = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  AND "status" IN ('TRIGGERED', 'ACKNOWLEDGED');
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Update on rydora_benchmark.sos_alerts  (cost=0.14..8.17 rows=0 width=0) (actual time=0.050..0.050 rows=0.00 loops=1)
+  Buffers: shared hit=10
+  ->  Index Scan using sos_alerts_pkey on rydora_benchmark.sos_alerts  (cost=0.14..8.17 rows=1 width=50) (actual time=0.012..0.012 rows=1.00 loops=1)
+        Output: 'RESOLVED'::"SOSAlertStatus", CURRENT_TIMESTAMP, 'False alarm verified by campus security dispatch'::text, ctid
+        Index Cond: (sos_alerts."alertId" = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid)
+        Filter: (sos_alerts.status = ANY ('{TRIGGERED,ACKNOWLEDGED}'::"SOSAlertStatus"[]))
+        Index Searches: 1
+        Buffers: shared hit=2
+Query Identifier: -8666866368694547429
+Planning Time: 0.078 ms
+Execution Time: 0.089 ms

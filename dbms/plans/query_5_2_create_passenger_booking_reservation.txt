@@ -1,0 +1,85 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 5.2 - Create Passenger Booking Reservation
+Module: Bookings & Seat Management | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "bookings" (
+    "bookingId",
+    "rideId",
+    "riderId",
+    "pickupAddress",
+    "pickupLat",
+    "pickupLng",
+    "dropoffAddress",
+    "dropoffLat",
+    "dropoffLng",
+    "seatCount",
+    "totalFare",
+    "bookingStatus",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    $1, -- bookingId
+    $2, -- rideId
+    $3, -- riderId
+    $4, -- pickupAddress
+    $5, -- pickupLat
+    $6, -- pickupLng
+    $7, -- dropoffAddress
+    $8, -- dropoffLat
+    $9, -- dropoffLng
+    $10, -- seatCount
+    $11, -- totalFare
+    'PENDING',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "bookings" (
+    "bookingId",
+    "rideId",
+    "riderId",
+    "pickupAddress",
+    "pickupLat",
+    "pickupLng",
+    "dropoffAddress",
+    "dropoffLat",
+    "dropoffLng",
+    "seatCount",
+    "totalFare",
+    "bookingStatus",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    '3c9d9cd9-ff6a-4f1e-9d10-33427e5fe4e5', -- bookingId
+    '77777777-7777-4777-8777-777777777777', -- rideId
+    '44444444-3333-4111-8111-111111111111', -- riderId
+    'Rishihood Gate 2', -- pickupAddress
+    28.9876, -- pickupLat
+    77.0255, -- pickupLng
+    'Connaught Place', -- dropoffAddress
+    28.6304, -- dropoffLat
+    77.2177, -- dropoffLng
+    1, -- seatCount
+    180.0, -- totalFare
+    'PENDING',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.bookings  (cost=0.00..0.03 rows=0 width=0) (actual time=0.067..0.067 rows=0.00 loops=1)
+  Buffers: shared hit=7
+  ->  Result  (cost=0.00..0.03 rows=1 width=1176) (actual time=0.004..0.004 rows=1.00 loops=1)
+        Output: '3c9d9cd9-ff6a-4f1e-9d10-33427e5fe4e5'::uuid, '77777777-7777-4777-8777-777777777777'::uuid, '44444444-3333-4111-8111-111111111111'::uuid, 'Rishihood Gate 2'::character varying(255), '28.9876'::double precision, '77.0255'::double precision, 'Connaught Place'::character varying(255), '28.6304'::double precision, '77.2177'::double precision, 1, 'PENDING'::"BookingStatus", 180.00::numeric(10,2), NULL::uuid, NULL::timestamp(3) without time zone, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+Query Identifier: -251772848681421075
+Planning Time: 0.041 ms
+Trigger RI_ConstraintTrigger_c_112748 for constraint bookings_rideId_fkey: time=0.093 calls=1
+Trigger RI_ConstraintTrigger_c_112753 for constraint bookings_riderId_fkey: time=0.033 calls=1
+Trigger RI_ConstraintTrigger_c_112758 for constraint bookings_fareQuoteId_fkey: time=0.002 calls=1
+Execution Time: 0.223 ms

@@ -1,0 +1,104 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 4.1 - Publish Scheduled Carpool Ride
+Module: Rides & Routing | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "rides" (
+    "rideId",
+    "driverId",
+    "vehicleId",
+    "originAddress",
+    "originLat",
+    "originLng",
+    "destinationAddress",
+    "destinationLat",
+    "destinationLng",
+    "departureTime",
+    "totalSeats",
+    "availableSeats",
+    "farePerSeat",
+    "rideStatus",
+    "plannedDistanceKm",
+    "plannedDurationMinutes",
+    "notes",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    $1, -- rideId
+    $2, -- driverId
+    $3, -- vehicleId
+    $4, -- originAddress
+    $5, -- originLat
+    $6, -- originLng
+    $7, -- destinationAddress
+    $8, -- destinationLat
+    $9, -- destinationLng
+    $10, -- departureTime
+    $11, -- totalSeats
+    $11, -- availableSeats (initially equal to totalSeats)
+    $12, -- farePerSeat
+    'SCHEDULED',
+    $13, -- plannedDistanceKm
+    $14, -- plannedDurationMinutes
+    $15, -- notes
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "rides" (
+    "rideId",
+    "driverId",
+    "vehicleId",
+    "originAddress",
+    "originLat",
+    "originLng",
+    "destinationAddress",
+    "destinationLat",
+    "destinationLng",
+    "departureTime",
+    "totalSeats",
+    "availableSeats",
+    "farePerSeat",
+    "rideStatus",
+    "plannedDistanceKm",
+    "plannedDurationMinutes",
+    "notes",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    '0aa1ced1-eafa-4d24-8d43-3fce5bd8ca3e', -- rideId
+    '33333333-3333-4333-8333-333333333333', -- driverId
+    '66666666-6666-4666-8666-666666666666', -- vehicleId
+    'Rishihood University, Sonipat', -- originAddress
+    28.9876, -- originLat
+    77.0255, -- originLng
+    'Cyber Hub, Gurugram', -- destinationAddress
+    28.495, -- destinationLat
+    77.0895, -- destinationLng
+    '2026-11-25 10:00:00', -- departureTime
+    4, -- totalSeats
+    4, -- availableSeats (initially equal to totalSeats)
+    250.0, -- farePerSeat
+    'SCHEDULED',
+    62.5, -- plannedDistanceKm
+    85, -- plannedDurationMinutes
+    'Direct corridor via NH44', -- notes
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.rides  (cost=0.00..0.03 rows=0 width=0) (actual time=0.060..0.060 rows=0.00 loops=1)
+  Buffers: shared hit=6
+  ->  Result  (cost=0.00..0.03 rows=1 width=2246) (actual time=0.003..0.003 rows=1.00 loops=1)
+        Output: '0aa1ced1-eafa-4d24-8d43-3fce5bd8ca3e'::uuid, '33333333-3333-4333-8333-333333333333'::uuid, '66666666-6666-4666-8666-666666666666'::uuid, 'Rishihood University, Sonipat'::character varying(255), '28.9876'::double precision, '77.0255'::double precision, NULL::character varying(255), 'Cyber Hub, Gurugram'::character varying(255), '28.495'::double precision, '77.0895'::double precision, NULL::character varying(255), '2026-11-25 10:00:00'::timestamp(3) without time zone, 4, 4, 250.00::numeric(10,2), 'SCHEDULED'::"RideStatus", 62.50::numeric(8,2), 85, 'Direct corridor via NH44'::text, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+Query Identifier: -8725739499318598917
+Planning Time: 0.059 ms
+Trigger RI_ConstraintTrigger_c_112718 for constraint rides_driverId_fkey: time=0.079 calls=1
+Trigger RI_ConstraintTrigger_c_112723 for constraint rides_vehicleId_fkey: time=0.036 calls=1
+Execution Time: 0.203 ms

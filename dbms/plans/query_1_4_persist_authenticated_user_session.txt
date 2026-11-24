@@ -1,0 +1,55 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 1.4 - Persist Authenticated User Session
+Module: Identity, Auth & Sessions | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "user_sessions" (
+    "sessionId",
+    "userId",
+    "refreshTokenHash",
+    "deviceInfo",
+    "ipAddress",
+    "expiresAt",
+    "createdAt"
+) VALUES (
+    $1, -- sessionId (UUID)
+    $2, -- userId (UUID)
+    $3, -- refreshTokenHash (TEXT)
+    $4, -- deviceInfo (TEXT)
+    $5, -- ipAddress (VARCHAR)
+    CURRENT_TIMESTAMP + INTERVAL '24 hours',
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "user_sessions" (
+    "sessionId",
+    "userId",
+    "refreshTokenHash",
+    "deviceInfo",
+    "ipAddress",
+    "expiresAt",
+    "createdAt"
+) VALUES (
+    '4275a124-fe10-4653-99f7-6a749cc8b37d', -- sessionId (UUID)
+    '11111111-1111-4111-8111-111111111111', -- userId (UUID)
+    'bench_hash_c1b81bd2849e431d9e80a5d95e7d381f', -- refreshTokenHash (TEXT)
+    'Mozilla/5.0 Bench Chrome', -- deviceInfo (TEXT)
+    '127.0.0.1', -- ipAddress (VARCHAR)
+    CURRENT_TIMESTAMP + INTERVAL '24 hours',
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.user_sessions  (cost=0.00..0.03 rows=0 width=0) (actual time=0.049..0.049 rows=0.00 loops=1)
+  Buffers: shared hit=7
+  ->  Result  (cost=0.00..0.03 rows=1 width=228) (actual time=0.004..0.004 rows=1.00 loops=1)
+        Output: '4275a124-fe10-4653-99f7-6a749cc8b37d'::uuid, '11111111-1111-4111-8111-111111111111'::uuid, 'bench_hash_c1b81bd2849e431d9e80a5d95e7d381f'::text, 'Mozilla/5.0 Bench Chrome'::text, '127.0.0.1'::character varying(45), (CURRENT_TIMESTAMP + '24:00:00'::interval), NULL::timestamp(3) without time zone, CURRENT_TIMESTAMP
+Query Identifier: 2515785602475498834
+Planning Time: 0.030 ms
+Trigger RI_ConstraintTrigger_c_112633 for constraint user_sessions_userId_fkey: time=0.159 calls=1
+Execution Time: 0.232 ms

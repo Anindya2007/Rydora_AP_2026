@@ -1,0 +1,55 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 2.1 - Discover Community by Organization Email Domain
+Module: Communities & Domains | Operation: -- READ
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+SELECT 
+    c."communityId",
+    c."name" AS "communityName",
+    c."type" AS "communityType",
+    c."status" AS "communityStatus",
+    c."description",
+    cd."domain"
+FROM "communities" c
+INNER JOIN "community_domains" cd ON c."communityId" = cd."communityId"
+WHERE LOWER(cd."domain") = LOWER($1)
+  AND cd."isActive" = true
+  AND c."status" = 'ACTIVE';
+
+--- Concrete Executed SQL Statement ---
+SELECT 
+    c."communityId",
+    c."name" AS "communityName",
+    c."type" AS "communityType",
+    c."status" AS "communityStatus",
+    c."description",
+    cd."domain"
+FROM "communities" c
+INNER JOIN "community_domains" cd ON c."communityId" = cd."communityId"
+WHERE LOWER(cd."domain") = LOWER('rishihood.edu.in')
+  AND cd."isActive" = true
+  AND c."status" = 'ACTIVE';
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Nested Loop  (cost=0.14..20.43 rows=1 width=890) (actual time=0.017..0.019 rows=1.00 loops=1)
+  Output: c."communityId", c.name, c.type, c.status, c.description, cd.domain
+  Buffers: shared hit=4
+  ->  Seq Scan on rydora_benchmark.communities c  (cost=0.00..12.25 rows=1 width=374) (actual time=0.010..0.010 rows=2.00 loops=1)
+        Output: c."communityId", c.name, c.type, c.description, c.status, c."isDiscoverable", c."createdById", c."createdAt", c."updatedAt"
+        Filter: (c.status = 'ACTIVE'::"CommunityStatus")
+        Buffers: shared hit=1
+  ->  Index Scan using "community_domains_communityId_domain_key" on rydora_benchmark.community_domains cd  (cost=0.14..8.17 rows=1 width=532) (actual time=0.003..0.003 rows=0.50 loops=2)
+        Output: cd."domainId", cd."communityId", cd.domain, cd."isActive", cd."approvedAt", cd."createdAt"
+        Index Cond: (cd."communityId" = c."communityId")
+        Filter: (cd."isActive" AND (lower((cd.domain)::text) = 'rishihood.edu.in'::text))
+        Index Searches: 2
+        Buffers: shared hit=3
+Query Identifier: -7939359410659589017
+Planning:
+  Buffers: shared hit=26
+Planning Time: 0.177 ms
+Execution Time: 0.042 ms

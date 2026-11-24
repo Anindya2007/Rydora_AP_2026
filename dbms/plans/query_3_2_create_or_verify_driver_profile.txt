@@ -1,0 +1,70 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 3.2 - Create or Verify Driver Profile
+Module: Fleet & Vehicles | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "driver_profiles" (
+    "driverProfileId",
+    "userId",
+    "licenseNumber",
+    "eligibilityStatus",
+    "approvedAt",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    $1, -- driverProfileId
+    $2, -- userId
+    UPPER(TRIM($3)), -- licenseNumber
+    'ELIGIBLE',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT ("userId")
+DO UPDATE SET 
+    "licenseNumber" = EXCLUDED."licenseNumber",
+    "eligibilityStatus" = 'ELIGIBLE',
+    "approvedAt" = CURRENT_TIMESTAMP,
+    "updatedAt" = CURRENT_TIMESTAMP;
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "driver_profiles" (
+    "driverProfileId",
+    "userId",
+    "licenseNumber",
+    "eligibilityStatus",
+    "approvedAt",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    '5db884ba-e056-400e-a59c-1742b1df1ec1', -- driverProfileId
+    '33333333-3333-4333-8333-333333333333', -- userId
+    UPPER(TRIM('DL1420110012345')), -- licenseNumber
+    'ELIGIBLE',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+)
+ON CONFLICT ("userId")
+DO UPDATE SET 
+    "licenseNumber" = EXCLUDED."licenseNumber",
+    "eligibilityStatus" = 'ELIGIBLE',
+    "approvedAt" = CURRENT_TIMESTAMP,
+    "updatedAt" = CURRENT_TIMESTAMP;
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.driver_profiles  (cost=0.00..0.03 rows=0 width=0) (actual time=0.053..0.054 rows=0.00 loops=1)
+  Conflict Resolution: UPDATE
+  Conflict Arbiter Indexes: driver_profiles_userId_key
+  Tuples Inserted: 0
+  Conflicting Tuples: 1
+  Buffers: shared hit=5
+  ->  Result  (cost=0.00..0.03 rows=1 width=186) (actual time=0.004..0.004 rows=1.00 loops=1)
+        Output: '5db884ba-e056-400e-a59c-1742b1df1ec1'::uuid, '33333333-3333-4333-8333-333333333333'::uuid, 'NOT_STARTED'::"VerificationStatus", 'NOT_STARTED'::"VerificationStatus", 'DL1420110012345'::character varying(50), 'ELIGIBLE'::"DriverEligibilityStatus", CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+Query Identifier: -5650062993907198940
+Planning Time: 0.046 ms
+Execution Time: 0.105 ms

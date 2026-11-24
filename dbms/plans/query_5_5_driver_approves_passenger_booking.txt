@@ -1,0 +1,39 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 5.5 - Driver Approves Passenger Booking
+Module: Bookings & Seat Management | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+UPDATE "bookings"
+SET "bookingStatus" = 'CONFIRMED',
+    "confirmedAt" = CURRENT_TIMESTAMP,
+    "updatedAt" = CURRENT_TIMESTAMP
+WHERE "bookingId" = $1
+  AND "bookingStatus" = 'PENDING';
+
+--- Concrete Executed SQL Statement ---
+UPDATE "bookings"
+SET "bookingStatus" = 'CONFIRMED',
+    "confirmedAt" = CURRENT_TIMESTAMP,
+    "updatedAt" = CURRENT_TIMESTAMP
+WHERE "bookingId" = '88888888-8888-4888-8888-888888888888'
+  AND "bookingStatus" = 'PENDING';
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Update on rydora_benchmark.bookings  (cost=0.14..8.18 rows=0 width=0) (actual time=0.094..0.094 rows=0.00 loops=1)
+  Buffers: shared hit=29
+  ->  Index Scan using "bookings_bookingStatus_idx" on rydora_benchmark.bookings  (cost=0.14..8.18 rows=1 width=26) (actual time=0.010..0.011 rows=1.00 loops=1)
+        Output: 'CONFIRMED'::"BookingStatus", CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ctid
+        Index Cond: (bookings."bookingStatus" = 'PENDING'::"BookingStatus")
+        Filter: (bookings."bookingId" = '88888888-8888-4888-8888-888888888888'::uuid)
+        Rows Removed by Filter: 1
+        Index Searches: 1
+        Buffers: shared hit=3
+Query Identifier: 4377412021738150585
+Planning:
+  Buffers: shared hit=16
+Planning Time: 0.117 ms
+Execution Time: 0.135 ms

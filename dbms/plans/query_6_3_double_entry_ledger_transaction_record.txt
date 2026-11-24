@@ -1,0 +1,50 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 6.3 - Double-Entry Ledger Transaction Record
+Module: Finance, Ledger & Earnings | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "ledger_transactions" (
+    "transactionId",
+    "transactionType",
+    "referenceType",
+    "referenceId",
+    "description",
+    "createdAt"
+) VALUES (
+    $1, -- transactionId
+    'RIDE_PAYMENT',
+    'BOOKING',
+    $2, -- referenceId (bookingId)
+    $3, -- description
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "ledger_transactions" (
+    "transactionId",
+    "transactionType",
+    "referenceType",
+    "referenceId",
+    "description",
+    "createdAt"
+) VALUES (
+    '78fc36c6-31b0-4841-94ca-758c1e99ca79', -- transactionId
+    'RIDE_PAYMENT',
+    'BOOKING',
+    '88888888-8888-4888-8888-888888888888', -- referenceId (bookingId)
+    'Carpool fare escrow transfer', -- description
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.ledger_transactions  (cost=0.00..0.02 rows=0 width=0) (actual time=0.210..0.211 rows=0.00 loops=1)
+  Buffers: shared hit=63 dirtied=9 written=5
+  ->  Result  (cost=0.00..0.02 rows=1 width=897) (actual time=0.004..0.004 rows=1.00 loops=1)
+        Output: '78fc36c6-31b0-4841-94ca-758c1e99ca79'::uuid, 'RIDE_PAYMENT'::"LedgerTransactionType", 'BOOKING'::character varying(50), '88888888-8888-4888-8888-888888888888'::uuid, 'Carpool fare escrow transfer'::character varying(255), false, NULL::character varying(100), CURRENT_TIMESTAMP
+Query Identifier: 1937880552074921469
+Planning Time: 0.031 ms
+Execution Time: 0.231 ms

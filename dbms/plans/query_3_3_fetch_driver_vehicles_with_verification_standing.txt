@@ -1,0 +1,83 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 3.3 - Fetch Driver Vehicles with Verification Standing
+Module: Fleet & Vehicles | Operation: -- READ
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+SELECT 
+    v."vehicleId",
+    v."make",
+    v."model",
+    v."color",
+    v."registrationNumber",
+    v."vehicleType",
+    v."seatCapacity",
+    v."verificationStatus",
+    v."isActive",
+    dp."eligibilityStatus",
+    dp."licenseNumber"
+FROM "vehicles" v
+INNER JOIN "users" u ON v."ownerId" = u."userId"
+LEFT JOIN "driver_profiles" dp ON u."userId" = dp."userId"
+WHERE v."ownerId" = $1
+  AND v."isActive" = true
+ORDER BY v."createdAt" DESC;
+
+--- Concrete Executed SQL Statement ---
+SELECT 
+    v."vehicleId",
+    v."make",
+    v."model",
+    v."color",
+    v."registrationNumber",
+    v."vehicleType",
+    v."seatCapacity",
+    v."verificationStatus",
+    v."isActive",
+    dp."eligibilityStatus",
+    dp."licenseNumber"
+FROM "vehicles" v
+INNER JOIN "users" u ON v."ownerId" = u."userId"
+LEFT JOIN "driver_profiles" dp ON u."userId" = dp."userId"
+WHERE v."ownerId" = '33333333-3333-4333-8333-333333333333'
+  AND v."isActive" = true
+ORDER BY v."createdAt" DESC;
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Sort  (cost=24.52..24.52 rows=1 width=591) (actual time=0.029..0.029 rows=1.00 loops=1)
+  Output: v."vehicleId", v.make, v.model, v.color, v."registrationNumber", v."vehicleType", v."seatCapacity", v."verificationStatus", v."isActive", dp."eligibilityStatus", dp."licenseNumber", v."createdAt"
+  Sort Key: v."createdAt" DESC
+  Sort Method: quicksort  Memory: 25kB
+  Buffers: shared hit=7
+  ->  Nested Loop Left Join  (cost=0.43..24.51 rows=1 width=591) (actual time=0.020..0.023 rows=1.00 loops=1)
+        Output: v."vehicleId", v.make, v.model, v.color, v."registrationNumber", v."vehicleType", v."seatCapacity", v."verificationStatus", v."isActive", dp."eligibilityStatus", dp."licenseNumber", v."createdAt"
+        Inner Unique: true
+        Buffers: shared hit=7
+        ->  Nested Loop  (cost=0.29..16.33 rows=1 width=485) (actual time=0.014..0.017 rows=1.00 loops=1)
+              Output: v."vehicleId", v.make, v.model, v.color, v."registrationNumber", v."vehicleType", v."seatCapacity", v."verificationStatus", v."isActive", v."createdAt", u."userId"
+              Buffers: shared hit=5
+              ->  Index Scan using "vehicles_ownerId_idx" on rydora_benchmark.vehicles v  (cost=0.14..8.16 rows=1 width=485) (actual time=0.007..0.010 rows=1.00 loops=1)
+                    Output: v."vehicleId", v."ownerId", v."vehicleType", v."registrationNumber", v.make, v.model, v.color, v."seatCapacity", v."verificationStatus", v."isActive", v."createdAt", v."updatedAt"
+                    Index Cond: (v."ownerId" = '33333333-3333-4333-8333-333333333333'::uuid)
+                    Filter: v."isActive"
+                    Index Searches: 1
+                    Buffers: shared hit=3
+              ->  Index Only Scan using users_pkey on rydora_benchmark.users u  (cost=0.14..8.16 rows=1 width=16) (actual time=0.006..0.006 rows=1.00 loops=1)
+                    Output: u."userId"
+                    Index Cond: (u."userId" = '33333333-3333-4333-8333-333333333333'::uuid)
+                    Heap Fetches: 1
+                    Index Searches: 1
+                    Buffers: shared hit=2
+        ->  Index Scan using "driver_profiles_userId_key" on rydora_benchmark.driver_profiles dp  (cost=0.15..8.17 rows=1 width=138) (actual time=0.005..0.005 rows=1.00 loops=1)
+              Output: dp."driverProfileId", dp."userId", dp."driverVerificationStatus", dp."licenseVerificationStatus", dp."licenseNumber", dp."eligibilityStatus", dp."approvedAt", dp."createdAt", dp."updatedAt"
+              Index Cond: (dp."userId" = '33333333-3333-4333-8333-333333333333'::uuid)
+              Index Searches: 1
+              Buffers: shared hit=2
+Query Identifier: -3030071114804592627
+Planning:
+  Buffers: shared hit=9
+Planning Time: 0.210 ms
+Execution Time: 0.066 ms

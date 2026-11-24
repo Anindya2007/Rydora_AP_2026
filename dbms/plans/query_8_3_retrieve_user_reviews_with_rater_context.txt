@@ -1,0 +1,87 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 8.3 - Retrieve User Reviews with Rater Context
+Module: Trust, Ratings & Reviews | Operation: -- READ
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+SELECT 
+    rt."ratingId",
+    rt."score",
+    rt."comment",
+    rt."createdAt",
+    rv."headline",
+    rv."reviewText",
+    rater."name" AS "raterName",
+    rater."profileImage" AS "raterImage"
+FROM "ratings" rt
+INNER JOIN "users" rater ON rt."raterId" = rater."userId"
+LEFT JOIN "reviews" rv ON rt."ratingId" = rv."ratingId"
+WHERE rt."rateeId" = $1
+ORDER BY rt."createdAt" DESC
+LIMIT 20;
+
+--- Concrete Executed SQL Statement ---
+SELECT 
+    rt."ratingId",
+    rt."score",
+    rt."comment",
+    rt."createdAt",
+    rv."headline",
+    rv."reviewText",
+    rater."name" AS "raterName",
+    rater."profileImage" AS "raterImage"
+FROM "ratings" rt
+INNER JOIN "users" rater ON rt."raterId" = rater."userId"
+LEFT JOIN "reviews" rv ON rt."ratingId" = rv."ratingId"
+WHERE rt."rateeId" = '33333333-3333-4333-8333-333333333333'
+ORDER BY rt."createdAt" DESC
+LIMIT 20;
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Limit  (cost=35.11..35.12 rows=3 width=660) (actual time=0.044..0.046 rows=1.00 loops=1)
+  Output: rt."ratingId", rt.score, rt.comment, rt."createdAt", rv.headline, rv."reviewText", rater.name, rater."profileImage"
+  Buffers: shared hit=4
+  ->  Sort  (cost=35.11..35.12 rows=3 width=660) (actual time=0.043..0.045 rows=1.00 loops=1)
+        Output: rt."ratingId", rt.score, rt.comment, rt."createdAt", rv.headline, rv."reviewText", rater.name, rater."profileImage"
+        Sort Key: rt."createdAt" DESC
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=4
+        ->  Hash Right Join  (cost=22.47..35.09 rows=3 width=660) (actual time=0.033..0.039 rows=1.00 loops=1)
+              Output: rt."ratingId", rt.score, rt.comment, rt."createdAt", rv.headline, rv."reviewText", rater.name, rater."profileImage"
+              Hash Cond: (rv."ratingId" = rt."ratingId")
+              Buffers: shared hit=4
+              ->  Seq Scan on rydora_benchmark.reviews rv  (cost=0.00..11.90 rows=190 width=366) (actual time=0.005..0.005 rows=1.00 loops=1)
+                    Output: rv."reviewId", rv."ratingId", rv.headline, rv."reviewText", rv."isPublic", rv."createdAt", rv."updatedAt"
+                    Buffers: shared hit=1
+              ->  Hash  (cost=22.43..22.43 rows=3 width=310) (actual time=0.026..0.027 rows=1.00 loops=1)
+                    Output: rt."ratingId", rt.score, rt.comment, rt."createdAt", rater.name, rater."profileImage"
+                    Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                    Buffers: shared hit=3
+                    ->  Hash Join  (cost=11.32..22.43 rows=3 width=310) (actual time=0.024..0.026 rows=1.00 loops=1)
+                          Output: rt."ratingId", rt.score, rt.comment, rt."createdAt", rater.name, rater."profileImage"
+                          Hash Cond: (rater."userId" = rt."raterId")
+                          Buffers: shared hit=3
+                          ->  Seq Scan on rydora_benchmark.users rater  (cost=0.00..10.80 rows=80 width=266) (actual time=0.009..0.010 rows=5.00 loops=1)
+                                Output: rater."userId", rater.name, rater.email, rater.phone, rater."phoneVerifiedAt", rater."passwordHash", rater."profileImage", rater."accountStatus", rater."emailVerifiedAt", rater."createdAt", rater."updatedAt", rater."deletedAt"
+                                Buffers: shared hit=1
+                          ->  Hash  (cost=11.28..11.28 rows=3 width=76) (actual time=0.011..0.011 rows=1.00 loops=1)
+                                Output: rt."ratingId", rt.score, rt.comment, rt."createdAt", rt."raterId"
+                                Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                Buffers: shared hit=2
+                                ->  Bitmap Heap Scan on rydora_benchmark.ratings rt  (cost=4.17..11.28 rows=3 width=76) (actual time=0.009..0.009 rows=1.00 loops=1)
+                                      Output: rt."ratingId", rt.score, rt.comment, rt."createdAt", rt."raterId"
+                                      Recheck Cond: (rt."rateeId" = '33333333-3333-4333-8333-333333333333'::uuid)
+                                      Heap Blocks: exact=1
+                                      Buffers: shared hit=2
+                                      ->  Bitmap Index Scan on "ratings_rateeId_idx"  (cost=0.00..4.17 rows=3 width=0) (actual time=0.003..0.003 rows=4.00 loops=1)
+                                            Index Cond: (rt."rateeId" = '33333333-3333-4333-8333-333333333333'::uuid)
+                                            Index Searches: 1
+                                            Buffers: shared hit=1
+Query Identifier: -57915721873366734
+Planning:
+  Buffers: shared hit=23
+Planning Time: 0.238 ms
+Execution Time: 0.100 ms

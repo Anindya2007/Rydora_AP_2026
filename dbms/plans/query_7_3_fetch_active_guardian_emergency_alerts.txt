@@ -1,0 +1,95 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 7.3 - Fetch Active Guardian Emergency Alerts
+Module: Safety, Guardians & SOS | Operation: -- READ
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+SELECT 
+    sa."alertId",
+    sa."status",
+    sa."latitude",
+    sa."longitude",
+    sa."address",
+    sa."triggeredAt",
+    victim."userId" AS "victimId",
+    victim."name" AS "victimName",
+    victim."phone" AS "victimPhone",
+    tc."relationship",
+    r."originAddress",
+    r."destinationAddress",
+    r."rideStatus"
+FROM "sos_alerts" sa
+INNER JOIN "users" victim ON sa."userId" = victim."userId"
+INNER JOIN "trusted_contacts" tc ON victim."userId" = tc."userId"
+LEFT JOIN "rides" r ON sa."rideId" = r."rideId"
+WHERE tc."phone" = $1 -- caller's verified phone number
+  AND sa."status" IN ('TRIGGERED', 'ACKNOWLEDGED')
+ORDER BY sa."triggeredAt" DESC;
+
+--- Concrete Executed SQL Statement ---
+SELECT 
+    sa."alertId",
+    sa."status",
+    sa."latitude",
+    sa."longitude",
+    sa."address",
+    sa."triggeredAt",
+    victim."userId" AS "victimId",
+    victim."name" AS "victimName",
+    victim."phone" AS "victimPhone",
+    tc."relationship",
+    r."originAddress",
+    r."destinationAddress",
+    r."rideStatus"
+FROM "sos_alerts" sa
+INNER JOIN "users" victim ON sa."userId" = victim."userId"
+INNER JOIN "trusted_contacts" tc ON victim."userId" = tc."userId"
+LEFT JOIN "rides" r ON sa."rideId" = r."rideId"
+WHERE tc."phone" = '+919876543212' -- caller's verified phone number
+  AND sa."status" IN ('TRIGGERED', 'ACKNOWLEDGED')
+ORDER BY sa."triggeredAt" DESC;
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Sort  (cost=28.81..28.82 rows=1 width=2006) (actual time=0.024..0.024 rows=0.00 loops=1)
+  Output: sa."alertId", sa.status, sa.latitude, sa.longitude, sa.address, sa."triggeredAt", victim."userId", victim.name, victim.phone, tc.relationship, r."originAddress", r."destinationAddress", r."rideStatus"
+  Sort Key: sa."triggeredAt" DESC
+  Sort Method: quicksort  Memory: 25kB
+  Buffers: shared hit=6
+  ->  Nested Loop Left Join  (cost=0.42..28.80 rows=1 width=2006) (actual time=0.020..0.021 rows=0.00 loops=1)
+        Output: sa."alertId", sa.status, sa.latitude, sa.longitude, sa.address, sa."triggeredAt", victim."userId", victim.name, victim.phone, tc.relationship, r."originAddress", r."destinationAddress", r."rideStatus"
+        Inner Unique: true
+        Buffers: shared hit=6
+        ->  Nested Loop  (cost=0.29..20.13 rows=1 width=986) (actual time=0.020..0.020 rows=0.00 loops=1)
+              Output: sa."alertId", sa.status, sa.latitude, sa.longitude, sa.address, sa."triggeredAt", sa."rideId", victim."userId", victim.name, victim.phone, tc.relationship
+              Buffers: shared hit=6
+              ->  Nested Loop  (cost=0.14..19.36 rows=1 width=426) (actual time=0.015..0.016 rows=1.00 loops=1)
+                    Output: victim."userId", victim.name, victim.phone, tc.relationship, tc."userId"
+                    Inner Unique: true
+                    Buffers: shared hit=3
+                    ->  Seq Scan on rydora_benchmark.trusted_contacts tc  (cost=0.00..11.00 rows=1 width=134) (actual time=0.010..0.011 rows=1.00 loops=1)
+                          Output: tc."contactId", tc."userId", tc.name, tc.phone, tc.email, tc.relationship, tc."isEmergencyContact", tc."createdAt", tc."updatedAt"
+                          Filter: ((tc.phone)::text = '+919876543212'::text)
+                          Buffers: shared hit=1
+                    ->  Index Scan using users_pkey on rydora_benchmark.users victim  (cost=0.14..8.16 rows=1 width=292) (actual time=0.004..0.004 rows=1.00 loops=1)
+                          Output: victim."userId", victim.name, victim.email, victim.phone, victim."phoneVerifiedAt", victim."passwordHash", victim."profileImage", victim."accountStatus", victim."emailVerifiedAt", victim."createdAt", victim."updatedAt", victim."deletedAt"
+                          Index Cond: (victim."userId" = tc."userId")
+                          Index Searches: 1
+                          Buffers: shared hit=2
+              ->  Index Scan using "sos_alerts_userId_idx" on rydora_benchmark.sos_alerts sa  (cost=0.14..0.76 rows=1 width=592) (actual time=0.004..0.004 rows=0.00 loops=1)
+                    Output: sa."alertId", sa."rideId", sa."userId", sa.status, sa.latitude, sa.longitude, sa.address, sa."triggeredAt", sa."resolvedAt", sa."resolverNotes", sa."resolvedById"
+                    Index Cond: (sa."userId" = victim."userId")
+                    Filter: (sa.status = ANY ('{TRIGGERED,ACKNOWLEDGED}'::"SOSAlertStatus"[]))
+                    Index Searches: 1
+                    Buffers: shared hit=3
+        ->  Index Scan using rides_pkey on rydora_benchmark.rides r  (cost=0.14..8.15 rows=1 width=1052) (never executed)
+              Output: r."rideId", r."driverId", r."vehicleId", r."originAddress", r."originLat", r."originLng", r."originPlaceId", r."destinationAddress", r."destinationLat", r."destinationLng", r."destinationPlaceId", r."departureTime", r."totalSeats", r."availableSeats", r."farePerSeat", r."rideStatus", r."plannedDistanceKm", r."plannedDurationMinutes", r.notes, r."createdAt", r."updatedAt"
+              Index Cond: (r."rideId" = sa."rideId")
+              Index Searches: 0
+Query Identifier: 6519739515624936484
+Planning:
+  Buffers: shared hit=72
+Planning Time: 0.352 ms
+Execution Time: 0.061 ms

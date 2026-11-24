@@ -1,0 +1,63 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 2.2 - Register New Domain Community
+Module: Communities & Domains | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "communities" (
+    "communityId",
+    "name",
+    "type",
+    "description",
+    "status",
+    "isDiscoverable",
+    "createdById",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    $1, -- communityId
+    $2, -- name
+    $3, -- type ('UNIVERSITY', 'OFFICE', etc.)
+    $4, -- description
+    'ACTIVE',
+    true,
+    $5, -- createdById
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "communities" (
+    "communityId",
+    "name",
+    "type",
+    "description",
+    "status",
+    "isDiscoverable",
+    "createdById",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    '3504ee12-30b0-4f8b-a125-a34dc51591c0', -- communityId
+    'Ashoka Univ 1', -- name
+    'UNIVERSITY', -- type ('UNIVERSITY', 'OFFICE', etc.)
+    'Ashoka Campus Carpool', -- description
+    'ACTIVE',
+    true,
+    '33333333-3333-4333-8333-333333333333', -- createdById
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.communities  (cost=0.00..0.03 rows=0 width=0) (actual time=0.053..0.053 rows=0.00 loops=1)
+  Buffers: shared hit=4
+  ->  Result  (cost=0.00..0.03 rows=1 width=407) (actual time=0.004..0.004 rows=1.00 loops=1)
+        Output: '3504ee12-30b0-4f8b-a125-a34dc51591c0'::uuid, 'Ashoka Univ 1'::character varying(150), 'UNIVERSITY'::"CommunityType", 'Ashoka Campus Carpool'::text, 'ACTIVE'::"CommunityStatus", true, '33333333-3333-4333-8333-333333333333'::uuid, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+Query Identifier: -4233262096576205070
+Planning Time: 0.031 ms
+Trigger RI_ConstraintTrigger_c_112658 for constraint communities_createdById_fkey: time=0.087 calls=1
+Execution Time: 0.163 ms

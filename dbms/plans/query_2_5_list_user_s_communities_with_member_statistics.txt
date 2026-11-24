@@ -1,0 +1,91 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 2.5 - List User's Communities with Member Statistics
+Module: Communities & Domains | Operation: -- READ
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+SELECT 
+    c."communityId",
+    c."name" AS "communityName",
+    c."type",
+    cm."membershipRole" AS "userRole",
+    cm."joinedAt",
+    COUNT(m2."userId") AS "totalActiveMembers"
+FROM "community_memberships" cm
+INNER JOIN "communities" c ON cm."communityId" = c."communityId"
+LEFT JOIN "community_memberships" m2 
+    ON c."communityId" = m2."communityId" AND m2."membershipStatus" = 'ACTIVE'
+WHERE cm."userId" = $1
+  AND cm."membershipStatus" = 'ACTIVE'
+  AND c."status" = 'ACTIVE'
+GROUP BY c."communityId", c."name", c."type", cm."membershipRole", cm."joinedAt"
+ORDER BY c."name" ASC;
+
+--- Concrete Executed SQL Statement ---
+SELECT 
+    c."communityId",
+    c."name" AS "communityName",
+    c."type",
+    cm."membershipRole" AS "userRole",
+    cm."joinedAt",
+    COUNT(m2."userId") AS "totalActiveMembers"
+FROM "community_memberships" cm
+INNER JOIN "communities" c ON cm."communityId" = c."communityId"
+LEFT JOIN "community_memberships" m2 
+    ON c."communityId" = m2."communityId" AND m2."membershipStatus" = 'ACTIVE'
+WHERE cm."userId" = '11111111-1111-4111-8111-111111111111'
+  AND cm."membershipStatus" = 'ACTIVE'
+  AND c."status" = 'ACTIVE'
+GROUP BY c."communityId", c."name", c."type", cm."membershipRole", cm."joinedAt"
+ORDER BY c."name" ASC;
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Sort  (cost=31.78..31.78 rows=1 width=358) (actual time=0.055..0.056 rows=1.00 loops=1)
+  Output: c."communityId", c.name, c.type, cm."membershipRole", cm."joinedAt", (count(m2."userId"))
+  Sort Key: c.name
+  Sort Method: quicksort  Memory: 25kB
+  Buffers: shared hit=9
+  ->  GroupAggregate  (cost=31.74..31.77 rows=1 width=358) (actual time=0.051..0.051 rows=1.00 loops=1)
+        Output: c."communityId", c.name, c.type, cm."membershipRole", cm."joinedAt", count(m2."userId")
+        Group Key: c."communityId", cm."membershipRole", cm."joinedAt"
+        Buffers: shared hit=9
+        ->  Sort  (cost=31.74..31.75 rows=1 width=366) (actual time=0.046..0.047 rows=2.00 loops=1)
+              Output: c."communityId", cm."membershipRole", cm."joinedAt", c.name, c.type, m2."userId"
+              Sort Key: c."communityId", cm."membershipRole", cm."joinedAt"
+              Sort Method: quicksort  Memory: 25kB
+              Buffers: shared hit=9
+              ->  Nested Loop Left Join  (cost=4.32..31.73 rows=1 width=366) (actual time=0.026..0.030 rows=2.00 loops=1)
+                    Output: c."communityId", cm."membershipRole", cm."joinedAt", c.name, c.type, m2."userId"
+                    Buffers: shared hit=6
+                    ->  Nested Loop  (cost=4.17..23.55 rows=1 width=350) (actual time=0.020..0.020 rows=1.00 loops=1)
+                          Output: cm."membershipRole", cm."joinedAt", c."communityId", c.name, c.type
+                          Inner Unique: true
+                          Join Filter: (cm."communityId" = c."communityId")
+                          Buffers: shared hit=3
+                          ->  Bitmap Heap Scan on rydora_benchmark.community_memberships cm  (cost=4.17..11.29 rows=1 width=28) (actual time=0.013..0.014 rows=1.00 loops=1)
+                                Output: cm."membershipId", cm."userId", cm."communityId", cm."membershipStatus", cm."membershipRole", cm."verificationStatus", cm."verificationMethod", cm."verifiedAt", cm."joinedAt", cm."createdAt", cm."updatedAt"
+                                Recheck Cond: (cm."userId" = '11111111-1111-4111-8111-111111111111'::uuid)
+                                Filter: (cm."membershipStatus" = 'ACTIVE'::"MembershipStatus")
+                                Heap Blocks: exact=1
+                                Buffers: shared hit=2
+                                ->  Bitmap Index Scan on "community_memberships_userId_communityId_key"  (cost=0.00..4.17 rows=3 width=0) (actual time=0.003..0.003 rows=1.00 loops=1)
+                                      Index Cond: (cm."userId" = '11111111-1111-4111-8111-111111111111'::uuid)
+                                      Index Searches: 1
+                                      Buffers: shared hit=1
+                          ->  Seq Scan on rydora_benchmark.communities c  (cost=0.00..12.25 rows=1 width=338) (actual time=0.005..0.005 rows=1.00 loops=1)
+                                Output: c."communityId", c.name, c.type, c.description, c.status, c."isDiscoverable", c."createdById", c."createdAt", c."updatedAt"
+                                Filter: (c.status = 'ACTIVE'::"CommunityStatus")
+                                Buffers: shared hit=1
+                    ->  Index Scan using "community_memberships_communityId_membershipStatus_idx" on rydora_benchmark.community_memberships m2  (cost=0.15..8.17 rows=1 width=32) (actual time=0.004..0.007 rows=2.00 loops=1)
+                          Output: m2."membershipId", m2."userId", m2."communityId", m2."membershipStatus", m2."membershipRole", m2."verificationStatus", m2."verificationMethod", m2."verifiedAt", m2."joinedAt", m2."createdAt", m2."updatedAt"
+                          Index Cond: ((m2."communityId" = c."communityId") AND (m2."membershipStatus" = 'ACTIVE'::"MembershipStatus"))
+                          Index Searches: 1
+                          Buffers: shared hit=3
+Query Identifier: 2820263427087953625
+Planning:
+  Buffers: shared hit=36
+Planning Time: 0.245 ms
+Execution Time: 0.112 ms

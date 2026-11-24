@@ -1,0 +1,55 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 9.1 - Queue In-App Notification
+Module: Push & In-App Notifications | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "notifications" (
+    "notificationId",
+    "userId",
+    "type",
+    "title",
+    "body",
+    "isRead",
+    "createdAt"
+) VALUES (
+    $1, -- notificationId
+    $2, -- userId
+    $3, -- type ('BOOKING_CONFIRMATION', 'SAFETY_ALERT', etc.)
+    $4, -- title
+    $5, -- body
+    false,
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "notifications" (
+    "notificationId",
+    "userId",
+    "type",
+    "title",
+    "body",
+    "isRead",
+    "createdAt"
+) VALUES (
+    '4fe052e1-6b07-4b70-950b-7f3f80f0844e', -- notificationId
+    '11111111-1111-4111-8111-111111111111', -- userId
+    'BOOKING_CONFIRMATION', -- type ('BOOKING_CONFIRMATION', 'SAFETY_ALERT', etc.)
+    'Ride Status Update', -- title
+    'Your carpool ride has started.', -- body
+    false,
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.notifications  (cost=0.00..0.02 rows=0 width=0) (actual time=0.048..0.048 rows=0.00 loops=1)
+  Buffers: shared hit=7
+  ->  Result  (cost=0.00..0.02 rows=1 width=537) (actual time=0.003..0.004 rows=1.00 loops=1)
+        Output: '4fe052e1-6b07-4b70-950b-7f3f80f0844e'::uuid, '11111111-1111-4111-8111-111111111111'::uuid, 'Ride Status Update'::character varying(150), 'Your carpool ride has started.'::text, 'BOOKING_CONFIRMATION'::"NotificationType", NULL::character varying(50), NULL::uuid, false, NULL::timestamp(3) without time zone, CURRENT_TIMESTAMP
+Query Identifier: 4733999658416093305
+Planning Time: 0.031 ms
+Trigger RI_ConstraintTrigger_c_113028 for constraint notifications_userId_fkey: time=0.085 calls=1
+Execution Time: 0.154 ms

@@ -1,0 +1,61 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 7.2 - Trigger Emergency SOS Alert
+Module: Safety, Guardians & SOS | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "sos_alerts" (
+    "alertId",
+    "userId",
+    "rideId",
+    "status",
+    "latitude",
+    "longitude",
+    "address",
+    "triggeredAt"
+) VALUES (
+    $1, -- alertId
+    $2, -- userId
+    $3, -- rideId (optional)
+    'TRIGGERED',
+    $4, -- latitude
+    $5, -- longitude
+    $6, -- address
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "sos_alerts" (
+    "alertId",
+    "userId",
+    "rideId",
+    "status",
+    "latitude",
+    "longitude",
+    "address",
+    "triggeredAt"
+) VALUES (
+    '3e2370e6-9ed3-43e4-8e9a-337d8af61f06', -- alertId
+    '11111111-1111-4111-8111-111111111111', -- userId
+    '77777777-7777-4777-8777-777777777777', -- rideId (optional)
+    'TRIGGERED',
+    28.9876, -- latitude
+    77.0255, -- longitude
+    'Rishihood Campus Gate 1', -- address
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.sos_alerts  (cost=0.00..0.02 rows=0 width=0) (actual time=0.051..0.052 rows=0.00 loops=1)
+  Buffers: shared hit=9
+  ->  Result  (cost=0.00..0.02 rows=1 width=648) (actual time=0.003..0.003 rows=1.00 loops=1)
+        Output: '3e2370e6-9ed3-43e4-8e9a-337d8af61f06'::uuid, '77777777-7777-4777-8777-777777777777'::uuid, '11111111-1111-4111-8111-111111111111'::uuid, 'TRIGGERED'::"SOSAlertStatus", '28.9876'::double precision, '77.0255'::double precision, 'Rishihood Campus Gate 1'::character varying(255), CURRENT_TIMESTAMP, NULL::timestamp(3) without time zone, NULL::text, NULL::uuid
+Query Identifier: -2130407802633359990
+Planning Time: 0.037 ms
+Trigger RI_ConstraintTrigger_c_112933 for constraint sos_alerts_rideId_fkey: time=0.092 calls=1
+Trigger RI_ConstraintTrigger_c_112938 for constraint sos_alerts_userId_fkey: time=0.031 calls=1
+Trigger RI_ConstraintTrigger_c_112943 for constraint sos_alerts_resolvedById_fkey: time=0.001 calls=1
+Execution Time: 0.199 ms

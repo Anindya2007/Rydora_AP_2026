@@ -1,0 +1,63 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 4.3 - Add Waypoint Stop Along Route
+Module: Rides & Routing | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "ride_stops" (
+    "stopId",
+    "rideId",
+    "stopType",
+    "address",
+    "latitude",
+    "longitude",
+    "sequence",
+    "estimatedArrivalTime",
+    "createdAt"
+) VALUES (
+    $1, -- stopId
+    $2, -- rideId
+    $3, -- stopType ('PICKUP', 'DROPOFF', 'WAYPOINT')
+    $4, -- address
+    $5, -- latitude
+    $6, -- longitude
+    $7, -- sequence
+    $8, -- estimatedArrivalTime
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "ride_stops" (
+    "stopId",
+    "rideId",
+    "stopType",
+    "address",
+    "latitude",
+    "longitude",
+    "sequence",
+    "estimatedArrivalTime",
+    "createdAt"
+) VALUES (
+    '88bfd5c3-2d84-4b83-b717-6641e2f4837a', -- stopId
+    '77777777-7777-4777-8777-777777777777', -- rideId
+    'WAYPOINT', -- stopType ('PICKUP', 'DROPOFF', 'WAYPOINT')
+    'Mukarba Chowk', -- address
+    28.736, -- latitude
+    77.16, -- longitude
+    2, -- sequence
+    '2026-11-25 10:30:00', -- estimatedArrivalTime
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.ride_stops  (cost=0.00..0.02 rows=0 width=0) (actual time=0.048..0.048 rows=0.00 loops=1)
+  Buffers: shared hit=7
+  ->  Result  (cost=0.00..0.02 rows=1 width=1104) (actual time=0.003..0.003 rows=1.00 loops=1)
+        Output: '88bfd5c3-2d84-4b83-b717-6641e2f4837a'::uuid, '77777777-7777-4777-8777-777777777777'::uuid, 'WAYPOINT'::"StopType", 'Mukarba Chowk'::character varying(255), '28.736'::double precision, '77.16'::double precision, NULL::character varying(255), 2, '2026-11-25 10:30:00'::timestamp(3) without time zone, CURRENT_TIMESTAMP
+Query Identifier: -1776965876192480938
+Planning Time: 0.039 ms
+Trigger RI_ConstraintTrigger_c_112738 for constraint ride_stops_rideId_fkey: time=0.093 calls=1
+Execution Time: 0.163 ms

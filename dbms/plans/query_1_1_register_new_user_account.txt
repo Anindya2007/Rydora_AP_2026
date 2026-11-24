@@ -1,0 +1,62 @@
+=====================================================================
+Rydora Database Query Execution Plan
+Query ID: 1.1 - Register New User Account
+Module: Identity, Auth & Sessions | Operation: -- WRITE
+Database: PostgreSQL 15+ (Production Engine)
+Captured At: 2026-11-24
+=====================================================================
+
+--- Formatted Parameterized SQL ---
+INSERT INTO "users" (
+    "userId",
+    "name",
+    "email",
+    "phone",
+    "passwordHash",
+    "profileImage",
+    "accountStatus",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    $1, -- userId (UUID)
+    $2, -- name (VARCHAR)
+    LOWER(TRIM($3)), -- email (VARCHAR normalized)
+    $4, -- phone (VARCHAR)
+    $5, -- passwordHash (TEXT)
+    $6, -- profileImage (TEXT)
+    'ACTIVE',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- Concrete Executed SQL Statement ---
+INSERT INTO "users" (
+    "userId",
+    "name",
+    "email",
+    "phone",
+    "passwordHash",
+    "profileImage",
+    "accountStatus",
+    "createdAt",
+    "updatedAt"
+) VALUES (
+    '99429193-38a8-40c2-a135-5e1a49f041f4', -- userId (UUID)
+    'Bench User 1', -- name (VARCHAR)
+    LOWER(TRIM('user_1_f5b05c@test.com')), -- email (VARCHAR normalized)
+    '+919999999901', -- phone (VARCHAR)
+    'pw_hash_test', -- passwordHash (TEXT)
+    NULL, -- profileImage (TEXT)
+    'ACTIVE',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);
+
+--- PostgreSQL EXPLAIN (ANALYZE, BUFFERS, VERBOSE) Output ---
+Insert on rydora_benchmark.users  (cost=0.00..0.03 rows=0 width=0) (actual time=0.034..0.034 rows=0.00 loops=1)
+  Buffers: shared hit=4
+  ->  Result  (cost=0.00..0.03 rows=1 width=916) (actual time=0.004..0.004 rows=1.00 loops=1)
+        Output: '99429193-38a8-40c2-a135-5e1a49f041f4'::uuid, 'Bench User 1'::character varying(100), 'user_1_f5b05c@test.com'::character varying(255), '+919999999901'::character varying(20), NULL::timestamp(3) without time zone, 'pw_hash_test'::text, NULL::text, 'ACTIVE'::"AccountStatus", NULL::timestamp(3) without time zone, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL::timestamp(3) without time zone
+Query Identifier: 7228533269263711866
+Planning Time: 0.046 ms
+Execution Time: 0.064 ms
