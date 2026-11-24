@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../config/prisma.js';
 import { sendSuccess } from '../utils/response.js';
-import { apiRateLimiter } from '../middleware/rateLimiter.js';
 import { authenticate } from '../middleware/auth.js';
 import { AuthController } from '../controllers/auth.controller.js';
 import { authRouter } from './auth.routes.js';
@@ -16,9 +15,6 @@ import { paymentRouter } from './payment.routes.js';
 import { ratingRouter } from './rating.routes.js';
 
 export const apiV1Router = Router();
-
-// Apply general API rate limiting across all API v1 endpoints (excluding test env)
-apiV1Router.use(apiRateLimiter);
 
 /**
  * GET /api/v1/health
