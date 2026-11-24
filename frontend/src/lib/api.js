@@ -1,41 +1,34 @@
 import axios from 'axios';
 
-// Base API URL: In dev Vite proxies /api to backend port 5000; also supports VITE_API_BASE_URL
+// Base API URL: In dev Vite proxies /api to backend port 5001; also supports VITE_API_BASE_URL
 const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || '/api/v1';
+
+// In-memory cache for the current user profile (never stored in localStorage)
+let currentUserCache = null;
+
+// Wipe any legacy localStorage tokens or user data to ensure clean security
+try {
+  localStorage.removeItem('rideshare_token');
+  localStorage.removeItem('rideshare_session_id');
+  localStorage.removeItem('rideshare_user');
+  localStorage.removeItem('rydora_rated_bookings');
+  localStorage.removeItem('rydora_driver_rated_passengers');
+} catch {}
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true,
+  withCredentials: true, // Automatically sends and receives HTTP-only cookies
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Attach Authorization Bearer token & Session ID to every outgoing request if available
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('rideshare_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  const sessionId = localStorage.getItem('rideshare_session_id');
-  if (sessionId) {
-    config.headers['x-session-id'] = sessionId;
-  }
-  return config;
-});
-
-// Intercept responses to handle 401s (token expiry)
+// Intercept responses to handle 401s (session expiry)
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear token, session, and user on unrecoverable unauthorized
-      const currentToken = localStorage.getItem('rideshare_token');
-      if (currentToken && !error.config.url?.includes('/auth/login')) {
-        localStorage.removeItem('rideshare_token');
-        localStorage.removeItem('rideshare_session_id');
-        localStorage.removeItem('rideshare_user');
-      }
+      currentUserCache = null;
     }
     return Promise.reject(error);
   }
@@ -45,13 +38,9 @@ export const api = {
   auth: {
     async login(email, password) {
       const response = await apiClient.post('/auth/login', { email, password });
-      const { user, token, sessionId } = response.data.data;
-      localStorage.setItem('rideshare_token', token);
-      if (sessionId) {
-        localStorage.setItem('rideshare_session_id', sessionId);
-      }
-      localStorage.setItem('rideshare_user', JSON.stringify(user));
-      return { user, token, sessionId };
+      const user = response.data.data?.user || response.data.data;
+      currentUserCache = user;
+      return { user };
     },
 
     async signup({ name, email, phone, password }) {
@@ -67,19 +56,16 @@ export const api = {
         payload.phone = cleanedPhone;
       }
       const response = await apiClient.post('/auth/signup', payload);
-      const { user, token, sessionId } = response.data.data;
-      localStorage.setItem('rideshare_token', token);
-      if (sessionId) {
-        localStorage.setItem('rideshare_session_id', sessionId);
-      }
-      localStorage.setItem('rideshare_user', JSON.stringify(user));
-      return { user, token, sessionId };
+      const user = response.data.data?.user || response.data.data;
+      currentUserCache = user;
+      return { user };
     },
 
     async getMe() {
-      const response = await apiClient.get('/auth/me');
-      const user = response.data.data.user || response.data.data;
-      localStorage.setItem('rideshare_user', JSON.stringify(user));
+      // Calls the /me endpoint with HTTP-only cookie credentials
+      const response = await apiClient.get('/me');
+      const user = response.data.data?.user || response.data.data;
+      currentUserCache = user;
       return user;
     },
 
@@ -87,26 +73,20 @@ export const api = {
       try {
         await apiClient.post('/auth/logout');
       } catch {}
-      localStorage.removeItem('rideshare_token');
-      localStorage.removeItem('rideshare_session_id');
-      localStorage.removeItem('rideshare_user');
+      currentUserCache = null;
     },
 
     getToken() {
-      return localStorage.getItem('rideshare_token');
+      // Tokens are strictly stored in HTTP-only cookies and inaccessible to JavaScript
+      return null;
     },
 
     getSessionId() {
-      return localStorage.getItem('rideshare_session_id');
+      return null;
     },
 
     getCurrentUser() {
-      try {
-        const saved = localStorage.getItem('rideshare_user');
-        return saved ? JSON.parse(saved) : null;
-      } catch {
-        return null;
-      }
+      return currentUserCache;
     },
   },
 

@@ -36,22 +36,10 @@ export const ProfilePage = ({ user, onLoginClick, onSignUpClick, onSelectTab }) 
   const [ratingScore, setRatingScore] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
   const [submittingRating, setSubmittingRating] = useState(false);
-  const [ratedBookings, setRatedBookings] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('rydora_rated_bookings') || '{}');
-    } catch {
-      return {};
-    }
-  });
+  const [ratedBookings, setRatedBookings] = useState({});
 
   // Rating State (Driver -> Passenger)
-  const [driverRatedPassengers, setDriverRatedPassengers] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('rydora_driver_rated_passengers') || '{}');
-    } catch {
-      return {};
-    }
-  });
+  const [driverRatedPassengers, setDriverRatedPassengers] = useState({});
   const [driverRatingBookingId, setDriverRatingBookingId] = useState(null);
   const [driverRatingScore, setDriverRatingScore] = useState(5);
   const [driverRatingComment, setDriverRatingComment] = useState('');
@@ -231,9 +219,6 @@ export const ProfilePage = ({ user, onLoginClick, onSignUpClick, onSelectTab }) 
         [bookingId]: { score: driverRatingScore, comment: driverRatingComment, at: new Date().toISOString() },
       };
       setDriverRatedPassengers(updated);
-      try {
-        localStorage.setItem('rydora_driver_rated_passengers', JSON.stringify(updated));
-      } catch {}
       setDriverRatingBookingId(null);
       setDriverRatingComment('');
       setActionMsg(`✓ Thank you! Rated passenger ${riderName || ''} ★ ${driverRatingScore}.`);
@@ -285,9 +270,6 @@ export const ProfilePage = ({ user, onLoginClick, onSignUpClick, onSelectTab }) 
         [bookingId]: { score: ratingScore, comment: ratingComment, at: new Date().toISOString() },
       };
       setRatedBookings(updated);
-      try {
-        localStorage.setItem('rydora_rated_bookings', JSON.stringify(updated));
-      } catch {}
 
       setRatingBookingId(null);
       setRatingComment('');

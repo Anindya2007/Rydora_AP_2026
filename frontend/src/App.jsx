@@ -12,14 +12,8 @@ import { LoginPage } from '@/components/LoginPage';
 
 export default function App() {
   const [entranceComplete, setEntranceComplete] = useState(false);
-  const [user, setUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('rideshare_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const [currentView, setCurrentView] = useState(() => {
     if (window.location.hash === '#signup') return 'signup';
@@ -36,9 +30,6 @@ export default function App() {
   const handleLoginSuccess = (userData) => {
     if (!userData) return;
     setUser(userData);
-    try {
-      localStorage.setItem('rideshare_user', JSON.stringify(userData));
-    } catch {}
     window.location.hash = `#${activeTab}`;
     setCurrentView('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -50,18 +41,18 @@ export default function App() {
   };
 
   useEffect(() => {
-    const token = api.auth.getToken();
-    if (token) {
-      api.auth
-        .getMe()
-        .then((freshUser) => {
-          if (freshUser) setUser(freshUser);
-        })
-        .catch(() => {
-          api.auth.logout();
-          setUser(null);
-        });
-    }
+    // Automatically verify authenticated user profile via secure HTTP-only cookies
+    api.auth
+      .getMe()
+      .then((freshUser) => {
+        if (freshUser) setUser(freshUser);
+      })
+      .catch(() => {
+        setUser(null);
+      })
+      .finally(() => {
+        setAuthChecked(true);
+      });
   }, []);
 
   useEffect(() => {

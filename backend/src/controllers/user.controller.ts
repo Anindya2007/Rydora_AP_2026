@@ -10,6 +10,21 @@ import { sendSuccess } from '../utils/response.js';
 import { UnauthorizedError } from '../utils/errors.js';
 
 /**
+ * Controller handling retrieval of current user profile (GET /api/v1/users/me).
+ */
+export async function getProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!req.user || !req.user.userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+    const user = await userService.getUserProfile(req.user.userId);
+    sendSuccess(res, { user }, 'User profile retrieved successfully', 200);
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * Controller handling user profile updates (PATCH /api/v1/users/me).
  * Obtains the user identity strictly from req.user.userId.
  */
@@ -120,6 +135,7 @@ export async function approveDriverVerification(
 }
 
 export const UserController = {
+  getProfile,
   updateProfile,
   submitDriverVerification,
   listPendingVerifications,

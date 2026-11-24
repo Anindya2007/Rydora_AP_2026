@@ -127,13 +127,7 @@ export const HeroSection = ({ user, onLoginClick, onSelectTab }) => {
   const [myBookings, setMyBookings] = useState([]);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingTab, setBookingTab] = useState('active'); // 'active' | 'past'
-  const [ratedBookings, setRatedBookings] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('rydora_rated_bookings') || '{}');
-    } catch {
-      return {};
-    }
-  });
+  const [ratedBookings, setRatedBookings] = useState({});
   const [ratingBookingId, setRatingBookingId] = useState(null);
   const [ratingScore, setRatingScore] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
@@ -382,9 +376,6 @@ export const HeroSection = ({ user, onLoginClick, onSelectTab }) => {
         [bookingId]: { score: ratingScore, comment: ratingComment, ratedAt: new Date().toISOString() },
       };
       setRatedBookings(newRated);
-      try {
-        localStorage.setItem('rydora_rated_bookings', JSON.stringify(newRated));
-      } catch {}
       setRatingStatusMsg(`✓ Rating of ${ratingScore} ★ submitted successfully!`);
       alert(`⭐ Thank you! Your rating of ${ratingScore} ★ for ${driverName} was submitted successfully.`);
       setRatingBookingId(null);

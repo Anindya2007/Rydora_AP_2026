@@ -46,11 +46,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
  */
 export async function authenticate(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    // 1. Extract sessionId from cookie or header
-    const sessionId: string | undefined =
-      req.cookies?.sessionId || (req.headers['x-session-id'] as string) || undefined;
-
-    // 2. Extract JWT token from cookie or Authorization header
+    // 1. Extract token from cookie or Authorization header
     let token: string | undefined = req.cookies?.token;
     const authHeader = req.headers.authorization;
     if (authHeader) {
@@ -60,94 +56,46 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       }
     }
 
-    let targetUserId: string;
-    let verifiedToken: string;
+    // 2. If token is not in cookie/header, check session lookup
+    const sessionId: string | undefined =
+      req.cookies?.sessionId || (req.headers['x-session-id'] as string) || undefined;
 
-    // 3. Verify using session ID and sessions table if sessionId is provided
-    if (sessionId) {
+    if (!token && sessionId) {
       const session = await sessionService.getSession(sessionId);
-      if (!session) {
-        throw new UnauthorizedError('Session expired or invalid. Please log in again.');
+      if (session) {
+        token = session.token;
       }
+    }
 
-      verifiedToken = token || session.token;
-
-      // Throttled update: only update session token in database if not updated recently
-      if (!session.updatedAt || Date.now() - new Date(session.updatedAt).getTime() > 5 * 60 * 1000) {
-        await sessionService.storeSessionToken(sessionId, verifiedToken, session.userId);
-      }
-
-      // Verify token signature with JWT_SECRET
-      let decoded: jwt.JwtPayload;
-      try {
-        const verified = jwt.verify(verifiedToken, env.JWT_SECRET);
-        if (typeof verified !== 'object' || verified === null) {
-          throw new UnauthorizedError('Invalid token payload');
-        }
-        decoded = verified as jwt.JwtPayload;
-      } catch (err: any) {
-        if (err instanceof UnauthorizedError) throw err;
-        if (err instanceof jwt.TokenExpiredError) {
-          await sessionService.deleteSession(sessionId);
-          throw new UnauthorizedError('Authentication session token has expired');
-        }
-        throw new UnauthorizedError('Token verification failed');
-      }
-
-      const sub = decoded.sub;
-      if (!sub || typeof sub !== 'string' || !UUID_REGEX.test(sub)) {
-        throw new UnauthorizedError('Invalid or malformed user ID in token claim');
-      }
-
-      targetUserId = session.userId;
-      req.sessionId = sessionId;
-    } else if (token) {
-      // 4. Token provided without sessionId: verify token, then store in session table
-      let decoded: jwt.JwtPayload;
-      try {
-        const verified = jwt.verify(token, env.JWT_SECRET);
-        if (typeof verified !== 'object' || verified === null) {
-          throw new UnauthorizedError('Invalid token payload');
-        }
-        decoded = verified as jwt.JwtPayload;
-      } catch (err: any) {
-        if (err instanceof jwt.TokenExpiredError) {
-          throw new UnauthorizedError('Authentication token has expired');
-        }
-        throw new UnauthorizedError('Token verification failed');
-      }
-
-      const sub = decoded.sub;
-      if (!sub || typeof sub !== 'string' || !UUID_REGEX.test(sub)) {
-        throw new UnauthorizedError('Invalid or malformed user ID in token claim');
-      }
-
-      targetUserId = sub;
-
-      // Create or update session in sessions table
-      const activeSessionId = await sessionService.getOrCreateSessionForToken(sub, token);
-      req.sessionId = activeSessionId;
-
-      // Attach cookies for subsequent requests
-      res.cookie('sessionId', activeSessionId, {
-        httpOnly: true,
-        secure: env.NODE_ENV === 'production',
-        sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
-        maxAge: 24 * 60 * 60 * 1000,
-      });
-      res.cookie('token', token, {
-        httpOnly: true,
-        secure: env.NODE_ENV === 'production',
-        sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
-        maxAge: 24 * 60 * 60 * 1000,
-      });
-    } else {
+    if (!token) {
       throw new UnauthorizedError('Authentication required. Missing session cookie or authorization token.');
     }
 
-    // 5. Query user details directly from PostgreSQL
+    // 3. Verify JWT token
+    let decoded: jwt.JwtPayload;
+    try {
+      const verified = jwt.verify(token, env.JWT_SECRET);
+      if (typeof verified !== 'object' || verified === null) {
+        throw new UnauthorizedError('Invalid token payload');
+      }
+      decoded = verified as jwt.JwtPayload;
+    } catch (err: any) {
+      if (err instanceof jwt.TokenExpiredError) {
+        throw new UnauthorizedError('Authentication token has expired');
+      }
+      throw new UnauthorizedError('Token verification failed');
+    }
+
+    const userId = decoded.sub;
+    if (!userId || typeof userId !== 'string' || !UUID_REGEX.test(userId)) {
+      throw new UnauthorizedError('Invalid or malformed user ID in token claim');
+    }
+
+    req.sessionId = sessionId;
+
+    // 4. Query user from database
     const user = await prisma.user.findUnique({
-      where: { userId: targetUserId },
+      where: { userId },
       select: {
         userId: true,
         name: true,
@@ -170,13 +118,12 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       throw new UnauthorizedError('User not found or account no longer exists');
     }
 
-    // Resolve application-level roles
+    // 5. Attach user to request with resolved roles
     const resolvedRoles: PlatformRole[] = [...user.roles];
     if (env.ADMIN_USER_IDS.includes(user.userId.toLowerCase())) {
       resolvedRoles.push('ADMIN');
     }
 
-    // Attach sanitized user to request
     req.user = {
       userId: user.userId,
       name: user.name,
@@ -187,14 +134,8 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       licenseNumber: user.licenseNumber,
       licenseExpiry: user.licenseExpiry,
       driverVerified: user.driverVerified,
-      walletBalance:
-        typeof user.walletBalance === 'object' && user.walletBalance !== null && 'toString' in user.walletBalance
-          ? user.walletBalance.toString()
-          : String(user.walletBalance ?? '0.00'),
-      averageRating:
-        typeof user.averageRating === 'object' && user.averageRating !== null && 'toString' in user.averageRating
-          ? user.averageRating.toString()
-          : String(user.averageRating ?? '0.00'),
+      walletBalance: user.walletBalance.toString(),
+      averageRating: user.averageRating.toString(),
       ratingCount: user.ratingCount,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

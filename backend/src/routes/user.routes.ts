@@ -60,6 +60,12 @@ export const validateUserIdParam = (
 };
 
 /**
+ * GET /api/v1/users/me
+ * Protected endpoint to fetch current user profile.
+ */
+userRouter.get('/me', authenticate, UserController.getProfile);
+
+/**
  * PATCH /api/v1/users/me
  * Protected endpoint to update permitted profile fields for the authenticated user.
  */

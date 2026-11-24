@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { prisma } from '../config/prisma.js';
 import { sendSuccess } from '../utils/response.js';
 import { apiRateLimiter } from '../middleware/rateLimiter.js';
+import { authenticate } from '../middleware/auth.js';
+import { AuthController } from '../controllers/auth.controller.js';
 import { authRouter } from './auth.routes.js';
 import { userRouter } from './user.routes.js';
 import { communityRouter } from './community.routes.js';
@@ -94,6 +96,7 @@ apiV1Router.get('/ready', async (req, res) => {
  */
 
 // Badal (Identity, Auth, Communities):
+apiV1Router.get('/me', authenticate, AuthController.getMe);
 apiV1Router.use('/auth', authRouter);
 apiV1Router.use('/users', userRouter);
 apiV1Router.use('/communities', communityRouter);

@@ -10,6 +10,7 @@ const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: env.NODE_ENV === 'production',
   sameSite: (env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
+  path: '/',
   maxAge: 24 * 60 * 60 * 1000, // 24 hours
 };
 
@@ -59,8 +60,8 @@ export async function logout(req: Request, res: Response, next: NextFunction): P
       await sessionService.deleteSession(sessionId);
     }
 
-    res.clearCookie('sessionId', COOKIE_OPTIONS);
-    res.clearCookie('token', COOKIE_OPTIONS);
+    res.clearCookie('sessionId', { ...COOKIE_OPTIONS, maxAge: 0 });
+    res.clearCookie('token', { ...COOKIE_OPTIONS, maxAge: 0 });
 
     sendSuccess(res, null, 'Logged out successfully', 200);
   } catch (error) {

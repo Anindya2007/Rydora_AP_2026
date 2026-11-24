@@ -105,16 +105,15 @@ export interface DomainCommunityInfo {
 }
 
 /**
- * Derives community information from an email address:
- * - If domain is gmail.com or yahoo.com (and variants): keeps user in "Open Community" (open category).
- * - If domain is anything other than Gmail or Yahoo: creates/affiliates with a community named after that domain.
+ * Detects whether the email belongs to a public consumer domain (Gmail/Yahoo)
+ * or a dedicated institutional domain (e.g. Rishihood, college, or company).
  */
 export function extractOrganizationCommunityInfo(email: string): DomainCommunityInfo | null {
   const parts = email.trim().toLowerCase().split('@');
   if (parts.length !== 2) return null;
   const rawDomain = parts[1].trim();
 
-  // If email domain is gmail.com or yahoo.com (and regional variants like yahoo.co.in)
+  // 1. Gmail and Yahoo emails go directly to Open Category (Open Community)
   const isGmailOrYahoo =
     rawDomain === 'gmail.com' ||
     rawDomain === 'googlemail.com' ||
@@ -129,7 +128,7 @@ export function extractOrganizationCommunityInfo(email: string): DomainCommunity
     };
   }
 
-  // Domain is anything other than Gmail or Yahoo -> Make/find community with that domain
+  // 2. Rishihood University institutional campus network
   if (rawDomain.includes('rishihood.edu.in')) {
     return {
       name: 'Rishihood',
@@ -138,51 +137,32 @@ export function extractOrganizationCommunityInfo(email: string): DomainCommunity
     };
   }
 
-  // Derive friendly name from domain
-  // e.g. "nst.edu.in" -> "NST"
-  // e.g. "acme-corp.com" -> "Acme Corp"
-  const domainSegments = rawDomain.split('.');
-  let primarySegment = domainSegments[0];
-  if (['edu', 'ac', 'org', 'co'].includes(primarySegment) && domainSegments.length > 1) {
-    primarySegment = domainSegments[1];
-  } else if (domainSegments.length >= 3 && ['nst'].includes(primarySegment)) {
-    primarySegment = domainSegments[1]; // e.g. nst.rishihood.edu.in -> rishihood
-  }
-
-  // Format capitalized title
-  let formattedName = primarySegment
-    .replace(/[-_]/g, ' ')
-    .split(' ')
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-
-  if (primarySegment.length <= 4 && primarySegment.length > 1) {
-    formattedName = primarySegment.toUpperCase();
-  }
-
-  // Canonical domain (e.g., if subdomain, strip leading subdomain if it's 3+ parts ending in .edu.in or similar)
-  let canonicalDomain = rawDomain;
-  if (rawDomain.endsWith('.rishihood.edu.in')) {
-    canonicalDomain = 'rishihood.edu.in';
-  }
+  // 3. Any other organization or campus domain
+  // Extract a clean name from the domain (e.g. 'nst' -> 'NST', 'microsoft' -> 'Microsoft')
+  const primaryName = rawDomain.split('.')[0];
+  const formattedName =
+    primaryName.length <= 4
+      ? primaryName.toUpperCase()
+      : primaryName.charAt(0).toUpperCase() + primaryName.slice(1);
 
   return {
     name: formattedName || rawDomain,
-    domain: canonicalDomain,
+    domain: rawDomain,
     isOpenCategory: false,
   };
 }
 
 /**
- * Ensures an organization or open community exists according to email domain,
- * and automatically grants active membership to the user.
+ * Assigns or creates a community for the user based on their email domain:
+ * - If gmail.com or yahoo.com: assigns to "Open Community".
+ * - If anything else: assigns to a community named after that domain.
  */
 export async function ensureUserDomainCommunity(userId: string, email: string): Promise<void> {
   const orgInfo = extractOrganizationCommunityInfo(email);
   if (!orgInfo) return;
 
   try {
+    // 1. Find existing community
     let community = await prisma.community.findFirst({
       where: orgInfo.isOpenCategory
         ? {
@@ -200,6 +180,7 @@ export async function ensureUserDomainCommunity(userId: string, email: string): 
           },
     });
 
+    // 2. Create community if it doesn't exist yet
     if (!community) {
       community = await prisma.community.create({
         data: {
@@ -214,6 +195,7 @@ export async function ensureUserDomainCommunity(userId: string, email: string): 
       });
     }
 
+    // 3. Give user active membership
     await prisma.communityMembership.upsert({
       where: {
         communityId_userId: {

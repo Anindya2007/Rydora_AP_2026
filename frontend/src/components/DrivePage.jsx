@@ -60,13 +60,7 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
   const [manifestLoading, setManifestLoading] = useState(false);
   const [manifestActionLoading, setManifestActionLoading] = useState(null);
   const [manifestActionMsg, setManifestActionMsg] = useState('');
-  const [ratedPassengers, setRatedPassengers] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('rydora_driver_rated_passengers') || '{}');
-    } catch {
-      return {};
-    }
-  });
+  const [ratedPassengers, setRatedPassengers] = useState({});
   const [passengerRatingBookingId, setPassengerRatingBookingId] = useState(null);
   const [passengerRatingScore, setPassengerRatingScore] = useState(5);
   const [passengerRatingComment, setPassengerRatingComment] = useState('');
@@ -334,9 +328,6 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
         [bookingId]: { score: passengerRatingScore, comment: passengerRatingComment, ratedAt: new Date().toISOString() },
       };
       setRatedPassengers(newRated);
-      try {
-        localStorage.setItem('rydora_driver_rated_passengers', JSON.stringify(newRated));
-      } catch {}
       alert(`⭐ Rating of ${passengerRatingScore} ★ for passenger ${passengerName} submitted successfully!`);
       setPassengerRatingBookingId(null);
       setPassengerRatingComment('');
