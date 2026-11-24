@@ -5,6 +5,7 @@ import { Navbar } from '@/components/Navbar';
 import { RidePage } from '@/components/RidePage';
 import { DrivePage } from '@/components/DrivePage';
 import { AboutPage } from '@/components/AboutPage';
+import { ProfilePage } from '@/components/ProfilePage';
 import { Footer } from '@/components/Footer';
 import { SignupPage } from '@/components/SignupPage';
 import { LoginPage } from '@/components/LoginPage';
@@ -28,7 +29,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.replace('#', '');
-    if (['ride', 'drive', 'about'].includes(hash)) return hash;
+    if (['ride', 'drive', 'about', 'profile'].includes(hash)) return hash;
     return 'ride';
   });
 
@@ -81,7 +82,7 @@ export default function App() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         setCurrentView('home');
-        if (['ride', 'drive', 'about'].includes(hash)) {
+        if (['ride', 'drive', 'about', 'profile'].includes(hash)) {
           setActiveTab(hash);
         }
       }
@@ -210,6 +211,7 @@ export default function App() {
                   user={user}
                   onLoginClick={navigateToLogin}
                   onSignUpClick={navigateToSignup}
+                  onSelectTab={handleSelectTab}
                 />
               )}
               {activeTab === 'drive' && (
@@ -217,10 +219,19 @@ export default function App() {
                   user={user}
                   onSignUpClick={navigateToSignup}
                   onLoginClick={navigateToLogin}
+                  onSelectTab={handleSelectTab}
                 />
               )}
               {activeTab === 'about' && (
                 <AboutPage onSignUpClick={navigateToSignup} />
+              )}
+              {activeTab === 'profile' && (
+                <ProfilePage
+                  user={user}
+                  onLoginClick={navigateToLogin}
+                  onSignUpClick={navigateToSignup}
+                  onSelectTab={handleSelectTab}
+                />
               )}
             </main>
             <Footer onSelectTab={handleSelectTab} />

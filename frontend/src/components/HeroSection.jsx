@@ -112,7 +112,7 @@ const TypewriterHeadline = React.memo(() => {
   );
 });
 
-export const HeroSection = ({ user, onLoginClick }) => {
+export const HeroSection = ({ user, onLoginClick, onSelectTab }) => {
   const [pickup, setPickup] = useState('');
   const [dropoff, setDropoff] = useState('');
   const [pickupMode, setPickupMode] = useState('Pickup now');
@@ -1365,356 +1365,137 @@ export const HeroSection = ({ user, onLoginClick }) => {
           </div>
         )}
 
-        {/* User Active Bookings & Dedicated Past Rides Section */}
-        {user && myBookings.length > 0 && (() => {
+        {/* User Active Bookings & Profile Past Rides Link */}
+        {user && (() => {
           const activeBookings = myBookings.filter((b) => ['PENDING', 'CONFIRMED'].includes(b.status));
-          const pastBookings = myBookings.filter((b) => ['COMPLETED', 'CANCELLED'].includes(b.status));
-          const displayedBookings = bookingTab === 'active' ? activeBookings : pastBookings;
-
-          return (
-            <div style={{ marginTop: '22px' }}>
-              <LiquidGlassPanel
-                radius={24}
-                frosted={true}
-                style={{
-                  padding: '20px',
-                  background: 'rgba(15, 15, 25, 0.65)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px',
-                }}
-              >
-                {/* Header with Navigation Tabs */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                  <div style={{ display: 'flex', gap: '6px', background: 'rgba(255, 255, 255, 0.06)', padding: '3px', borderRadius: '12px' }}>
+          if (activeBookings.length > 0) {
+            return (
+              <div style={{ marginTop: '20px' }}>
+                <LiquidGlassPanel
+                  radius={20}
+                  frosted={true}
+                  style={{
+                    padding: '16px 20px',
+                    background: 'rgba(15, 15, 25, 0.7)',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>
+                        🚗 Active Booking ({activeBookings.length})
+                      </span>
+                      <span style={{ fontSize: '11px', background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', padding: '2px 8px', borderRadius: '9999px', fontWeight: 600 }}>
+                        Scheduled
+                      </span>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => setBookingTab('active')}
+                      onClick={() => {
+                        if (onSelectTab) onSelectTab('profile');
+                        else window.location.hash = '#profile';
+                      }}
                       style={{
-                        background: bookingTab === 'active' ? 'rgba(99, 102, 241, 0.35)' : 'transparent',
-                        border: bookingTab === 'active' ? '1px solid rgba(129, 140, 248, 0.4)' : 'none',
-                        borderRadius: '9px',
-                        padding: '5px 12px',
-                        color: bookingTab === 'active' ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
-                        fontSize: '12.5px',
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#c7d2fe',
+                        fontSize: '12px',
                         fontWeight: 600,
                         cursor: 'pointer',
-                        transition: 'all 0.15s ease',
+                        padding: 0,
+                        textDecoration: 'underline',
                       }}
                     >
-                      🚗 Active Rides ({activeBookings.length})
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBookingTab('past')}
-                      style={{
-                        background: bookingTab === 'past' ? 'rgba(99, 102, 241, 0.35)' : 'transparent',
-                        border: bookingTab === 'past' ? '1px solid rgba(129, 140, 248, 0.4)' : 'none',
-                        borderRadius: '9px',
-                        padding: '5px 12px',
-                        color: bookingTab === 'past' ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
-                        fontSize: '12.5px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      🕒 Past Rides ({pastBookings.length})
+                      View All & Past Rides in Profile →
                     </button>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {ratingStatusMsg && (
-                      <span style={{ fontSize: '12px', color: '#86efac', fontWeight: 500 }}>{ratingStatusMsg}</span>
-                    )}
-                    {refundStatusMsg && (
-                      <span style={{ fontSize: '12px', color: '#38bdf8', fontWeight: 500 }}>{refundStatusMsg}</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Body Content */}
-                {displayedBookings.length === 0 ? (
-                  <div style={{ padding: '16px 8px', textAlign: 'center', color: 'rgba(255, 255, 255, 0.55)', fontSize: '13px' }}>
-                    {bookingTab === 'active' ? (
+                  {activeBookings.map((b) => (
+                    <div
+                      key={b.bookingId}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        borderRadius: '14px',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '10px',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                      }}
+                    >
                       <div>
-                        No active rides scheduled right now.
-                        {pastBookings.length > 0 && (
-                          <div style={{ marginTop: '8px' }}>
-                            <button
-                              type="button"
-                              onClick={() => setBookingTab('past')}
-                              style={{
-                                background: 'rgba(255, 255, 255, 0.08)',
-                                border: '1px solid rgba(255, 255, 255, 0.15)',
-                                borderRadius: '9999px',
-                                padding: '4px 12px',
-                                color: '#c7d2fe',
-                                fontSize: '11.5px',
-                                fontWeight: 500,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              View Your Past Rides ({pastBookings.length}) →
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      'No past rides recorded yet.'
-                    )}
-                  </div>
-                ) : (
-                  displayedBookings.map((b) => {
-                    const isRated = ratedBookings[b.bookingId];
-                    const driverRating = Number(b.ride?.driver?.averageRating || 5.0).toFixed(1);
-                    const driverRatingCount = b.ride?.driver?.ratingCount ?? 0;
-
-                    return (
-                      <div
-                        key={b.bookingId}
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.04)',
-                          borderRadius: '16px',
-                          padding: '12px 16px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '8px',
-                          border: '1px solid rgba(255, 255, 255, 0.06)',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: '13.5px', fontWeight: 600, color: '#ffffff' }}>
-                                {b.ride?.source || 'Origin'} → {b.ride?.destination || 'Destination'}
-                              </span>
-                              <span
-                                style={{
-                                  fontSize: '11px',
-                                  padding: '2px 8px',
-                                  borderRadius: '9999px',
-                                  fontWeight: 600,
-                                  background:
-                                    b.status === 'COMPLETED'
-                                      ? 'rgba(34, 197, 94, 0.15)'
-                                      : b.status === 'CANCELLED'
-                                      ? 'rgba(239, 68, 68, 0.15)'
-                                      : 'rgba(99, 102, 241, 0.15)',
-                                  color:
-                                    b.status === 'COMPLETED'
-                                      ? '#4ade80'
-                                      : b.status === 'CANCELLED'
-                                      ? '#f87171'
-                                      : '#818cf8',
-                                }}
-                              >
-                                {b.status}
-                              </span>
-                            </div>
-
-                            <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.65)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                              <span>Driver: <strong style={{ color: '#ffffff' }}>{b.ride?.driver?.name || 'Verified Driver'}</strong></span>
-                              <span
-                                style={{
-                                  background: 'rgba(250, 204, 21, 0.15)',
-                                  color: '#fde047',
-                                  padding: '1px 6px',
-                                  borderRadius: '6px',
-                                  fontSize: '11px',
-                                  fontWeight: 600,
-                                }}
-                              >
-                                ★ {driverRating} {driverRatingCount > 0 ? `(${driverRatingCount})` : ''}
-                              </span>
-                              {b.ride?.driver?.phone && <span>• {b.ride.driver.phone}</span>}
-                              {b.ride?.departureTime && (
-                                <span>• {new Date(b.ride.departureTime).toLocaleDateString([], { month: 'short', day: 'numeric' })} at {new Date(b.ride.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#ffffff' }}>
-                            ₹{b.totalAmount}
-                          </div>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>
+                          {b.ride?.source || 'Origin'} → {b.ride?.destination || 'Destination'}
                         </div>
-
-                        {/* Action buttons */}
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
-                          {['PENDING', 'CONFIRMED'].includes(b.status) && (
-                            <button
-                              type="button"
-                              onClick={() => handleCancelBooking(b.bookingId)}
-                              style={{
-                                background: 'rgba(239, 68, 68, 0.12)',
-                                border: '1px solid rgba(239, 68, 68, 0.25)',
-                                borderRadius: '9999px',
-                                padding: '4px 10px',
-                                color: '#f87171',
-                                fontSize: '11px',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Cancel Ride
-                            </button>
-                          )}
-
-                          {b.status === 'CANCELLED' && (
-                            <button
-                              type="button"
-                              disabled={refundLoadingId === b.bookingId}
-                              onClick={() => handleRequestRefund(b.bookingId)}
-                              style={{
-                                background: 'rgba(56, 189, 248, 0.15)',
-                                border: '1px solid rgba(56, 189, 248, 0.3)',
-                                borderRadius: '9999px',
-                                padding: '4px 10px',
-                                color: '#38bdf8',
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {refundLoadingId === b.bookingId ? 'Processing...' : 'Request Refund'}
-                            </button>
-                          )}
-
-                          {b.status === 'COMPLETED' && (
-                            isRated ? (
-                              <span
-                                style={{
-                                  background: 'rgba(34, 197, 94, 0.15)',
-                                  border: '1px solid rgba(34, 197, 94, 0.35)',
-                                  color: '#86efac',
-                                  fontSize: '11px',
-                                  fontWeight: 600,
-                                  padding: '3px 10px',
-                                  borderRadius: '9999px',
-                                }}
-                              >
-                                ✓ Rated ★ {isRated.score || 5}
-                              </span>
-                            ) : ratingBookingId !== b.bookingId ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setRatingBookingId(b.bookingId);
-                                  setRatingScore(5);
-                                  setRatingComment('');
-                                }}
-                                style={{
-                                  background: 'rgba(250, 204, 21, 0.15)',
-                                  border: '1px solid rgba(250, 204, 21, 0.3)',
-                                  borderRadius: '9999px',
-                                  padding: '4px 12px',
-                                  color: '#fde047',
-                                  fontSize: '11px',
-                                  fontWeight: 600,
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                Rate Driver ★
-                              </button>
-                            ) : null
+                        <div style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.65)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span>Driver: <strong style={{ color: '#ffffff' }}>{b.ride?.driver?.name || 'Verified Driver'}</strong></span>
+                          <span style={{ background: 'rgba(250, 204, 21, 0.15)', color: '#fde047', padding: '1px 6px', borderRadius: '6px', fontSize: '11px', fontWeight: 600 }}>
+                            ★ {Number(b.ride?.driver?.averageRating || 5.0).toFixed(1)}
+                          </span>
+                          {b.ride?.departureTime && (
+                            <span>• {new Date(b.ride.departureTime).toLocaleDateString([], { month: 'short', day: 'numeric' })} at {new Date(b.ride.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           )}
                         </div>
-
-                        {/* Inline Rating Form */}
-                        {b.status === 'COMPLETED' && ratingBookingId === b.bookingId && !isRated && (
-                          <div
-                            style={{
-                              marginTop: '8px',
-                              padding: '12px',
-                              background: 'rgba(0, 0, 0, 0.3)',
-                              borderRadius: '12px',
-                              border: '1px solid rgba(250, 204, 21, 0.25)',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '8px',
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ fontSize: '12px', fontWeight: 600, color: '#fde047' }}>
-                                Rate {b.ride?.driver?.name || 'Driver'}:
-                              </span>
-                              <div style={{ display: 'flex', gap: '4px' }}>
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <button
-                                    key={star}
-                                    type="button"
-                                    onClick={() => setRatingScore(star)}
-                                    style={{
-                                      background: 'transparent',
-                                      border: 'none',
-                                      color: star <= ratingScore ? '#fde047' : 'rgba(255, 255, 255, 0.2)',
-                                      fontSize: '18px',
-                                      cursor: 'pointer',
-                                      padding: '2px',
-                                      lineHeight: 1,
-                                    }}
-                                  >
-                                    ★
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <input
-                              type="text"
-                              placeholder="Share your trip experience (e.g. Smooth driving, on time)..."
-                              value={ratingComment}
-                              onChange={(e) => setRatingComment(e.target.value)}
-                              style={{
-                                background: 'rgba(255, 255, 255, 0.08)',
-                                border: '1px solid rgba(255, 255, 255, 0.15)',
-                                borderRadius: '8px',
-                                padding: '8px 12px',
-                                color: '#ffffff',
-                                fontSize: '12.5px',
-                                outline: 'none',
-                              }}
-                            />
-
-                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '2px' }}>
-                              <button
-                                type="button"
-                                onClick={() => setRatingBookingId(null)}
-                                style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  color: 'rgba(255, 255, 255, 0.6)',
-                                  fontSize: '11.5px',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleSubmitRating(b.bookingId, b.ride?.driver?.name)}
-                                style={{
-                                  background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                                  border: 'none',
-                                  color: '#ffffff',
-                                  borderRadius: '9999px',
-                                  padding: '5px 14px',
-                                  fontSize: '11.5px',
-                                  fontWeight: 600,
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                Submit Rating
-                              </button>
-                            </div>
-                          </div>
-                        )}
                       </div>
-                    );
-                  })
-                )}
-              </LiquidGlassPanel>
-            </div>
-          );
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff' }}>₹{b.totalAmount}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCancelBooking(b.bookingId)}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.12)',
+                            border: '1px solid rgba(239, 68, 68, 0.28)',
+                            borderRadius: '9999px',
+                            padding: '4px 10px',
+                            color: '#f87171',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </LiquidGlassPanel>
+              </div>
+            );
+          } else if (myBookings.length > 0) {
+            return (
+              <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSelectTab) onSelectTab('profile');
+                    else window.location.hash = '#profile';
+                  }}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    borderRadius: '9999px',
+                    padding: '6px 14px',
+                    color: '#c7d2fe',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <span>🕒 View Past Rides ({myBookings.length}) in Profile →</span>
+                </button>
+              </div>
+            );
+          }
+          return null;
         })()}
       </div>
 

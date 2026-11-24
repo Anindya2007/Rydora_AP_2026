@@ -34,9 +34,11 @@ export const Navbar = ({
   const userMenuRef = useRef(null);
   const navbarRef = useRef(null);
 
+  const isDriver = Boolean(user && (user.roles?.includes('DRIVER') || user.driverVerified));
+
   const navItems = [
     { id: 'ride', label: 'Ride' },
-    { id: 'drive', label: 'Drive' },
+    { id: 'drive', label: isDriver ? 'Drive' : 'Become a Driver' },
     { id: 'about', label: 'About', hasDropdown: true },
   ];
 
@@ -270,7 +272,7 @@ export const Navbar = ({
                 onMouseEnter={(e) => (e.currentTarget.style.color = '#ffffff')}
                 onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255, 255, 255, 0.75)')}
               >
-                <span>{navItems.find((n) => n.id === activeTab)?.label || 'Ride'}</span>
+                <span>{activeTab === 'profile' ? 'Profile' : (navItems.find((n) => n.id === activeTab)?.label || 'Ride')}</span>
                 <span style={{ display: 'inline-flex', opacity: 0.55 }}>
                   <IconChevronDown size={12} />
                 </span>
@@ -393,6 +395,38 @@ export const Navbar = ({
                         <span style={{ color: '#86efac', fontWeight: 600 }}>₹{user.walletBalance || '0.00'}</span>
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        handleTabChange('profile');
+                      }}
+                      style={{
+                        background: 'rgba(99, 102, 241, 0.22)',
+                        border: '1px solid rgba(99, 102, 241, 0.45)',
+                        borderRadius: '9999px',
+                        padding: '7px 12px',
+                        color: '#ffffff',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.15s ease',
+                        fontFamily: 'inherit',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(99, 102, 241, 0.38)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'rgba(99, 102, 241, 0.22)';
+                      }}
+                    >
+                      👤 Profile & Past Rides
+                    </button>
                     <button
                       type="button"
                       onClick={() => {

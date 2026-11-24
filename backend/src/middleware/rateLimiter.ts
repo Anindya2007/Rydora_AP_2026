@@ -1,67 +1,14 @@
-import rateLimit, { type Options } from 'express-rate-limit';
-import { env } from '../config/env.js';
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 
 /**
- * Factory to create rate limiters for authentication endpoints.
- * Configured with standard headers and standard Rydora ApiErrorResponse payload on limit breach.
+ * Rate limiters disabled per user requirement to maximize responsiveness,
+ * polling performance, and overall user experience without 429 interruptions.
  */
-export function createAuthRateLimiter(options?: Partial<Options>) {
-  return rateLimit({
-    windowMs: 15 * 60 * 1000, // 15-minute sliding window
-    limit: 10, // Max 10 attempts per IP per window
-    standardHeaders: 'draft-8',
-    legacyHeaders: false,
-    skip: () => env.NODE_ENV === 'test',
-    handler: (req: Request, res: Response) => {
-      const requestId = req.id || (res.locals?.requestId as string) || 'unknown';
-      res.status(429).json({
-        success: false,
-        statusCode: 429,
-        error: {
-          code: 'TOO_MANY_REQUESTS',
-          message: 'Too many authentication attempts. Please try again after 15 minutes.',
-          details: null,
-        },
-        meta: {
-          requestId,
-          timestamp: new Date().toISOString(),
-        },
-      });
-    },
-    ...options,
-  });
+export function createAuthRateLimiter(_options?: any) {
+  return (_req: Request, _res: Response, next: NextFunction) => next();
 }
 
-/**
- * Default authentication rate limiter applied to signup and login endpoints.
- */
-export const authRateLimiter = createAuthRateLimiter();
+export const authRateLimiter = (_req: Request, _res: Response, next: NextFunction) => next();
 
-/**
- * General API rate limiter applied to all /api/v1 routes.
- * 200 requests per 15-minute window per IP.
- */
-export const apiRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 200,
-  standardHeaders: 'draft-8',
-  legacyHeaders: false,
-  skip: () => env.NODE_ENV === 'test',
-  handler: (req: Request, res: Response) => {
-    const requestId = req.id || (res.locals?.requestId as string) || 'unknown';
-    res.status(429).json({
-      success: false,
-      statusCode: 429,
-      error: {
-        code: 'TOO_MANY_REQUESTS',
-        message: 'Too many requests. Please slow down and try again later.',
-        details: null,
-      },
-      meta: {
-        requestId,
-        timestamp: new Date().toISOString(),
-      },
-    });
-  },
-});
+export const apiRateLimiter = (_req: Request, _res: Response, next: NextFunction) => next();
+

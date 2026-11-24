@@ -15,7 +15,7 @@ import {
   IconNavigation,
 } from './Icons';
 
-export const RidePage = ({ user, onLoginClick, onSignUpClick }) => {
+export const RidePage = ({ user, onLoginClick, onSignUpClick, onSelectTab }) => {
   // Rider comfort preferences state
   const [preferences, setPreferences] = useState({
     quietRide: true,
@@ -108,7 +108,7 @@ export const RidePage = ({ user, onLoginClick, onSignUpClick }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(32px, 5vw, 64px)' }}>
       {/* 1. Main Interactive Booking Hero */}
-      <HeroSection user={user} onLoginClick={onLoginClick} />
+      <HeroSection user={user} onLoginClick={onLoginClick} onSelectTab={onSelectTab} />
 
       {/* 2. Explore Ride Options: Ride, Reserve, Bike, XL */}
       <ExploreSection />

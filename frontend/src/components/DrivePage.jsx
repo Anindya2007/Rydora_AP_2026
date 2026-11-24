@@ -486,12 +486,12 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                 fontWeight: 600,
                 letterSpacing: '0.14em',
                 textTransform: 'uppercase',
-                color: 'rgba(255, 255, 255, 0.6)',
+                color: isDriver ? '#34d399' : 'rgba(255, 255, 255, 0.6)',
                 marginBottom: '12px',
                 display: 'block',
               }}
             >
-              Drive with RideShare
+              {isDriver ? '✓ Verified Driver Portal' : 'Become a Rydora Driver'}
             </span>
 
             <h1
@@ -504,16 +504,33 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                 lineHeight: 1.1,
               }}
             >
-              Drive on your schedule. <br />
-              <span
-                style={{
-                  background: 'linear-gradient(135deg, #a78bfa, #c084fc)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}
-              >
-                Earn on your terms.
-              </span>
+              {isDriver ? (
+                <>
+                  Manage your trips. <br />
+                  <span
+                    style={{
+                      background: 'linear-gradient(135deg, #34d399, #10b981)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
+                    Track your earnings.
+                  </span>
+                </>
+              ) : (
+                <>
+                  Drive on your schedule. <br />
+                  <span
+                    style={{
+                      background: 'linear-gradient(135deg, #a78bfa, #c084fc)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
+                    Earn on your terms.
+                  </span>
+                </>
+              )}
             </h1>
 
             <p
@@ -525,8 +542,9 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
                 maxWidth: '520px',
               }}
             >
-              Whether you want to supplement your income or drive full-time, RideShare gives you
-              the freedom to work whenever you choose with daily payouts and round-the-clock support.
+              {isDriver
+                ? 'Welcome back! View passenger booking requests, publish upcoming carpool routes, and review passenger ratings.'
+                : 'Share empty seats on your daily commute, cover your vehicle expenses, and keep 100% of community fares with zero platform commissions.'}
             </p>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
@@ -623,18 +641,56 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
       </section>
 
       {/* Driver Onboarding & Management Dashboard */}
-      {user && (
-        <section id="driver-onboarding-section" className="rs-section">
-          <LiquidGlassPanel
-            radius={28}
-            frosted={true}
-            style={{
-              padding: 'clamp(24px, 4vw, 40px)',
-              boxSizing: 'border-box',
-              background: 'rgba(20, 16, 36, 0.65)',
-            }}
-          >
-            {!isDriver ? (
+      <section id="driver-onboarding-section" className="rs-section">
+        <LiquidGlassPanel
+          radius={28}
+          frosted={true}
+          style={{
+            padding: 'clamp(24px, 4vw, 40px)',
+            boxSizing: 'border-box',
+            background: 'rgba(20, 16, 36, 0.65)',
+          }}
+        >
+          {!user ? (
+            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+              <span
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  color: '#a78bfa',
+                  display: 'block',
+                  marginBottom: '8px',
+                }}
+              >
+                Join Rydora Driver Network
+              </span>
+              <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 32px)', fontWeight: 700, color: '#ffffff', marginBottom: '12px' }}>
+                Ready to start driving and earning?
+              </h2>
+              <p style={{ color: 'rgba(255, 255, 255, 0.72)', fontSize: '15px', maxWidth: '540px', margin: '0 auto 24px', lineHeight: 1.6 }}>
+                Log in or sign up with your community account to submit your driving licence and unlock the driver portal.
+              </p>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <LiquidGlassButton
+                  variant="primary"
+                  scale={1}
+                  onClick={onSignUpClick}
+                  style={{ padding: '12px 28px', fontSize: '14.5px' }}
+                >
+                  Create Driver Account
+                </LiquidGlassButton>
+                <LiquidGlassButton
+                  scale={1}
+                  onClick={onLoginClick}
+                  style={{ padding: '12px 28px', fontSize: '14.5px', background: 'rgba(255, 255, 255, 0.1)' }}
+                >
+                  Log In
+                </LiquidGlassButton>
+              </div>
+            </div>
+          ) : !isDriver ? (
               <div>
                 <span
                   style={{
@@ -1721,7 +1777,6 @@ export const DrivePage = ({ user, onSignUpClick, onLoginClick }) => {
             )}
           </LiquidGlassPanel>
         </section>
-      )}
 
       {/* 2. Interactive Earnings Estimator */}
       <section id="earnings-calculator" className="rs-section">
