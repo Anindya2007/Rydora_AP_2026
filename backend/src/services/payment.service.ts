@@ -909,15 +909,17 @@ export async function getDriverEarnings(
   }
 
   // 3. Build where clauses for gross earnings (BOOKING_PAYMENT received)
+  // ONLY count completed bookings where ride has finished and payment finalized
   const paymentWhere: Prisma.TransactionWhereInput = {
     receiverId: targetDriverId,
     type: TransactionType.BOOKING_PAYMENT,
     status: TransactionStatus.COMPLETED,
     completedAt: completedAtCondition,
+    booking: {
+      status: BookingStatus.COMPLETED,
+      ...(rideId ? { rideId } : {}),
+    },
   };
-  if (rideId) {
-    paymentWhere.booking = { rideId };
-  }
 
   // 4. Build where clauses for refund deductions (REFUND debited, linked to driver's original payment)
   const refundWhere: Prisma.TransactionWhereInput = {
@@ -1447,6 +1449,22 @@ export async function processBookingRefund(
         },
         select: transactionSelectProjection,
       });
+
+      // Credit refunded amount directly to user's wallet
+      if (targetStatus === TransactionStatus.COMPLETED && booking.riderId) {
+        try {
+          await tx.user.update({
+            where: { userId: booking.riderId },
+            data: {
+              walletBalance: {
+                increment: intentTransaction.amount,
+              },
+            },
+          });
+        } catch (walletErr) {
+          console.error('[WALLET_REFUND_CREDIT_ERROR] Failed to credit wallet for refund:', walletErr);
+        }
+      }
 
       return formatTransaction(updated);
     });

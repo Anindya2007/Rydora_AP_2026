@@ -288,28 +288,54 @@ export async function createRide(
 
   // --------------------------------------------------------------------------
   // STEP 4: Resolve Target Community & Ensure Active Driver Membership
-  // Drivers publish open carpool rides. If no communityId is provided,
-  // automatically defaults to the Open Community.
+  // Drivers publish rides. If no communityId is provided:
+  // 1. Check if driver belongs to an active community (e.g. Rishihood).
+  // 2. Fall back to Open Community.
   // --------------------------------------------------------------------------
   let targetCommunityId = input.communityId;
   if (!targetCommunityId) {
-    const openComm = await prisma.community.findFirst({
+    const driverMembership = await prisma.communityMembership.findFirst({
       where: {
-        OR: [
-          { domain: 'open.rydora.com' },
-          { name: { contains: 'Open', mode: 'insensitive' } },
-        ],
+        userId: driverId,
+        status: 'ACTIVE',
       },
       select: { communityId: true },
     });
-    if (openComm) {
-      targetCommunityId = openComm.communityId;
+
+    if (driverMembership) {
+      targetCommunityId = driverMembership.communityId;
     } else {
-      const anyActive = await prisma.community.findFirst({
-        where: { status: 'ACTIVE' },
+      let openComm = await prisma.community.findFirst({
+        where: {
+          OR: [
+            { domain: 'open.rydora.com' },
+            { name: { contains: 'Open', mode: 'insensitive' } },
+          ],
+        },
         select: { communityId: true },
       });
-      targetCommunityId = anyActive?.communityId;
+      if (openComm) {
+        targetCommunityId = openComm.communityId;
+      } else {
+        const anyActive = await prisma.community.findFirst({
+          where: { status: 'ACTIVE' },
+          select: { communityId: true },
+        });
+        targetCommunityId = anyActive?.communityId;
+      }
+
+      if (!targetCommunityId) {
+        const createdOpen = await prisma.community.create({
+          data: {
+            name: 'Open Community',
+            domain: 'open.rydora.com',
+            description: 'Public Carpool Network',
+            status: 'ACTIVE',
+            createdById: driverId,
+          },
+        });
+        targetCommunityId = createdOpen.communityId;
+      }
     }
   }
 
@@ -1052,7 +1078,7 @@ export async function completeRide(
       data: { status: RideStatus.COMPLETED },
     });
 
-    // 2. Mark confirmed bookings as COMPLETED and record DriverEarning rows
+    // 2. Mark confirmed bookings as COMPLETED, record DriverEarning rows, and credit driver wallet
     for (const booking of ride.bookings) {
       await tx.booking.update({
         where: { bookingId: booking.bookingId },
@@ -1080,6 +1106,20 @@ export async function completeRide(
         } catch {
           // Diagnostic logging if driver earning sync is optional in certain environments
         }
+      }
+
+      // Credit driver wallet
+      try {
+        await tx.user.update({
+          where: { userId: ride.driverId },
+          data: {
+            walletBalance: {
+              increment: booking.totalAmount,
+            },
+          },
+        });
+      } catch (walletErr) {
+        console.error('[WALLET_CREDIT_ERROR] Failed to credit driver wallet on trip completion:', walletErr);
       }
     }
 

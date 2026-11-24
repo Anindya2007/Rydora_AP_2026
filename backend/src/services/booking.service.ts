@@ -785,6 +785,20 @@ export async function completePassengerBooking(
       } catch {}
     }
 
+    // Atomically credit driver wallet balance upon ride completion
+    try {
+      await tx.user.update({
+        where: { userId: booking.ride.driverId },
+        data: {
+          walletBalance: {
+            increment: booking.totalAmount,
+          },
+        },
+      });
+    } catch (walletErr) {
+      console.error('[WALLET_CREDIT_ERROR] Failed to credit driver wallet:', walletErr);
+    }
+
     return formatBookingOutput(updatedBooking);
   });
 }

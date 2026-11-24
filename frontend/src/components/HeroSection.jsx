@@ -286,6 +286,10 @@ export const HeroSection = ({ user, onLoginClick, onSelectTab }) => {
         destination: dropoff.trim(),
       };
 
+      if (selectedCommunityId) {
+        searchParams.communityId = selectedCommunityId;
+      }
+
       if (pCoords && dCoords) {
         searchParams.pickupLat = pCoords.lat;
         searchParams.pickupLng = pCoords.lng;

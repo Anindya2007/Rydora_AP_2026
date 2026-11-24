@@ -99,6 +99,125 @@ export function sanitizeUser(user: {
 }
 
 /**
+ * Derives a human-friendly community name and canonical domain from an email.
+ * E.g.:
+ * - "anindya.s25058@nst.rishihood.edu.in" -> community name: "Rishihood", domain: "rishihood.edu.in"
+ * - "john@microsoft.com" -> community name: "Microsoft", domain: "microsoft.com"
+ * Returns null if the domain belongs to generic consumer email providers (gmail, yahoo, etc.).
+ */
+export function extractOrganizationCommunityInfo(email: string): { name: string; domain: string } | null {
+  const parts = email.trim().toLowerCase().split('@');
+  if (parts.length !== 2) return null;
+  const rawDomain = parts[1].trim();
+
+  const GENERIC_PUBLIC_DOMAINS = new Set([
+    'gmail.com',
+    'googlemail.com',
+    'yahoo.com',
+    'yahoo.co.in',
+    'hotmail.com',
+    'outlook.com',
+    'icloud.com',
+    'protonmail.com',
+    'mail.com',
+    'zoho.com',
+    'aol.com',
+  ]);
+
+  if (GENERIC_PUBLIC_DOMAINS.has(rawDomain)) {
+    return null;
+  }
+
+  // Check specific known campuses / organizations
+  if (rawDomain.includes('rishihood.edu.in')) {
+    return { name: 'Rishihood', domain: 'rishihood.edu.in' };
+  }
+
+  // Derive friendly name from domain
+  // e.g. "nst.edu.in" -> "NST"
+  // e.g. "acme-corp.com" -> "Acme Corp"
+  const domainSegments = rawDomain.split('.');
+  let primarySegment = domainSegments[0];
+  if (['edu', 'ac', 'org', 'co'].includes(primarySegment) && domainSegments.length > 1) {
+    primarySegment = domainSegments[1];
+  } else if (domainSegments.length >= 3 && ['nst'].includes(primarySegment)) {
+    primarySegment = domainSegments[1]; // e.g. nst.rishihood.edu.in -> rishihood
+  }
+
+  // Format capitalized title
+  const formattedName = primarySegment
+    .replace(/[-_]/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+  // Canonical domain (e.g., if subdomain, strip leading subdomain if it's 3+ parts ending in .edu.in or similar)
+  let canonicalDomain = rawDomain;
+  if (rawDomain.endsWith('.rishihood.edu.in')) {
+    canonicalDomain = 'rishihood.edu.in';
+  }
+
+  return {
+    name: formattedName || rawDomain,
+    domain: canonicalDomain,
+  };
+}
+
+/**
+ * Ensures an organization community exists for non-generic email domains,
+ * and automatically grants active membership to the user.
+ */
+export async function ensureUserDomainCommunity(userId: string, email: string): Promise<void> {
+  const orgInfo = extractOrganizationCommunityInfo(email);
+  if (!orgInfo) return;
+
+  try {
+    let community = await prisma.community.findFirst({
+      where: {
+        OR: [
+          { domain: { equals: orgInfo.domain, mode: 'insensitive' } },
+          { name: { equals: orgInfo.name, mode: 'insensitive' } },
+          { domain: { equals: email.split('@')[1]?.toLowerCase(), mode: 'insensitive' } },
+        ],
+      },
+    });
+
+    if (!community) {
+      community = await prisma.community.create({
+        data: {
+          name: orgInfo.name,
+          domain: orgInfo.domain,
+          description: `${orgInfo.name} Verified Community Network`,
+          status: 'ACTIVE',
+          createdById: userId,
+        },
+      });
+    }
+
+    await prisma.communityMembership.upsert({
+      where: {
+        communityId_userId: {
+          communityId: community.communityId,
+          userId,
+        },
+      },
+      update: {
+        status: 'ACTIVE',
+      },
+      create: {
+        communityId: community.communityId,
+        userId,
+        memberRole: community.createdById === userId ? 'ADMIN' : 'MEMBER',
+        status: 'ACTIVE',
+      },
+    });
+  } catch (err) {
+    console.warn('ensureUserDomainCommunity notice:', err);
+  }
+}
+
+/**
  * Handles new user registration:
  * 1. Normalizes email (trim and lowercase)
  * 2. Checks duplicate email and phone
@@ -163,6 +282,9 @@ export async function signup(input: SignupInput): Promise<AuthResult> {
     throw error;
   }
 
+  // 4b. Auto-create or affiliate with community if non-generic domain
+  await ensureUserDomainCommunity(createdUser.userId, normalizedEmail);
+
   // 5. Generate JWT token and persist session in sessions table
   const token = generateToken(createdUser);
   const sessionId = await sessionService.createSession(createdUser.userId, token);
@@ -200,6 +322,9 @@ export async function login(input: LoginInput): Promise<AuthResult> {
     throw new UnauthorizedError('Invalid email or password');
   }
 
+  // 4c. Auto-create or affiliate with community on login
+  await ensureUserDomainCommunity(user.userId, normalizedEmail);
+
   const token = generateToken(user);
   const sessionId = await sessionService.createSession(user.userId, token);
 
@@ -215,6 +340,8 @@ export const authService = {
   comparePassword,
   generateToken,
   sanitizeUser,
+  extractOrganizationCommunityInfo,
+  ensureUserDomainCommunity,
   signup,
   login,
 };
