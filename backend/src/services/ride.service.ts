@@ -482,7 +482,23 @@ export async function listDriverRides(
   }
 
   if (options?.communityId) {
-    where.communityId = options.communityId;
+    const targetComm = await prisma.community.findUnique({
+      where: { communityId: options.communityId },
+      select: { communityId: true, name: true, domain: true },
+    });
+
+    const isOpenCategory =
+      !targetComm ||
+      targetComm.domain === 'open' ||
+      targetComm.domain === 'open.rydora.com' ||
+      targetComm.domain === 'gmail.com' ||
+      targetComm.name.toLowerCase().includes('open');
+
+    // If specific institutional community was chosen (e.g. Rishihood), filter strictly to that community.
+    // If Open Category was selected, don't restrict to community-based drivers: give all available rides!
+    if (!isOpenCategory) {
+      where.communityId = options.communityId;
+    }
   }
 
   const [total, records] = await Promise.all([
@@ -537,7 +553,23 @@ export async function listRides(
   const where: any = {};
 
   if (options?.communityId) {
-    where.communityId = options.communityId;
+    const targetComm = await prisma.community.findUnique({
+      where: { communityId: options.communityId },
+      select: { communityId: true, name: true, domain: true },
+    });
+
+    const isOpenCategory =
+      !targetComm ||
+      targetComm.domain === 'open' ||
+      targetComm.domain === 'open.rydora.com' ||
+      targetComm.domain === 'gmail.com' ||
+      targetComm.name.toLowerCase().includes('open');
+
+    // If specific institutional community was chosen (e.g. Rishihood), filter strictly to that community.
+    // If Open Category was selected, don't restrict to community-based drivers: give all available rides!
+    if (!isOpenCategory) {
+      where.communityId = options.communityId;
+    }
   }
 
   // Resolve coordinates for passenger search queries

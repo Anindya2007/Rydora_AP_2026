@@ -98,39 +98,44 @@ export function sanitizeUser(user: {
   };
 }
 
+export interface DomainCommunityInfo {
+  name: string;
+  domain: string;
+  isOpenCategory: boolean;
+}
+
 /**
- * Derives a human-friendly community name and canonical domain from an email.
- * E.g.:
- * - "anindya.s25058@nst.rishihood.edu.in" -> community name: "Rishihood", domain: "rishihood.edu.in"
- * - "john@microsoft.com" -> community name: "Microsoft", domain: "microsoft.com"
- * Returns null if the domain belongs to generic consumer email providers (gmail, yahoo, etc.).
+ * Derives community information from an email address:
+ * - If domain is gmail.com or yahoo.com (and variants): keeps user in "Open Community" (open category).
+ * - If domain is anything other than Gmail or Yahoo: creates/affiliates with a community named after that domain.
  */
-export function extractOrganizationCommunityInfo(email: string): { name: string; domain: string } | null {
+export function extractOrganizationCommunityInfo(email: string): DomainCommunityInfo | null {
   const parts = email.trim().toLowerCase().split('@');
   if (parts.length !== 2) return null;
   const rawDomain = parts[1].trim();
 
-  const GENERIC_PUBLIC_DOMAINS = new Set([
-    'gmail.com',
-    'googlemail.com',
-    'yahoo.com',
-    'yahoo.co.in',
-    'hotmail.com',
-    'outlook.com',
-    'icloud.com',
-    'protonmail.com',
-    'mail.com',
-    'zoho.com',
-    'aol.com',
-  ]);
+  // If email domain is gmail.com or yahoo.com (and regional variants like yahoo.co.in)
+  const isGmailOrYahoo =
+    rawDomain === 'gmail.com' ||
+    rawDomain === 'googlemail.com' ||
+    rawDomain === 'yahoo.com' ||
+    rawDomain.startsWith('yahoo.');
 
-  if (GENERIC_PUBLIC_DOMAINS.has(rawDomain)) {
-    return null;
+  if (isGmailOrYahoo) {
+    return {
+      name: 'Open Community',
+      domain: 'open',
+      isOpenCategory: true,
+    };
   }
 
-  // Check specific known campuses / organizations
+  // Domain is anything other than Gmail or Yahoo -> Make/find community with that domain
   if (rawDomain.includes('rishihood.edu.in')) {
-    return { name: 'Rishihood', domain: 'rishihood.edu.in' };
+    return {
+      name: 'Rishihood',
+      domain: 'rishihood.edu.in',
+      isOpenCategory: false,
+    };
   }
 
   // Derive friendly name from domain
@@ -145,12 +150,16 @@ export function extractOrganizationCommunityInfo(email: string): { name: string;
   }
 
   // Format capitalized title
-  const formattedName = primarySegment
+  let formattedName = primarySegment
     .replace(/[-_]/g, ' ')
     .split(' ')
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
+
+  if (primarySegment.length <= 4 && primarySegment.length > 1) {
+    formattedName = primarySegment.toUpperCase();
+  }
 
   // Canonical domain (e.g., if subdomain, strip leading subdomain if it's 3+ parts ending in .edu.in or similar)
   let canonicalDomain = rawDomain;
@@ -161,11 +170,12 @@ export function extractOrganizationCommunityInfo(email: string): { name: string;
   return {
     name: formattedName || rawDomain,
     domain: canonicalDomain,
+    isOpenCategory: false,
   };
 }
 
 /**
- * Ensures an organization community exists for non-generic email domains,
+ * Ensures an organization or open community exists according to email domain,
  * and automatically grants active membership to the user.
  */
 export async function ensureUserDomainCommunity(userId: string, email: string): Promise<void> {
@@ -174,13 +184,20 @@ export async function ensureUserDomainCommunity(userId: string, email: string): 
 
   try {
     let community = await prisma.community.findFirst({
-      where: {
-        OR: [
-          { domain: { equals: orgInfo.domain, mode: 'insensitive' } },
-          { name: { equals: orgInfo.name, mode: 'insensitive' } },
-          { domain: { equals: email.split('@')[1]?.toLowerCase(), mode: 'insensitive' } },
-        ],
-      },
+      where: orgInfo.isOpenCategory
+        ? {
+            OR: [
+              { name: { equals: 'Open Community', mode: 'insensitive' } },
+              { domain: { in: ['open', 'open.rydora.com', 'gmail.com'] } },
+            ],
+          }
+        : {
+            OR: [
+              { domain: { equals: orgInfo.domain, mode: 'insensitive' } },
+              { domain: { equals: email.split('@')[1]?.toLowerCase(), mode: 'insensitive' } },
+              { name: { equals: orgInfo.name, mode: 'insensitive' } },
+            ],
+          },
     });
 
     if (!community) {
@@ -188,7 +205,9 @@ export async function ensureUserDomainCommunity(userId: string, email: string): 
         data: {
           name: orgInfo.name,
           domain: orgInfo.domain,
-          description: `${orgInfo.name} Verified Community Network`,
+          description: orgInfo.isOpenCategory
+            ? 'Open Carpool Community for verified public riders and drivers'
+            : `${orgInfo.name} Verified Community Network`,
           status: 'ACTIVE',
           createdById: userId,
         },

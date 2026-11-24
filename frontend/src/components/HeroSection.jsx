@@ -634,13 +634,15 @@ export const HeroSection = ({ user, onLoginClick, onSelectTab }) => {
                 }}
               >
                 <option value="" style={{ background: '#181428', color: '#ffffff' }}>
-                  🌐 Open Community / All Corridors
+                  🌐 Open Category (All Available Drivers & Rides)
                 </option>
-                {communities.map((c) => (
-                  <option key={c.communityId} value={c.communityId} style={{ background: '#181428', color: '#ffffff' }}>
-                    🏢 {c.name} ({c.domain})
-                  </option>
-                ))}
+                {communities
+                  .filter((c) => c.domain !== 'open' && !c.name.toLowerCase().includes('open'))
+                  .map((c) => (
+                    <option key={c.communityId} value={c.communityId} style={{ background: '#181428', color: '#ffffff' }}>
+                      🏢 {c.name} ({c.domain})
+                    </option>
+                  ))}
               </select>
             </div>
           )}

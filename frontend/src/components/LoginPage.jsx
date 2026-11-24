@@ -9,7 +9,6 @@ import {
   IconEye,
   IconEyeOff,
   IconSparkles,
-  IconGoogle,
 } from './Icons';
 import loginHeroImg from '../assets/images/Cinematic Purple Light Scene with Silhouettes _ Futuristic Visual Aesthetic.png';
 
@@ -51,20 +50,6 @@ export const LoginPage = ({ onNavigateHome, onNavigateSignup, onLoginSuccess }) 
           ? 'Unable to connect to backend server. Please ensure the backend is running.'
           : 'Login failed. Please check your credentials and try again.');
       setErrorMsg(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setErrorMsg('');
-    setLoading(true);
-    try {
-      const demoEmail = 'atharv@rideshare.app';
-      const { user } = await api.auth.login(demoEmail, 'SecurePass123!');
-      if (onLoginSuccess) onLoginSuccess(user);
-    } catch {
-      setErrorMsg('Google Sign-In is not configured in this deployment. Please sign in with your email and password.');
     } finally {
       setLoading(false);
     }
@@ -177,16 +162,6 @@ export const LoginPage = ({ onNavigateHome, onNavigateSignup, onLoginSuccess }) 
         }
         .rs-login-input:focus {
           outline: none;
-        }
-        .rs-google-login-btn:hover {
-          background: rgba(255, 255, 255, 0.12) !important;
-          border-color: rgba(255, 255, 255, 0.28) !important;
-          transform: translateY(-1px);
-          box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.45) !important;
-        }
-        .rs-google-login-btn:active {
-          transform: translateY(0px) scale(0.99);
-          background: rgba(255, 255, 255, 0.08) !important;
         }
       `}</style>
 
@@ -348,76 +323,6 @@ export const LoginPage = ({ onNavigateHome, onNavigateSignup, onLoginSuccess }) 
               >
                 Sign in to your unified account to ride, drive, and access your community ride pools.
               </p>
-            </div>
-
-            {/* Google Sign In Button */}
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              className="rs-google-login-btn"
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '12px',
-                padding: '12px 20px',
-                borderRadius: '9999px',
-                background: 'rgba(255, 255, 255, 0.06)',
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
-                border: '1px solid rgba(255, 255, 255, 0.16)',
-                color: '#ffffff',
-                fontSize: '14.5px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.35)',
-                fontFamily: 'inherit',
-                marginBottom: '16px',
-              }}
-            >
-              <div
-                style={{
-                  width: '22px',
-                  height: '22px',
-                  borderRadius: '50%',
-                  background: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 5px rgba(0, 0, 0, 0.2)',
-                  flexShrink: 0,
-                }}
-              >
-                <IconGoogle size={14} />
-              </div>
-              <span>Continue with Google</span>
-            </button>
-
-            {/* Frosted Divider */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
-                marginBottom: '16px',
-              }}
-            >
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.12)' }} />
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  color: 'rgba(255, 255, 255, 0.45)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                or sign in with email
-              </span>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.12)' }} />
             </div>
 
             {/* Form Fields */}

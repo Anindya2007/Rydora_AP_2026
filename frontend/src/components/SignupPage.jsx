@@ -13,7 +13,6 @@ import {
   IconEyeOff,
   IconShield,
   IconSparkles,
-  IconGoogle,
 } from './Icons';
 import signupHeroImg from '../assets/images/Cinematic Purple Light Scene with Silhouettes _ Futuristic Visual Aesthetic.png';
 
@@ -27,13 +26,14 @@ export const SignupPage = ({ onNavigateHome, onNavigateLogin, onLoginSuccess }) 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Check if institutional email
-  const isInstitutional =
-    email.includes('.edu') ||
-    email.includes('.ac.in') ||
-    email.includes('@microsoft.com') ||
-    email.includes('@google.com') ||
-    email.includes('@deloitte.com');
+  // Domain and category detection
+  const emailDomain = email.includes('@') ? email.split('@')[1]?.toLowerCase().trim() : '';
+  const isOpenCategory =
+    emailDomain === 'gmail.com' ||
+    emailDomain === 'googlemail.com' ||
+    emailDomain === 'yahoo.com' ||
+    emailDomain.startsWith('yahoo.');
+  const isCustomOrgDomain = emailDomain && !isOpenCategory && emailDomain.includes('.');
 
   const canSubmit = name.trim().length >= 2 && email.trim() && password.length >= 8 && agreed;
 
@@ -78,19 +78,6 @@ export const SignupPage = ({ onNavigateHome, onNavigateLogin, onLoginSuccess }) 
           ? 'Unable to connect to backend server. Please ensure the backend is running.'
           : 'Registration failed. Please verify your details or use a different email/phone.');
       setErrorMsg(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleSignUp = async () => {
-    setErrorMsg('');
-    setLoading(true);
-    try {
-      const { user } = await api.auth.login('atharv@rideshare.app', 'SecurePass123!');
-      if (onLoginSuccess) onLoginSuccess(user);
-    } catch {
-      setErrorMsg('Google Sign-Up is not configured in this deployment. Please register using your email and phone.');
     } finally {
       setLoading(false);
     }
@@ -203,16 +190,6 @@ export const SignupPage = ({ onNavigateHome, onNavigateLogin, onLoginSuccess }) 
         }
         .rs-signup-input:focus {
           outline: none;
-        }
-        .rs-google-btn:hover {
-          background: rgba(255, 255, 255, 0.12) !important;
-          border-color: rgba(255, 255, 255, 0.28) !important;
-          transform: translateY(-1px);
-          box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.45) !important;
-        }
-        .rs-google-btn:active {
-          transform: translateY(0px) scale(0.99);
-          background: rgba(255, 255, 255, 0.08) !important;
         }
       `}</style>
 
@@ -386,78 +363,8 @@ export const SignupPage = ({ onNavigateHome, onNavigateLogin, onLoginSuccess }) 
                   margin: 0,
                 }}
               >
-                Sign up with your campus or office email for a unified account to ride or drive anytime.
+                Sign up with your email for a unified account to ride, drive, and join community pools.
               </p>
-            </div>
-
-            {/* Google Sign Up Button */}
-            <button
-              type="button"
-              onClick={handleGoogleSignUp}
-              className="rs-google-btn"
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '12px',
-                padding: '12px 20px',
-                borderRadius: '9999px',
-                background: 'rgba(255, 255, 255, 0.06)',
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
-                border: '1px solid rgba(255, 255, 255, 0.16)',
-                color: '#ffffff',
-                fontSize: '14.5px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                boxShadow: '0 8px 24px -4px rgba(0, 0, 0, 0.35)',
-                fontFamily: 'inherit',
-                marginBottom: '16px',
-              }}
-            >
-              <div
-                style={{
-                  width: '22px',
-                  height: '22px',
-                  borderRadius: '50%',
-                  background: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 5px rgba(0, 0, 0, 0.2)',
-                  flexShrink: 0,
-                }}
-              >
-                <IconGoogle size={14} />
-              </div>
-              <span>Continue with Google</span>
-            </button>
-
-            {/* Frosted Divider */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
-                marginBottom: '16px',
-              }}
-            >
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.12)' }} />
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  color: 'rgba(255, 255, 255, 0.45)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                or sign up with email
-              </span>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255, 255, 255, 0.12)' }} />
             </div>
 
             {/* Form Fields */}
@@ -531,7 +438,7 @@ export const SignupPage = ({ onNavigateHome, onNavigateLogin, onLoginSuccess }) 
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="College or work email (.edu, .ac.in)"
+                    placeholder="Email address (e.g. user@gmail.com, you@rishihood.edu.in)"
                     className="rs-signup-input"
                     style={{
                       width: '100%',
@@ -544,7 +451,22 @@ export const SignupPage = ({ onNavigateHome, onNavigateLogin, onLoginSuccess }) 
                       fontFamily: 'inherit',
                     }}
                   />
-                  {isInstitutional && (
+                  {isOpenCategory ? (
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        background: 'rgba(99, 102, 241, 0.22)',
+                        color: '#a5b4fc',
+                        padding: '3px 8px',
+                        borderRadius: '9999px',
+                        whiteSpace: 'nowrap',
+                        marginLeft: '8px',
+                      }}
+                    >
+                      🌐 Open Category
+                    </span>
+                  ) : isCustomOrgDomain ? (
                     <span
                       style={{
                         fontSize: '11px',
@@ -557,10 +479,35 @@ export const SignupPage = ({ onNavigateHome, onNavigateLogin, onLoginSuccess }) 
                         marginLeft: '8px',
                       }}
                     >
-                      Verified Domain ✓
+                      🏢 Verified Domain ✓
                     </span>
-                  )}
+                  ) : null}
                 </LiquidGlassPanel>
+
+                {isOpenCategory && (
+                  <div
+                    style={{
+                      fontSize: '11.5px',
+                      color: 'rgba(255, 255, 255, 0.6)',
+                      padding: '4px 12px 0 12px',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    ✨ Assigned to <strong>Open Category</strong>: All drivers and rides across all corridors are available.
+                  </div>
+                )}
+                {isCustomOrgDomain && (
+                  <div
+                    style={{
+                      fontSize: '11.5px',
+                      color: 'rgba(110, 231, 183, 0.85)',
+                      padding: '4px 12px 0 12px',
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    🏢 Automatic community membership for <strong>{emailDomain}</strong>. You can also browse all drivers in Open Category anytime.
+                  </div>
+                )}
               </div>
 
               {/* Phone Input Capsule */}
